@@ -1,0 +1,12 @@
+[submodule "Ahead-of-the-Storm-ORCHESTRATION"]
+	path = Ahead-of-the-Storm-ORCHESTRATION
+	url = https://github.com/felixschwebel/Ahead-of-the-Storm-ORCHESTRATION
+[submodule "Ahead-of-the-Storm-DATAPIPELINE"]
+	path = Ahead-of-the-Storm-DATAPIPELINE
+	url = https://github.com/unicef-drp/Ahead-of-the-Storm-DATAPIPELINE
+[submodule "TC-ECMWF-Forecast-Pipeline"]
+	path = TC-ECMWF-Forecast-Pipeline
+	url = https://github.com/unicef-drp/TC-ECMWF-Forecast-Pipeline
+[submodule "Ahead-of-the-Storm"]
+	path = Ahead-of-the-Storm
+	url = https://github.com/unicef-drp/Ahead-of-the-Storm
