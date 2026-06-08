@@ -57,6 +57,9 @@ def test_export_snowflake_writes_baseline_manifest_expected_report_and_artifacts
     )
 
     assert "Exported Known-Good Baseline" in message
+    assert "Artifacts exported:" in message
+    assert "Rows exported:" in message
+    assert "uv run aots-report snapshot" in message
     assert (out_dir / "manifest.json").is_file()
     assert (out_dir / "expected-report.json").is_file()
     manifest = json.loads((out_dir / "manifest.json").read_text())

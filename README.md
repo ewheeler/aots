@@ -48,6 +48,14 @@ uv run aots-report snapshot \
 
 The output bundle contains `manifest.json`, `report-snapshot.json`, `comparison.json`, `comparison.md`, Quarto source under `quarto/`, and rendered site output under `site/`.
 
+Publish a simple index from local baseline directories:
+
+```bash
+uv run aots-report publish \
+  --snapshots-dir known-good-baselines \
+  --out /tmp/aots-report-publication
+```
+
 Preview a read-only Snowflake baseline export plan without connecting or writing files:
 
 ```bash
@@ -55,14 +63,14 @@ uv run aots-report export-snowflake \
   --country TST \
   --storm ALPHA \
   --forecast-time 2026-01-01T00:00:00Z \
-  --out known-good-baselines/example \
+  --case-name alpha-tst \
   --env-file .env.snowflake \
   --wind-threshold 34 \
-  --plan-only \
+  --dry-run \
   --json
 ```
 
-For a real export, provide `SNOWFLAKE_*` environment variables or `--env-file <path>`. Do not pass passwords on the command line. Real Known-Good Baseline exports should stay outside the repo; `known-good-baselines/` is ignored.
+For a real export, provide `SNOWFLAKE_*` environment variables or `--env-file <path>`. Do not pass passwords on the command line. Real Known-Good Baseline exports should stay outside the repo; `known-good-baselines/` is ignored. Use `--case-name <name>` to write to `known-good-baselines/<name>` or pass `--out <path>` explicitly.
 
 ## Development Checks
 

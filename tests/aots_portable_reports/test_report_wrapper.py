@@ -1,13 +1,25 @@
 from __future__ import annotations
 
 from pathlib import Path
+import logging
+from types import SimpleNamespace
 from typing import Any
 
+import geopandas as gpd
 import pandas as pd
+from shapely.geometry import Point, Polygon
 
 from aots_portable_reports.models import ArtifactManifest, BaselineManifest
-from aots_portable_reports.report_wrapper import generate_report_from_baseline, normalize_volatile_report_fields
-from aots_portable_reports.validation import ValidatedBaseline
+from aots_portable_reports.report_wrapper import (
+    generate_report_from_baseline,
+    install_report_runtime_patches,
+    normalize_volatile_report_fields,
+    quiet_geodata_loggers,
+)
+from aots_portable_reports.validation import ValidatedBaseline, load_manifest, validate_baseline
+
+
+FIXTURE_REPORT_BASELINE = Path(__file__).parents[1] / "fixtures" / "synthetic_report_baseline"
 
 
 def test_report_wrapper_calls_existing_report_function_when_required_artifacts_exist(tmp_path: Path) -> None:
@@ -87,3 +99,98 @@ def test_report_wrapper_normalizes_volatile_report_date_to_expected_value() -> N
         "report_date": "June 08, 2026 15:59 UTC",
         "value": 1,
     }
+
+
+def test_synthetic_report_fixture_exercises_artifact_grouping_path() -> None:
+    manifest = load_manifest(FIXTURE_REPORT_BASELINE)
+    baseline = validate_baseline(FIXTURE_REPORT_BASELINE, manifest)
+
+    def fake_do_report(
+        wind_school_views,
+        wind_hc_views,
+        wind_tiles_views,
+        wind_admin_views,
+        cci_tiles_view,
+        cci_admin_view,
+        gdf_admin,
+        gdf_tracks,
+        country,
+        storm,
+        date,
+        wind_shelter_views=None,
+        wind_wash_views=None,
+    ):
+        assert wind_shelter_views is not None
+        assert wind_wash_views is not None
+        return {
+            "country": country,
+            "storm": storm,
+            "date": date,
+            "tile_winds": sorted(wind_tiles_views),
+            "admin_winds": sorted(wind_admin_views),
+            "school_rows": len(wind_school_views[34]),
+            "hc_rows": len(wind_hc_views[34]),
+            "shelter_rows": len(wind_shelter_views[34]),
+            "wash_rows": len(wind_wash_views[34]),
+            "cci_tile_rows": len(cci_tiles_view),
+            "cci_admin_rows": len(cci_admin_view),
+            "track_rows": len(gdf_tracks),
+            "has_ensemble_member": "ENSEMBLE_MEMBER" in gdf_tracks.columns,
+        }
+
+    assert generate_report_from_baseline(baseline, do_report_func=fake_do_report) == {
+        "country": "SYN",
+        "storm": "TRACE",
+        "date": "20260101000000",
+        "tile_winds": [34],
+        "admin_winds": [34],
+        "school_rows": 1,
+        "hc_rows": 1,
+        "shelter_rows": 1,
+        "wash_rows": 1,
+        "cci_tile_rows": 1,
+        "cci_admin_rows": 1,
+        "track_rows": 1,
+        "has_ensemble_member": True,
+    }
+
+
+def test_report_runtime_patch_caches_country_boundary_lookup() -> None:
+    calls = {"count": 0}
+
+    class FakeBoundary:
+        def to_geodataframe(self):
+            return gpd.GeoDataFrame({"geometry": [Polygon([(-1, -1), (1, -1), (1, 1), (-1, 1)])]}, crs="EPSG:4326")
+
+    class FakeAdminBoundaries:
+        @staticmethod
+        def create(country_code, admin_level):
+            calls["count"] += 1
+            return FakeBoundary()
+
+    module = SimpleNamespace(
+        AdminBoundaries=FakeAdminBoundaries,
+        get_lines_from_points=lambda gdf: gdf,
+        get_future_date=lambda date, hours: f"{date}+{hours}",
+        logger=logging.getLogger("fake-report-module"),
+    )
+    tracks = gpd.GeoDataFrame(
+        {"ENSEMBLE_MEMBER": [1], "LEAD_TIME": [6]},
+        geometry=[Point(0, 0)],
+        crs="EPSG:4326",
+    )
+
+    install_report_runtime_patches(module)
+    assert module.get_expected_landfall(tracks, "20260101000000", "SYN") == "20260101000000+6"
+    assert module.get_expected_landfall(tracks, "20260101000000", "SYN") == "20260101000000+6"
+    assert calls["count"] == 1
+
+
+def test_quiet_geodata_loggers_sets_known_noisy_loggers_to_error() -> None:
+    logging.getLogger("AdminBoundaries").setLevel(logging.INFO)
+    logging.getLogger("EntityManager").setLevel(logging.INFO)
+
+    quiet_geodata_loggers()
+
+    assert logging.getLogger("AdminBoundaries").level == logging.ERROR
+    assert logging.getLogger("EntityManager").level == logging.ERROR

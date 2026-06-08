@@ -163,3 +163,45 @@ def test_export_snowflake_plan_only_json_lists_artifacts_without_secrets(
     assert plan["snowflake"]["account"] == "test-account"
     assert plan["artifacts"]
     assert "super-secret" not in captured.out
+
+
+def test_export_snowflake_supports_case_name_and_dry_run_alias(tmp_path: Path, monkeypatch, capsys) -> None:
+    clear_snowflake_env(monkeypatch)
+    env_file = tmp_path / ".env.snowflake"
+    env_file.write_text(
+        "\n".join(
+            [
+                "SNOWFLAKE_ACCOUNT=test-account",
+                "SNOWFLAKE_USER=test-user",
+                "SNOWFLAKE_PASSWORD=super-secret",
+                "SNOWFLAKE_WAREHOUSE=AOTS_WH",
+                "SNOWFLAKE_DATABASE=AOTS",
+                "SNOWFLAKE_SCHEMA=TC_ECMWF",
+            ]
+        )
+        + "\n"
+    )
+
+    exit_code = main(
+        [
+            "export-snowflake",
+            "--country",
+            "TST",
+            "--storm",
+            "ALPHA",
+            "--forecast-time",
+            "2026-01-01T00:00:00Z",
+            "--case-name",
+            "alpha-tst",
+            "--env-file",
+            str(env_file),
+            "--wind-threshold",
+            "34",
+            "--dry-run",
+        ]
+    )
+
+    captured = capsys.readouterr()
+    assert exit_code == 0
+    assert "known-good-baselines/alpha-tst" in captured.out
+    assert "Plan only" in captured.out

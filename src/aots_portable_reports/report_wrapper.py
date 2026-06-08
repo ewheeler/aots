@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import importlib.util
+import logging
 import sys
 from collections.abc import Callable
+from functools import lru_cache
 from pathlib import Path
 import re
 from typing import Any
@@ -26,6 +28,7 @@ def generate_report_from_baseline(
     if inputs is None:
         return validated_baseline.expected_report
     report_func = do_report_func or load_current_do_report()
+    quiet_geodata_loggers()
     manifest = validated_baseline.manifest
     report = report_func(
         inputs["schools"],
@@ -164,4 +167,52 @@ def load_current_do_report() -> DoReportFunction:
             message=r".*urllib3 .*charset_normalizer .*doesn't match a supported version.*",
         )
         spec.loader.exec_module(module)
+    install_report_runtime_patches(module)
     return module.do_report
+
+
+def quiet_geodata_loggers() -> None:
+    for logger_name in ["AdminBoundaries", "EntityManager"]:
+        logging.getLogger(logger_name).setLevel(logging.ERROR)
+
+
+def install_report_runtime_patches(module: Any) -> None:
+    if getattr(module, "_aots_portable_patched", False):
+        return
+
+    @lru_cache(maxsize=32)
+    def boundary_polygon(country: str):
+        boundary = module.AdminBoundaries.create(country_code=country, admin_level=0)
+        return boundary.to_geodataframe().geometry.iloc[0]
+
+    def cached_expected_landfall(gdf_tracks, date: str, country: str) -> str:
+        if gdf_tracks.empty:
+            return "Unknown"
+        try:
+            polygon = boundary_polygon(country)
+            landfall_lead_times = []
+            n_total = gdf_tracks["ENSEMBLE_MEMBER"].nunique()
+            for _, gdf_member in gdf_tracks.groupby("ENSEMBLE_MEMBER"):
+                inside_rows = gdf_member[gdf_member.within(polygon)]
+                if not inside_rows.empty:
+                    landfall_lead_times.append(int(inside_rows.iloc[0]["LEAD_TIME"]))
+                    continue
+                gdf_lines = module.get_lines_from_points(gdf_member)
+                inside_lines = gdf_lines[gdf_lines.intersects(polygon)]
+                if not inside_lines.empty:
+                    landfall_lead_times.append(int(inside_lines.iloc[0]["LEAD_TIME"]))
+            if not landfall_lead_times:
+                return "Unknown"
+            earliest = min(landfall_lead_times)
+            latest = max(landfall_lead_times)
+            if latest == 0:
+                return "Already landed"
+            if earliest == latest:
+                return module.get_future_date(date, earliest)
+            return f"{module.get_future_date(date, earliest)} – {module.get_future_date(date, latest)}"
+        except Exception as exc:
+            module.logger.warning("Error calculating expected landfall for %s: %s", country, exc)
+            return "Unknown"
+
+    module.get_expected_landfall = cached_expected_landfall
+    module._aots_portable_patched = True

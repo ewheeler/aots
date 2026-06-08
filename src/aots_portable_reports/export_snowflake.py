@@ -158,7 +158,16 @@ def export_snowflake_baseline(request: ExportRequest, query_runner: QueryRunner 
         close = getattr(runner, "close", None)
         if callable(close):
             close()
-    return f"Exported Known-Good Baseline to {request.out}"
+    total_rows = sum(int(artifact["row_count"]) for artifact in artifacts)
+    return "\n".join(
+        [
+            f"Exported Known-Good Baseline to {request.out}",
+            f"Artifacts exported: {len(artifacts)}",
+            f"Rows exported: {total_rows}",
+            "Next snapshot command:",
+            f"  uv run aots-report snapshot --baseline {request.out} --out /tmp/aots-report-{request.out.name}",
+        ]
+    )
 
 
 def discover_wind_thresholds(runner: QueryRunner, config: SnowflakeConfig, request: ExportRequest) -> list[int]:
@@ -390,7 +399,7 @@ def format_export_plan(
         }
         return json.dumps(payload, indent=2)
     artifact_lines = [f"  - {spec.name}: {spec.source_table} -> {spec.relative_path}" for spec in specs]
-    return "\n".join([config.non_secret_summary(), "Artifacts:", *artifact_lines])
+    return "\n".join([config.non_secret_summary(), f"Output: {request.out}", "Artifacts:", *artifact_lines])
 
 
 def qualified_table(config: SnowflakeConfig, table: str) -> str:

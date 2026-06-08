@@ -1,0 +1,153 @@
+{
+  "baseline_version": 1,
+  "country": "SYN",
+  "storm": "TRACE",
+  "forecast_time": "20260101000000",
+  "expected_report_path": "expected-report.json",
+  "artifacts": [
+    {
+      "name": "admin_34",
+      "role": "admin",
+      "path": "artifacts/admin/admin_34.parquet",
+      "required": true,
+      "checksum_sha256": "6308e4d93db6867bcef01f25360c46df62207db72322ce5e1325967fab4f0359",
+      "schema_hash": "25ed34afec92ab53f133452224ae6f5952b911fdab88c7bd56767a3af37a9901",
+      "row_count": 1,
+      "source_table": "SYNTHETIC.ADMIN.ADMIN_34",
+      "query_filter": {
+        "country": "SYN",
+        "storm": "TRACE",
+        "forecast_time": "20260101000000"
+      },
+      "geometry_encoding": null
+    },
+    {
+      "name": "tiles_34",
+      "role": "tiles",
+      "path": "artifacts/tiles/tiles_34.parquet",
+      "required": true,
+      "checksum_sha256": "3894b237e9841842cefdeb306a565974783bad2332753fd41c205dc106461642",
+      "schema_hash": "63975cb0b010b148f2392241417767e2cf3bc490d081165d8f7a96efec2071dd",
+      "row_count": 1,
+      "source_table": "SYNTHETIC.TILES.TILES_34",
+      "query_filter": {
+        "country": "SYN",
+        "storm": "TRACE",
+        "forecast_time": "20260101000000"
+      },
+      "geometry_encoding": null
+    },
+    {
+      "name": "schools_34",
+      "role": "facilities",
+      "path": "artifacts/facilities/schools_34.parquet",
+      "required": true,
+      "checksum_sha256": "6f397a63669065cca3576e4d61f56d6932a7e00c4b66a65bc31d0f7eca3da61e",
+      "schema_hash": "cfe6c4f2652a6c92914ff95dd4a79a5f5ce946b37b43789295db32376b908c52",
+      "row_count": 1,
+      "source_table": "SYNTHETIC.FACILITIES.SCHOOLS_34",
+      "query_filter": {
+        "country": "SYN",
+        "storm": "TRACE",
+        "forecast_time": "20260101000000"
+      },
+      "geometry_encoding": null
+    },
+    {
+      "name": "health_centers_34",
+      "role": "facilities",
+      "path": "artifacts/facilities/health_centers_34.parquet",
+      "required": true,
+      "checksum_sha256": "6495eef8064941a824dafc57ac835d614ef1cabcb63d1738840bce8e4cd90c46",
+      "schema_hash": "80a07391db2674e75bb401b4b6bf32371cb01326e21178239495b1a9b88ecc29",
+      "row_count": 1,
+      "source_table": "SYNTHETIC.FACILITIES.HEALTH_CENTERS_34",
+      "query_filter": {
+        "country": "SYN",
+        "storm": "TRACE",
+        "forecast_time": "20260101000000"
+      },
+      "geometry_encoding": null
+    },
+    {
+      "name": "shelters_34",
+      "role": "facilities",
+      "path": "artifacts/facilities/shelters_34.parquet",
+      "required": true,
+      "checksum_sha256": "3c91d30e574b937c10803900f3494289c366696d48a499ab59a22c4b50a18a6f",
+      "schema_hash": "a46ecae6f9a9ea1182ccb542f35f2a7504e1ea9ab2c8b15fa587c46266e32feb",
+      "row_count": 1,
+      "source_table": "SYNTHETIC.FACILITIES.SHELTERS_34",
+      "query_filter": {
+        "country": "SYN",
+        "storm": "TRACE",
+        "forecast_time": "20260101000000"
+      },
+      "geometry_encoding": null
+    },
+    {
+      "name": "wash_34",
+      "role": "facilities",
+      "path": "artifacts/facilities/wash_34.parquet",
+      "required": true,
+      "checksum_sha256": "77bb5260e5907730e8f013e8fa0e5b97d5c8ba056c29d3ca1d90a7537d5baea2",
+      "schema_hash": "a872953f40f939d7ecbadaec856996b10e1428e7b00646015608c5b842c9f3d8",
+      "row_count": 1,
+      "source_table": "SYNTHETIC.FACILITIES.WASH_34",
+      "query_filter": {
+        "country": "SYN",
+        "storm": "TRACE",
+        "forecast_time": "20260101000000"
+      },
+      "geometry_encoding": null
+    },
+    {
+      "name": "tile_cci",
+      "role": "cci",
+      "path": "artifacts/cci/tile_cci.parquet",
+      "required": true,
+      "checksum_sha256": "9403309b5aa1fc4d46aa32683c41dd1f2e1768897f108c8fc00e620e317a7b74",
+      "schema_hash": "af615312065748a3aa30d6b27cf2bb2414b4942df236007a12efdff483e3d638",
+      "row_count": 1,
+      "source_table": "SYNTHETIC.CCI.TILE_CCI",
+      "query_filter": {
+        "country": "SYN",
+        "storm": "TRACE",
+        "forecast_time": "20260101000000"
+      },
+      "geometry_encoding": null
+    },
+    {
+      "name": "admin_cci",
+      "role": "cci",
+      "path": "artifacts/cci/admin_cci.parquet",
+      "required": true,
+      "checksum_sha256": "04286e3cd0b52aafdef2904a4d4e43ef7e595a0c39475392e866a473ba16ac01",
+      "schema_hash": "851ddfa75ff791610ebc817b49441dd2c101597c9afb7dcf910d8e28ef47e5dd",
+      "row_count": 1,
+      "source_table": "SYNTHETIC.CCI.ADMIN_CCI",
+      "query_filter": {
+        "country": "SYN",
+        "storm": "TRACE",
+        "forecast_time": "20260101000000"
+      },
+      "geometry_encoding": null
+    },
+    {
+      "name": "raw_tracks",
+      "role": "tracks",
+      "path": "artifacts/tracks/raw_tracks.parquet",
+      "required": true,
+      "checksum_sha256": "4092d35882eb1cfbb58b19f01844c2966e330f6aa39f7f8f6ac6dde936e46593",
+      "schema_hash": "78909fd60de74e5597b6a3d81a44d8c38761216632d7054a3c8ae542e9773e0c",
+      "row_count": 1,
+      "source_table": "SYNTHETIC.TRACKS.RAW_TRACKS",
+      "query_filter": {
+        "country": "SYN",
+        "storm": "TRACE",
+        "forecast_time": "20260101000000"
+      },
+      "geometry_encoding": null
+    }
+  ]
+}

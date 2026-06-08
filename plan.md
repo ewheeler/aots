@@ -230,6 +230,16 @@ Initial scaffold status:
 - `tests/aots_portable_reports/test_comparison.py` covers exact integer/categorical comparison, raw probability tolerance, rendered percentage tolerance, missing fields, and extra fields.
 - `src/aots_portable_reports/report_wrapper.py` groups exported artifacts and calls the existing `do_report(...)` path when enough artifacts are present, with a seed fallback for incomplete synthetic fixtures.
 - `tests/aots_portable_reports/test_report_wrapper.py` covers the injected `do_report(...)` wrapper path and fallback behavior.
+- `tests/fixtures/synthetic_report_baseline/` provides a richer synthetic baseline with admin, tile, facility, CCI, and raw track artifacts.
+- The richer fixture verifies wrapper grouping into wind-keyed inputs without committing real locations or beneficiary-sensitive values.
+
+### Autonomous Milestone Sequence
+
+- Milestone 1 complete: committed the scaffold, docs, CI, tests, and tool configuration in `dc40d17`.
+- Milestone 2 complete: added a richer committed synthetic fixture that exercises the report wrapper artifact-grouping path without real data.
+- Milestone 3 complete: added `--case-name`, `--dry-run`, JSON planning, and clearer export summaries with artifact counts, row counts, and the next snapshot command.
+- Milestone 4 complete: report generation now quiets known noisy geodata loggers and patches the loaded report module with a cached country-boundary lookup for landfall calculation.
+- Milestone 5 complete: added a local baseline repository adapter and `aots-report publish` command that writes a publication manifest and renders a Quarto index for multiple local baselines.
 
 ### Snowflake Baseline Exporter
 
@@ -266,10 +276,16 @@ Initial exporter scaffold status:
 - The command refuses existing non-empty output directories unless `--overwrite` is passed.
 - The command includes `--plan-only` for connection-free configuration previews.
 - `--plan-only --json` prints a machine-readable, non-secret artifact plan.
+- `--dry-run` is an alias for `--plan-only`.
+- `--case-name <name>` writes to `known-good-baselines/<name>` when `--out` is omitted.
+- Successful exports print artifact count, row count, and the next `aots-report snapshot` command.
 - Live Snowflake extraction is implemented behind read-only scoped queries for source artifacts.
 - The exporter writes Parquet source artifacts, `expected-report.json`, and `manifest.json` through a temporary sibling directory before the final move.
 - `tests/aots_portable_reports/test_export_snowflake_cli.py` covers missing configuration, overwrite protection, and non-secret config previews.
 - `tests/aots_portable_reports/test_export_snowflake_live_path.py` covers live-export behavior with a fake query runner, not live credentials.
+- `src/aots_portable_reports/local_adapter.py` discovers valid local baseline directories from a filesystem root.
+- `src/aots_portable_reports/publication.py` writes `publication-manifest.json`, Quarto source, and rendered site output for a multi-snapshot index.
+- `tests/aots_portable_reports/test_publication.py` covers local baseline discovery and `aots-report publish` output.
 
 Current live-baseline status:
 
@@ -278,6 +294,7 @@ Current live-baseline status:
 - The exporter uses compact `FORECAST_DATE` values for impact MAT tables and timestamp `FORECAST_TIME` values for track/envelope tables.
 - The exporter writes a generated `expected-report.json` through the existing `do_report(...)` path when enough artifacts are present.
 - The snapshot command normalizes volatile `report_date` to the baseline value before comparison.
+- The report wrapper caches country-boundary lookups in-process and quiets `AdminBoundaries`/`EntityManager` logs to reduce repeated GADM/GigaSpatial noise.
 
 Exported Snowflake source artifact groups:
 
