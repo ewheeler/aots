@@ -1,0 +1,14 @@
+profiles:
+  default-coding:
+    provider: "openai"
+    model: "gpt-5.5"
+    use: "general coding and repository maintenance"
+    harnesses:
+      - "opencode"
+      - "paseo"
+    notes:
+      latency: "medium"
+      cost: "high"
+      strengths:
+        - "codebase editing"
+        - "documentation"

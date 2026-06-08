@@ -1,0 +1,12 @@
+profiles:
+  memory-local:
+    tool: "omega-memory or cq"
+    purpose: "local-first cross-session decisions, lessons, and repeated error patterns"
+    guidance:
+      - "Prefer local-first memory stores for project-specific decisions and lessons"
+      - "Keep credentials and private personal data out of repository memory profiles"
+      - "Record selected memory profile names in bootstrap metadata only"
+    setup:
+      - "Configure omega-memory or cq outside the repository; keep memory stores local-first unless a team explicitly opts into sync"
+    verify:
+      - "Confirm the selected memory tool is available in the agent harness before relying on cross-session recall"

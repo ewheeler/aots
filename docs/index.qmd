@@ -1,0 +1,21 @@
+---
+title: "Ahead of the Storm"
+subtitle: "Generated with repo-familiar."
+---
+
+This documentation site was generated with `repo-familiar`.
+
+## Start Here
+
+- Review `plan.md` for goals and first milestones.
+- Review `AGENTS.md` for agent-facing working instructions.
+- Review `.repo-familiar/bootstrap.yml` for generation provenance.
+- Review [Snowflake-Agnostic Report Publication](snowflake-agnostic-report-publication.qmd) for the current architecture track and planning questions.
+
+## Installed Agent Defaults
+
+This downstream repository is configured for `opencode` and `paseo` harnesses.
+
+Vendored skills currently include accessibility scanning, API documentation lookup, codebase architecture review, local document parsing, TDD, diagnosis, security audit, prompt migration/eval design, PRD and issue creation, CQ knowledge lookup, session focus, and zoom-out reviews.
+
+Tool profiles currently include CQ, accessibility scanning, browser automation, Headroom context compression/MCP/proxy guidance, OpenCode MCP entries for Context7, CQ, Headroom, and Playwright, plus Homebrew PATH guidance for OpenCode shells.

@@ -1,0 +1,18 @@
+{
+  "baseline_version": 1,
+  "country": "TST",
+  "storm": "ALPHA",
+  "forecast_time": "2026-01-01T00:00:00Z",
+  "expected_report_path": "expected-report.json",
+  "artifacts": [
+    {
+      "name": "admin_34",
+      "role": "admin",
+      "path": "artifacts/admin/admin_34.parquet",
+      "required": true,
+      "checksum_sha256": "48cf9c9323049dddfd126113a9f098e2cca18df14d977ebe7d79ae468100e9bd",
+      "schema_hash": "33adfa03952bc0bee6046cec9f23c0af78a58e5af2929b74007ebf75e2a0c9eb",
+      "row_count": 1
+    }
+  ]
+}

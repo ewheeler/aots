@@ -1,0 +1,43 @@
+---
+title: "Usage"
+---
+
+## Local Development
+
+Document project setup, common commands, and operating assumptions here.
+
+## Agent Setup
+
+Agent instructions live in `AGENTS.md`. Model/provider defaults live in `.agents/models.yml`.
+
+Configured harnesses:
+
+- `opencode`
+- `paseo`
+
+OpenCode project config lives in `opencode.json`. It registers `.agents/skills` and includes MCP entries for Playwright, CQ, Headroom, and Context7. Context7 expects `CONTEXT7_API_KEY` to be provided by the user environment, not committed to the repository.
+
+Paseo is a machine-level orchestration harness. This repository records Paseo compatibility, but provider preferences, schedules, daemon settings, and managed worktree roots stay in user-owned `~/.paseo` config outside the repository.
+
+## Installed Skills
+
+Vendored skills live under `.agents/skills/`:
+
+- `a11y-web-scan` for accessibility scan planning and review of web outputs.
+- `caveman` for ultra-compressed communication mode.
+- `cq` for querying and recording shared agent knowledge.
+- `diagnose` for disciplined debugging and performance regression loops.
+- `get-api-docs` for current third-party API, SDK, and library documentation lookup.
+- `grill-with-docs` for stress-testing plans against project language and docs.
+- `improve-codebase-architecture` for architecture deepening reviews.
+- `liteparse` for local parsing/conversion of unstructured files.
+- `prompt-eval-design`, `prompt-migration`, and `prompt-output-safety` for prompt-heavy work.
+- `security-audit` for security, secret, dependency, auth, and authorization review.
+- `session-focus` for keeping multi-step agent work scoped.
+- `tdd` for red-green-refactor workflows.
+- `to-issues` and `to-prd` for issue/PRD creation from plans and context.
+- `zoom-out` for higher-level codebase/context orientation.
+
+## Tool Profiles
+
+Tool setup guidance lives in `.agents/tools.yml` and covers CQ, accessibility scanning, browser automation, Headroom context compression/MCP/proxy workflows, OpenCode MCP entries, OpenCode Homebrew PATH guidance, and Playwright MCP usage.

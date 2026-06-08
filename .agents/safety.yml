@@ -1,0 +1,9 @@
+profiles:
+  prompt-output-safety:
+    tool: "guardrail evals, policy checks, red-team prompts, and output review rubrics"
+    purpose: "review AI prompts and outputs for unsafe, inappropriate, or policy-sensitive behavior"
+    guidance:
+      - "Identify user-facing outputs, vulnerable audiences, and high-impact failure modes"
+      - "Create adversarial fixtures before changing safety-sensitive prompts"
+      - "Check refusals, uncertainty, escalation paths, and harmful instruction handling"
+      - "Keep raw sensitive examples out of committed fixtures unless sanitized"

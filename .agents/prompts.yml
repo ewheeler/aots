@@ -1,0 +1,17 @@
+profiles:
+  prompt-migration-gpt55:
+    tool: "eval fixtures, prompt inventory, GPT-5.5 prompt guidance, and optional OpenAI prompt optimizer"
+    purpose: "migrate older prompt DAGs toward GPT-5.5 behavior without changing outputs blindly"
+    guidance:
+      - "Inventory prompts and classify each prompt's role in the DAG before editing"
+      - "Preserve baseline behavior with fixtures or golden examples before rewriting prompts"
+      - "Look for contradictory instructions, excessive context-gathering pressure, and unclear stop conditions"
+      - "Prefer minimal prompt diffs with measurable acceptance criteria over broad rewrites"
+  prompt-evals-dag:
+    tool: "prompt fixtures, DAG node outputs, regression snapshots, and task-aware evaluation metadata"
+    purpose: "evaluate prompt DAG behavior across model versions and prompt revisions"
+    guidance:
+      - "Create fixtures at meaningful DAG boundaries, not only final outputs"
+      - "Track model, prompt version, input fixture, output schema, and acceptance criteria"
+      - "Use metadata to define expected response features instead of relying only on prompt wording"
+      - "Run evals before and after prompt migration and record deltas"

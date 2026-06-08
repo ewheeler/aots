@@ -1,0 +1,13 @@
+profiles:
+  hamilton-dag:
+    tool: "Hamilton DAG visualization and graph fingerprints"
+    purpose: "map dataflow, prompt chains, and pipeline abstractions using Hamilton DAGs"
+    guidance:
+      - "Use Hamilton DAG images as architecture artifacts for prompt and data pipelines"
+      - "Keep non-DAG helper functions outside Hamilton modules when graph fingerprints matter"
+      - "Record node/edge counts and graph fingerprints when using DAGs for regression checks"
+      - "Use DAG boundaries to choose prompt eval fixtures and review abstraction seams"
+    setup:
+      - "Install Hamilton in the project environment when DAG visualization or fingerprints are needed"
+    verify:
+      - "python -c \"import hamilton; print(hamilton.__version__)\""

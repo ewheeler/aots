@@ -1,0 +1,321 @@
+---
+title: "Snowflake-Agnostic Report Publication"
+---
+
+## Purpose
+
+This plan evaluates whether Ahead of the Storm can grow a report-generation and publication flow that does not require Snowflake as the system of record. The recommendation is to start with static report publication, keep Snowflake as an optional backend, and avoid changing the live dashboard/orchestration path until the report slice is proven.
+
+## Recommendation
+
+- Build a parallel report-publication path before changing production Snowflake workflows.
+- Treat Snowflake, local filesystem, and blob storage as interchangeable data backends behind explicit interfaces.
+- Preserve the current geospatial impact logic at first; wrap it with typed inputs and outputs before rewriting internals.
+- Use `uv`, `pydantic`, `hamilton`, and Quarto for the new report/publication flow.
+- Use `polars` for manifest and tabular summarization work where it clearly simplifies the pipeline; keep GeoPandas/Shapely/GigaSpatial for geospatial processing initially.
+
+## Current System Seams
+
+### Already portable
+
+- `Ahead-of-the-Storm-DATAPIPELINE` can write generated impact artifacts through `DATA_PIPELINE_DB=LOCAL|BLOB|SNOWFLAKE`.
+- `TC-ECMWF-Forecast-Pipeline` can run with `DATA_PIPELINE_DB=LOCAL` and keep transformed TC and envelope files locally.
+- `Ahead-of-the-Storm` can read generated impact view files when `IMPACT_DATA_SOURCE=STAGE`.
+
+### Still Snowflake-coupled
+
+- Storm discovery, active countries, wind thresholds, tracks, and envelopes are still mostly accessed through Snowflake utility modules.
+- Report-map image generation still has a hard-coded query to `AOTS.TC_ECMWF.MERCATOR_TILE_IMPACT_MAT`.
+- Operational publication state is Snowflake-native: SPCS jobs, streams, tasks, materialized-table refresh, alert logs, and Snowflake Intelligence procedures.
+
+## Target Architecture
+
+Introduce explicit ports so report publication can run against Snowflake-backed, file-backed, or blob-backed data.
+
+| Port | Responsibility |
+| --- | --- |
+| `ForecastRepository` | Storms, forecast runs, tracks, envelopes, and wind thresholds |
+| `CountryRegistry` | Active countries, boundaries, zoom settings, and display metadata |
+| `ImpactArtifactStore` | Generated tile, admin, facility, track, and CCI impact artifacts |
+| `ReportArtifactStore` | Typed report inputs, report outputs, and previous-report snapshots |
+| `PublicationStore` | Quarto source pages, rendered static site files, and publication manifest |
+
+The first implementation should include a Snowflake-backed adapter and a file-backed adapter for the smallest report slice. That keeps existing behavior comparable while opening a path to portable publication.
+
+## Implementation Location
+
+The portable Report Snapshot implementation should live at the repository root as a new package/workspace path, not inside one submodule. The first slice crosses forecast, impact analysis, report generation, and publication concerns, so placing it at the root avoids implying that any single upstream repository owns the whole portable flow.
+
+Candidate layout:
+
+```text
+src/aots_portable_reports/
+  __init__.py
+  models.py
+  ports.py
+  adapters/
+  dag.py
+  publication.py
+tests/aots_portable_reports/
+```
+
+The package can depend on exported artifacts from the submodules first, then add adapters for submodule outputs once the Report Snapshot baseline comparison is stable.
+
+## First Public Command
+
+The root package should expose one validation/regeneration command:
+
+```bash
+uv run aots-report snapshot --baseline <path> --out <path>
+```
+
+The command is responsible for the whole first tracer bullet:
+
+- Validate the Known-Good Baseline export.
+- Regenerate the Report Snapshot artifact from baseline source artifacts.
+- Render Quarto source and static site output.
+- Write a comparison report against the baseline report JSON and manifest metadata.
+- Fail clearly if artifacts are missing, schemas or checksums do not match, or required fields cannot be regenerated.
+
+Initial scaffold status:
+
+- `src/aots_portable_reports/` contains the root package scaffold.
+- `aots-report snapshot --baseline <path> --out <path>` is wired as the first CLI command.
+- `tests/fixtures/synthetic_baseline/` provides a tiny synthetic baseline fixture with a valid Parquet source artifact.
+- `tests/aots_portable_reports/test_snapshot_cli.py` covers output bundle creation, rendered Quarto site output, missing artifact, checksum mismatch, manifest schema mismatch, row-count mismatch, and artifact schema-hash mismatch failures.
+- `tests/aots_portable_reports/test_comparison.py` covers exact integer/categorical comparison, raw probability tolerance, rendered percentage tolerance, missing fields, and extra fields.
+- `src/aots_portable_reports/report_wrapper.py` groups exported artifacts and calls the existing `do_report(...)` path when enough artifacts are present, with a seed fallback for incomplete synthetic fixtures.
+- `tests/aots_portable_reports/test_report_wrapper.py` covers the injected `do_report(...)` wrapper path and fallback behavior.
+
+It should also include a read-only Snowflake exporter command so users do not need to manually run Snowflake SQL to create the baseline export:
+
+```bash
+uv run aots-report export-snowflake \
+  --country <iso3> \
+  --storm <storm-id> \
+  --forecast-time <forecast-time> \
+  --out <baseline>
+```
+
+The exporter should:
+
+- Use existing `SNOWFLAKE_*` environment variables and optionally support `--env-file <path>`.
+- Avoid positional secrets or command-line password flags because shell history can leak them.
+- Print the non-secret Snowflake account, database, schema, and warehouse it will read from before export.
+- Ask for confirmation only if it later detects production-like settings.
+- Read from Snowflake without mutating tables, stages, tasks, or logs.
+- Write `expected-report.json`, source artifacts, and root `manifest.json` in the Known-Good Baseline layout.
+- Record source tables/files, query filters, row counts, schema hashes, checksums, and export timestamp in `manifest.json`.
+- Fail before writing partial outputs if required Snowflake configuration is missing.
+- Keep `aots-report snapshot --baseline <path> --out <path>` as the command of record for validation, regeneration, Quarto rendering, and baseline comparison.
+- Refuse to overwrite an existing non-empty baseline directory unless `--overwrite` is passed.
+- Write to a temporary sibling directory first, validate the generated manifest and checksums, then atomically move the validated export into place.
+
+Initial exporter scaffold status:
+
+- `aots-report export-snowflake ...` is wired as a public command.
+- The command supports `SNOWFLAKE_*` environment variables plus `--env-file <path>`.
+- The command refuses existing non-empty output directories unless `--overwrite` is passed.
+- The command includes `--plan-only` for connection-free configuration previews.
+- `--plan-only --json` prints a machine-readable, non-secret artifact plan.
+- Live Snowflake extraction is implemented behind read-only scoped queries for source artifacts.
+- The exporter writes Parquet source artifacts, `expected-report.json`, and `manifest.json` through a temporary sibling directory before the final move.
+- `tests/aots_portable_reports/test_export_snowflake_cli.py` covers missing configuration, overwrite protection, and non-secret config previews.
+- `tests/aots_portable_reports/test_export_snowflake_live_path.py` covers live-export behavior with a fake query runner, not live credentials.
+
+Current live-baseline status:
+
+- A real Known-Good Baseline was created locally at `known-good-baselines/melissa-jam`; this directory is ignored and should not be committed.
+- The Melissa/JAM baseline snapshot comparison passes with `comparison.json` status `passed`.
+- The exporter uses compact `FORECAST_DATE` values for impact MAT tables and timestamp `FORECAST_TIME` values for track/envelope tables.
+- The exporter writes a generated `expected-report.json` through the existing `do_report(...)` path when enough artifacts are present.
+- The snapshot command normalizes volatile `report_date` to the baseline value before comparison.
+
+Exported Snowflake source artifact groups:
+
+- `ADMIN_ALL_IMPACT_MAT` to `artifacts/admin/admin_<wind>.parquet`.
+- `MERCATOR_TILE_IMPACT_MAT` to `artifacts/tiles/tiles_<wind>.parquet`.
+- `SCHOOL_IMPACT_MAT`, `HC_IMPACT_MAT`, `SHELTER_IMPACT_MAT`, and `WASH_IMPACT_MAT` to `artifacts/facilities/`.
+- `MERCATOR_TILE_CCI_MAT` and `ADMIN_ALL_CCI_MAT` to `artifacts/cci/`.
+- `TRACK_MAT` to `artifacts/tracks/tracks_<wind>.parquet`.
+- `TC_TRACKS` to `artifacts/tracks/raw_tracks.parquet` for landfall calculation.
+- `TC_ENVELOPES_COMBINED` to `artifacts/envelopes/envelopes.parquet` with WKT geometry.
+
+## Comparison Report Semantics
+
+The comparison report separates failures from warnings so the first Report Snapshot can block on reproducibility problems without over-blocking on presentation or optional data differences.
+
+| Severity | Conditions |
+| --- | --- |
+| Failure | Missing required artifacts |
+| Failure | Manifest checksum mismatch |
+| Failure | Schema mismatch |
+| Failure | Numeric report fields outside tolerance |
+| Warning | Presentation-only Quarto differences |
+| Warning | Optional facility layers absent for a country |
+| Warning | Extra non-contract fields in source artifacts |
+
+Numeric comparison policy:
+
+- Integer counts and categorical fields must match exactly.
+- Raw probabilities use absolute tolerance `1e-9`.
+- Rendered percentages use absolute tolerance `0.01`.
+- Display rounding rules must live in the Pydantic model or comparison layer, not only in Quarto templates.
+
+## Snapshot Output Layout
+
+The output directory should be self-auditing and easy to diff.
+
+```text
+<out>/
+  manifest.json
+  report-snapshot.json
+  comparison.json
+  comparison.md
+  quarto/
+    index.qmd
+    _quarto.yml
+  site/
+```
+
+| Path | Purpose |
+| --- | --- |
+| `manifest.json` | Generated snapshot metadata |
+| `report-snapshot.json` | Regenerated typed Report Snapshot artifact |
+| `comparison.json` | Machine-readable pass/fail status, field differences, and warnings |
+| `comparison.md` | Human-readable comparison summary |
+| `quarto/` | Quarto source files used to render the snapshot |
+| `site/` | Rendered static output |
+
+Commit policy:
+
+- Commit intermediate JSON and Markdown artifacts when they are useful as golden fixtures or review artifacts.
+- Commit Quarto source when it is part of a reproducible fixture or example.
+- Do not commit rendered HTML files or `site/` outputs by default; regenerate them in CI or publication workflows.
+
+## First Tracer Bullet
+
+The first portable product is one static report snapshot for a single country, storm, and forecast run. A multi-snapshot publication site should come later, after the artifact model and validation comparison are stable. The first input baseline should be exported known-good Snowflake-backed artifacts, not a fresh local end-to-end pipeline run. Once the report snapshot matches that baseline, the local TC/impact pipeline can be added as the next source adapter.
+
+1. Pick one country, one storm, and one forecast run with known Snowflake-backed report output.
+2. Export the known-good Snowflake-backed source artifacts for that tuple, with an export manifest and checksums.
+3. Wrap the existing report-generation function so the first regenerated report preserves current behavior.
+4. Create typed Pydantic models for the report artifact and publication manifest around observed baseline behavior.
+5. Build a Hamilton DAG that materializes report inputs, report JSON/YAML, Quarto source, and the publication manifest.
+6. Render a Quarto site for the selected report snapshot.
+7. Compare the generated report artifact against the exported known-good baseline for the same tuple.
+8. Add local TC/impact pipeline outputs as the next source adapter only after the baseline comparison is stable.
+
+## Validation Criteria
+
+- The same report snapshot can be generated without Snowflake credentials when local/blob artifacts are present.
+- The generated report artifact validates against typed Pydantic models.
+- The Quarto site renders from generated source files with `uv run` commands.
+- Numeric report fields match the exported known-good Snowflake-backed artifacts within agreed tolerances.
+- Any missing fields are explicitly marked as unsupported by the file-backed adapter, not silently defaulted.
+
+## Known-Good Baseline Export
+
+The baseline export includes both the final expected report output and the minimum source artifacts needed to regenerate it.
+
+| Export item | Purpose |
+| --- | --- |
+| Current report JSON | Expected output for the selected country/storm/forecast tuple |
+| Admin impact artifacts by wind threshold | Administrative-area impact rows used by the report |
+| Tile impact artifacts by wind threshold | Tile-level population, child, facility, and CCI calculations |
+| Facility impact artifacts | School, health center, shelter, and WASH impact rows where available |
+| CCI tile/admin artifacts | Child Cyclone Index inputs used in report totals and rows |
+| Track/envelope artifacts | Storm track and wind-envelope inputs needed for landfall and context fields |
+| Export manifest | Country, storm, forecast time, source table/file names, row counts, schema hashes, and checksums |
+
+Baseline directory layout:
+
+```text
+<baseline>/
+  manifest.json
+  expected-report.json
+  artifacts/
+    admin/
+    tiles/
+    facilities/
+    cci/
+    tracks/
+    envelopes/
+```
+
+`manifest.json` is the baseline contract. All artifact paths in the manifest should be relative to the baseline root so the export remains portable, diffable, and easy for `aots-report snapshot --baseline <path>` to validate.
+
+Artifact format policy:
+
+- Use Parquet for tabular and geospatial source artifacts where possible.
+- Preserve geometry in WKT or WKB columns when GeoParquet compatibility is uncertain.
+- Use JSON for manifests, expected report output, generated report snapshots, and machine-readable comparison output.
+- Use Markdown only for human-readable summaries.
+- Keep diffability and auditability in the manifest and comparison files rather than relying on raw Parquet diffs.
+
+Baseline storage policy:
+
+- Keep real exported Known-Good Baselines outside the repository by default, because they may contain large geospatial files or sensitive operational data.
+- Use an ignored local directory such as `known-good-baselines/` only for temporary local exports.
+- Add a tiny synthetic in-repo baseline fixture later for tests, with no real locations or beneficiary-sensitive values.
+
+## Report-Generation Wrapper Boundary
+
+The first implementation wraps the existing report-generation function to reduce behavior drift while the Known-Good Baseline comparison is being established.
+
+- The wrapper may adapt baseline artifacts into the current function's expected inputs.
+- The wrapper may adapt the current function's output into `ReportSnapshot`.
+- The wrapper must not add new report calculations.
+- New calculations belong upstream in artifact generation or downstream in a clearly named normalization/comparison step.
+
+## Hamilton Materialization Flow
+
+Require Hamilton from the start for the Report Snapshot materialization flow, but keep the first DAG small and boring:
+
+```text
+baseline validation
+  -> source artifact loading
+  -> report wrapper
+  -> ReportSnapshot model
+  -> comparison
+  -> Quarto source
+```
+
+This matches the target stack and makes dependencies explicit without over-engineering the first slice.
+
+## Non-Goals For The First Slice
+
+- Replace the live Dash app or FastAPI tile server.
+- Replace Snowflake streams, tasks, SPCS services, materialized tables, alerts, or Cortex agents.
+- Rewrite geospatial processing in Polars before the portable report path is proven.
+- Change production deployment, credentials, data-sharing, or alerting behavior.
+- Put the first portable implementation inside one submodule as if that submodule owns the whole report-publication flow.
+
+## Decisions To Refine
+
+- What is the canonical forecast manifest schema for local/blob-backed TC outputs?
+- Which fields must match Snowflake exactly, and which may be marked unavailable in the first tracer bullet?
+- When the static path is proven, should the next target be dashboard metadata discovery, report maps, or publication orchestration?
+
+## Resolved Decisions
+
+- The first product is a static report snapshot, not the interactive report page and not a multi-snapshot publication site.
+- The publication site becomes the second step once the report snapshot model and comparison baseline are stable.
+- The first source baseline is exported known-good Snowflake-backed artifacts.
+- The local TC/impact pipeline becomes the next source adapter only after the report snapshot matches the known-good baseline.
+- The known-good baseline must include both expected report output and regenerable source artifacts, plus manifest metadata for row counts, schema hashes, and checksums.
+- The known-good baseline uses a root `manifest.json`, root `expected-report.json`, and role-grouped source artifacts under `artifacts/`, with manifest paths relative to the baseline root.
+- Baseline source artifacts use Parquet where possible, JSON for manifests/report/comparison outputs, and Markdown only for human-readable summaries.
+- Real known-good baseline exports stay outside the repo by default; only tiny synthetic fixtures should be committed for tests.
+- The implementation should live at the repository root as a new package/workspace path, with `src/aots_portable_reports/` as the candidate package path.
+- The first public command is `uv run aots-report snapshot --baseline <path> --out <path>`, which owns validation, regeneration, Quarto rendering, and baseline comparison for one Report Snapshot.
+- The first implementation also includes a read-only `uv run aots-report export-snowflake ...` command to create Known-Good Baseline exports without requiring manual Snowflake SQL.
+- The Snowflake exporter reads credentials from `SNOWFLAKE_*` environment variables or `--env-file <path>` and never accepts secrets as positional arguments or command-line password flags.
+- The Snowflake exporter does not overwrite existing non-empty baseline directories unless `--overwrite` is passed, and it writes via a validated temporary sibling directory before an atomic move.
+- The first implementation wraps the existing report-generation function, then progressively extracts and normalizes the typed contract after the baseline comparison is stable.
+- The report-generation wrapper stays thin: it adapts inputs and outputs but does not add new report calculations.
+- Hamilton is required from the start for the materialization flow, with a small DAG from baseline validation through Quarto source generation.
+- The comparison report fails on reproducibility issues and warns on presentation-only or optional/non-contract source differences.
+- Numeric comparisons require exact integer/categorical matches, `1e-9` tolerance for raw probabilities, and `0.01` tolerance for rendered percentages; rounding rules belong in models or comparison code.
+- Snapshot command output is a self-auditing bundle with `manifest.json`, `report-snapshot.json`, `comparison.json`, `comparison.md`, Quarto source, and rendered site output.
+- Rendered HTML/site output is disposable build output; intermediate JSON/Markdown artifacts may be committed when they serve as fixtures or review artifacts.

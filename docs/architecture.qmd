@@ -1,0 +1,37 @@
+---
+title: "Architecture"
+---
+
+## Overview
+
+Ahead of the Storm currently spans four submodules: forecast ingestion, impact analysis, Snowflake orchestration, and the Dash/FastAPI presentation layer. The production path is Snowflake-native, but parts of the data and report flow already support local or blob-backed artifacts.
+
+The current architectural planning focus is a Snowflake-agnostic report publication path. See [Snowflake-Agnostic Report Publication](snowflake-agnostic-report-publication.qmd) for the recommended first slice, target interfaces, risks, and validation criteria.
+
+## System Boundaries
+
+- `TC-ECMWF-Forecast-Pipeline`: downloads and transforms ECMWF tropical cyclone forecast data; can keep outputs locally when Snowflake loading is disabled.
+- `Ahead-of-the-Storm-DATAPIPELINE`: initializes country base layers, intersects storm envelopes with country/infrastructure layers, and writes impact artifacts and report JSON.
+- `Ahead-of-the-Storm`: serves the interactive Dash dashboard, FastAPI tile sidecar, forecast analysis page, and HTML report page.
+- `Ahead-of-the-Storm-ORCHESTRATION`: defines Snowflake roles, stages, tables, streams, tasks, services, materialized-table refreshes, alerts, and agent workflows.
+
+## Portability Direction
+
+- Keep Snowflake as a supported backend, not an assumed dependency, for report publication.
+- Add explicit repository/store interfaces for forecast data, country metadata, impact artifacts, report artifacts, and static publication outputs.
+- Start with a static Quarto report package for one country/storm/forecast snapshot before touching live dashboard or orchestration behavior.
+
+## Generated Assets
+
+This repository vendors generated assets from `repo-familiar`. Provenance is recorded in `.repo-familiar/bootstrap.yml`.
+
+Key generated asset groups:
+
+- `AGENTS.md` records working defaults, selected harnesses, profiles, and skills.
+- `.agents/models.yml` records non-secret model defaults compatible with `opencode` and `paseo`.
+- `.agents/tools.yml` records non-secret tool guidance for CQ, accessibility, browser automation, Headroom, and OpenCode MCP integration.
+- `.agents/skills/` vendors the selected skills so agent workflows are self-contained.
+- `opencode.json` registers `.agents/skills` and project-local MCP entries for Playwright, CQ, Headroom, and Context7.
+- `.repo-familiar/bootstrap.yml` records selected options and content checksums for generated assets.
+
+`paseo` does not require a repository-local config file here. Paseo supervises agents, terminals, schedules, and worktrees through user-owned machine-level state such as `~/.paseo`, so this repository only records harness compatibility and worktree guidance.

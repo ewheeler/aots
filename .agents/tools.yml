@@ -1,0 +1,152 @@
+profiles:
+  cq:
+    purpose: "query shared agent knowledge before implementation and before fixing errors"
+    config: "MCP/server setup remains machine-specific and is not generated as a secret"
+    notes:
+      - "Use before implementation tasks where tool, version, or integration gotchas may matter"
+      - "Record useful discoveries back into the knowledge commons"
+    setup:
+      - "Install and configure the cq MCP/server outside the repository following https://github.com/mozilla-ai/cq"
+      - "Enable cq tools in the agent harness before relying on the cq skill"
+    verify:
+      - "Confirm cq MCP tools are available in the agent harness"
+      - "Run cq status when the local setup exposes a cq CLI/server status command"
+  a11y-scanner:
+    purpose: "scan user-facing web outputs for automatically detectable accessibility issues"
+    config: "Use project-appropriate tools such as pa11y, axe-core, @axe-core/playwright, Lighthouse, or Playwright MCP/browser automation"
+    notes:
+      - "Run automated scans during design iteration and before production handoff"
+      - "Treat automated results as a floor, not a complete accessibility review"
+      - "Pair scans with keyboard navigation, screen reader, focus management, and responsive checks"
+    setup:
+      - "Use existing project accessibility tooling when present"
+      - "For Node projects, prefer project-local dev dependencies such as pa11y, @axe-core/playwright, or Lighthouse"
+    verify:
+      - "npx pa11y --help"
+      - "npx lighthouse --help"
+  browser-automation:
+    purpose: "let agents inspect rendered pages, interact with web apps, capture screenshots, check console errors, and run browser smoke checks"
+    config: "Use the project-appropriate browser driver: Playwright CLI for agent-friendly snapshots and screenshots, or Rodney for persistent Chrome sessions and shell-scriptable checks"
+    notes:
+      - "Prefer rendered pages or local preview servers over static source inspection for layout and interaction checks"
+      - "Use Playwright CLI when the agent needs snapshots, screenshots, console inspection, and interactive page exploration"
+      - "Use Rodney when persistent Chrome state, shell scripting, JavaScript assertions, accessibility tree queries, or directory-scoped sessions are useful"
+      - "Keep browser session directories such as .rodney/ out of version control"
+      - "Record tested URLs, viewport sizes, screenshots, console errors, and remaining manual-review items in the task summary"
+    setup:
+      - "Install Playwright CLI with npm install -g @playwright/cli@latest, or use npx --no-install playwright-cli when the CLI is already available project-locally"
+      - "Install or build Rodney from https://github.com/simonw/rodney when persistent Chrome sessions or accessibility tree queries are needed"
+    verify:
+      - "playwright-cli --help or npx playwright-cli --help"
+      - "rodney --help"
+  headroom-context-compression:
+    purpose: "reduce agent context/token usage with local-first reversible compression, proxy, wrapper, and MCP workflows"
+    config: "Use Headroom as an explicit opt-in context compression layer for large repos, long agent sessions, verbose logs, RAG chunks, or multi-agent memory workflows"
+    notes:
+      - "Headroom should stay opt-in because it changes the agent runtime/context path"
+      - "Keep originals retrievable and avoid using compression as a substitute for project documentation"
+      - "Prefer read-only/proxy/MCP trials before making Headroom part of a production-maintenance workflow"
+    setup:
+      - "Install the Python Headroom CLI outside repo-familiar, for example `pip install \"headroom-ai[all]\"`"
+      - "Use the npm `headroom-ai` package only after verifying the current package exposes the needed CLI or library entry point"
+      - "For MCP workflows, install the relevant Headroom extra and run the project-appropriate MCP setup command from Headroom docs"
+      - "Use `headroom wrap <agent>` only when the team explicitly wants a wrapped agent process"
+    verify:
+      - "headroom --help"
+      - "headroom stats"
+      - "headroom mcp --help"
+  headroom-mcp:
+    purpose: "expose Headroom compression, retrieval, and stats as local MCP tools"
+    config: "Use `headroom mcp serve` as an opt-in local MCP server; originals stay in Headroom's local CCR store for retrieval"
+    notes:
+      - "MCP mode is on-demand: agents call headroom_compress, headroom_retrieve, and headroom_stats when useful"
+      - "Local content in the MCP store expires; do not depend on it as durable project memory"
+      - "Disable telemetry with HEADROOM_TELEMETRY=off when project policy requires it"
+    setup:
+      - "Install Headroom MCP support outside repo-familiar with `pip install \"headroom-ai[mcp]\"` or `pip install \"headroom-ai[all]\"`"
+      - "For Claude Code, `headroom mcp install` can write user-level MCP config; generated repositories should prefer project-level config only when a harness profile explicitly selects it"
+      - "Use `headroom proxy` separately when automatic compression of all provider traffic is desired"
+    verify:
+      - "headroom mcp status"
+      - "headroom mcp serve --help"
+  headroom-proxy:
+    purpose: "run Headroom as a local OpenAI/Anthropic-compatible compression proxy"
+    config: "Use `headroom proxy --port 8787` only when the team explicitly wants provider traffic routed through a local compression proxy"
+    notes:
+      - "Proxy mode changes the provider request path and should not be enabled silently"
+      - "Keep API keys in user environment variables; do not commit proxy secrets or provider tokens"
+      - "Disable telemetry with HEADROOM_TELEMETRY=off when project policy requires it"
+    setup:
+      - "Install Headroom proxy support outside repo-familiar with `pip install \"headroom-ai[proxy]\"` or `pip install \"headroom-ai[all]\"`"
+      - "Start the proxy explicitly with `headroom proxy --port 8787` before pointing clients at it"
+      - "Point OpenAI-compatible clients at `OPENAI_BASE_URL=http://127.0.0.1:8787/v1` or Anthropic clients at `ANTHROPIC_BASE_URL=http://127.0.0.1:8787` only after reviewing project policy"
+    verify:
+      - "headroom proxy --help"
+      - "curl http://127.0.0.1:8787/stats when the proxy is running"
+  opencode-context7-mcp:
+    purpose: "configure project-local OpenCode access to Context7 MCP with an environment-provided API key"
+    config: "Adds a remote MCP server entry to opencode.json using https://mcp.context7.com/mcp and ${CONTEXT7_API_KEY}"
+    notes:
+      - "Project config should reference ${CONTEXT7_API_KEY}, not a literal token"
+      - "Use only when current package/library documentation lookup through Context7 is needed"
+    setup:
+      - "Set CONTEXT7_API_KEY outside the repository before using this MCP server"
+      - "Never commit literal Context7 API keys in opencode.json or .agents files"
+    verify:
+      - "Confirm CONTEXT7_API_KEY is set in the OpenCode shell environment"
+      - "Restart OpenCode after opencode.json changes"
+  opencode-cq-mcp:
+    purpose: "configure project-local OpenCode access to the cq MCP server"
+    config: "Adds a non-secret local MCP server entry to opencode.json using cq mcp on PATH"
+    notes:
+      - "Do not copy machine-specific absolute cq runtime paths into generated project config"
+      - "Use global OpenCode config for machine-local cq paths when cq is not on PATH"
+    setup:
+      - "Install and configure cq outside the repository before selecting this profile"
+      - "Ensure the cq executable is on PATH for OpenCode's shell"
+    verify:
+      - "cq --help"
+      - "Restart OpenCode after opencode.json changes"
+  opencode-headroom-mcp:
+    purpose: "configure project-local OpenCode access to Headroom MCP tools"
+    config: "Adds a non-secret local MCP server entry to opencode.json using headroom mcp serve on PATH"
+    notes:
+      - "Use with headroom-mcp when agents need on-demand compression and retrieval tools"
+      - "Use headroom-proxy separately when provider traffic should be compressed automatically"
+      - "Project config should not include user-level Headroom store paths, API keys, or provider tokens"
+    setup:
+      - "Select this profile only when OpenCode should launch local Headroom MCP tools for this project"
+      - "Install Headroom MCP support outside repo-familiar with `pip install \"headroom-ai[mcp]\"` or `pip install \"headroom-ai[all]\"`"
+      - "Ensure the headroom executable is visible to OpenCode's shell before relying on the MCP server"
+    verify:
+      - "headroom mcp serve --help"
+      - "Restart OpenCode after opencode.json changes"
+  opencode-homebrew-path:
+    purpose: "document how macOS Homebrew users can expose CLIs such as node, npm, npx, pnpm, uv, and quarto to OpenCode agent shells"
+    config: "Agent-shell guidance only: if OpenCode uses /bin/zsh, put /opt/homebrew/bin and /usr/local/bin on PATH via ~/.zshenv so non-interactive tool calls can find Homebrew CLIs"
+    notes:
+      - "This profile does not install Homebrew, mutate shell files, or configure a workstation automatically"
+      - "OpenCode tool calls may run in non-interactive shells that do not read ~/.zshrc"
+      - "If pnpm is still unavailable after PATH is fixed, run corepack enable outside the repository"
+    setup:
+      - "For zsh, put export PATH=\"/opt/homebrew/bin:/usr/local/bin:$PATH\" in ~/.zshenv"
+      - "Set OpenCode global config shell to /bin/zsh in ~/.config/opencode/opencode.json when needed"
+    verify:
+      - "node --version"
+      - "npm --version"
+      - "npx --version"
+      - "pnpm --version"
+      - "uv --version"
+      - "quarto --version"
+  opencode-playwright-mcp:
+    purpose: "configure project-local OpenCode access to the Playwright MCP server"
+    config: "Adds a non-secret local MCP server entry to opencode.json using npx -y @playwright/mcp"
+    notes:
+      - "This profile does not install browsers or Node dependencies by itself"
+      - "Use with browser-automation, playwright-cli, or a11y-web-scan when browser MCP tooling is useful"
+    setup:
+      - "Select this profile only when OpenCode should launch Playwright MCP for this project"
+      - "Ensure Node and npx are visible to OpenCode's shell before relying on this MCP server"
+    verify:
+      - "npx -y @playwright/mcp --help"
+      - "Restart OpenCode after opencode.json changes"

@@ -1,0 +1,28 @@
+project:
+  type: website
+  output-dir: _site
+  render:
+    - index.qmd
+    - usage.qmd
+    - architecture.qmd
+    - snowflake-agnostic-report-publication.qmd
+
+website:
+  title: "Ahead of the Storm"
+  description: "Generated with repo-familiar."
+  navbar:
+    left:
+      - href: index.qmd
+        text: Home
+      - href: usage.qmd
+        text: Usage
+      - href: architecture.qmd
+        text: Architecture
+      - href: snowflake-agnostic-report-publication.qmd
+        text: Portable Reports
+
+format:
+  html:
+    theme: cosmo
+    toc: true
+    code-copy: true

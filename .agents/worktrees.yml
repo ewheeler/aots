@@ -1,0 +1,8 @@
+profiles:
+  parallel-worktrees:
+    tool: "coasts or git worktrees"
+    purpose: "parallel agent/prototype workflows with isolated services and ports"
+    guidance:
+      - "Use worktrees for parallel prototypes or agent tasks"
+      - "Avoid sharing mutable service state across concurrent agent runs"
+      - "Prefer explicit checkout/cleanup flows for production-maintenance work"

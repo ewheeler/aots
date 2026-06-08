@@ -71,6 +71,9 @@ instance/
 # Sphinx documentation
 docs/_build/
 
+# Real exported report baselines may contain large/sensitive geospatial data.
+known-good-baselines/
+
 # PyBuilder
 .pybuilder/
 target/
@@ -216,3 +219,14 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# repo-familiar generated/local artifacts
+.DS_Store
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+credentials.json
+docs/_site/
