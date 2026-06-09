@@ -10,7 +10,9 @@ from aots_portable_reports.alert_renderer import baseline_replay_summary_prose
 from aots_portable_reports.alert_renderer import build_alert_claims
 from aots_portable_reports.alert_renderer import build_alert_context
 from aots_portable_reports.alert_renderer import build_alert_prose_slots
+from aots_portable_reports.alert_renderer import build_alert_visual_context
 from aots_portable_reports.alert_renderer import compare_alert_output
+from aots_portable_reports.alert_renderer import render_alert_visual_assets
 from aots_portable_reports.alert_renderer import render_alert_html
 from aots_portable_reports.models import BaselineManifest
 from aots_portable_reports.models import ReportSnapshot
@@ -101,7 +103,7 @@ def test_dag_rendering_uses_provider_slots_not_raw_expected_html(tmp_path: Path)
             }
 
     prose_slots = dag.alert_prose_slots(validated_baseline, alert_context, StubProvider())
-    rendered = dag.rendered_alert_html(validated_baseline, alert_context, prose_slots)
+    rendered = dag.rendered_alert_html(validated_baseline, alert_context, prose_slots, [])
 
     assert prose_slots == {"situation_summary": "Provider slot prose."}
     assert rendered is not None
@@ -204,6 +206,155 @@ def test_build_alert_context_and_claims_capture_structured_report_first_facts() 
     ]
     assert alert_claims["required_caveats"] == alert_context["required_caveats"]
     assert alert_claims["provenance_labels"] == ["data", "inferred"]
+
+
+def test_build_alert_visual_context_uses_structured_sources_not_expected_html() -> None:
+    report_snapshot = ReportSnapshot(country="TST", storm="ALPHA", forecast_time="2026-01-01T00:00:00Z", report={})
+    source_artifacts = {
+        "admin_geometry": [
+            {"name": "North District", "geojson": '{"type":"Polygon","coordinates":[[[0,0],[1,0],[1,1],[0,1],[0,0]]]}', "clon": 0.5, "clat": 0.5},
+        ],
+        "admin_50": [{"name": "North District", "E_SCHOOL_AGE_POPULATION": 4, "E_INFANT_POPULATION": 2, "E_ADOLESCENT_POPULATION": 3}],
+        "tiles_50": [{"ZONE_ID": "0", "PROBABILITY": 0.7}],
+        "raw_tracks": [{"ENSEMBLE_MEMBER": "m1", "LEAD_TIME": 0, "LONGITUDE": 0.1, "LATITUDE": 0.2}],
+        "impact_evolution_50": [{"forecast_date": "20260101000000", "pop": 100, "infant": 10, "school_age": 20, "adolescent": 5}],
+    }
+
+    visual_context = build_alert_visual_context(report_snapshot, source_artifacts=source_artifacts)
+
+    assert visual_context["admin_choropleth"]["available"] is True
+    assert visual_context["admin_choropleth"]["rows"][0]["children"] == 9
+    assert visual_context["ensemble_probability"]["50"]["available"] is True
+    assert visual_context["ensemble_probability"]["50"]["tiles"] == [{"z": "0", "p": 0.7}]
+    assert visual_context["impact_evolution"]["available"] is True
+    assert visual_context["impact_evolution"]["rows"][0]["population"] == 100
+
+
+def test_render_alert_visual_assets_writes_png_ready_inline_assets() -> None:
+    visual_context = {
+        "impact_evolution": {
+            "available": True,
+            "rows": [
+                {"label": "Jan 1 00Z", "population": 100, "infant": 10, "school_age": 20, "adolescent": 5},
+                {"label": "Jan 1 06Z", "population": 130, "infant": 11, "school_age": 25, "adolescent": 6},
+            ],
+        }
+    }
+
+    assets = render_alert_visual_assets(visual_context)
+
+    evolution = next(asset for asset in assets if asset["kind"] == "impact_evolution")
+    assert evolution["filename"] == "impact-evolution-50kt.png"
+    assert evolution["status"] == "rendered"
+    assert evolution["mime_type"] == "image/png"
+    assert evolution["data_uri"].startswith("data:image/png;base64,")
+    assert evolution["png_base64"]
+
+
+def test_render_alert_visual_assets_includes_admin_choropleth_png_when_geometry_exists() -> None:
+    visual_context = {
+        "admin_choropleth": {
+            "available": True,
+            "rows": [
+                {
+                    "name": "North District",
+                    "geojson": '{"type":"Polygon","coordinates":[[[0,0],[1,0],[1,1],[0,1],[0,0]]]}',
+                    "clon": 0.5,
+                    "clat": 0.5,
+                    "children": 9,
+                }
+            ],
+        }
+    }
+
+    assets = render_alert_visual_assets(visual_context)
+
+    admin = next(asset for asset in assets if asset["kind"] == "admin_choropleth")
+    assert admin["filename"] == "admin-choropleth-50kt.png"
+    assert admin["alt_text"] == "Admin impact map"
+    assert admin["data_uri"].startswith("data:image/png;base64,")
+
+
+def test_render_alert_visual_assets_includes_ensemble_probability_png_when_tiles_exist() -> None:
+    visual_context = {
+        "ensemble_probability": {
+            "50": {
+                "available": True,
+                "tiles": [{"z": "0", "p": 0.7}],
+                "tracks": [
+                    {"m": "m1", "lt": 0, "lon": 0.1, "lat": 0.2},
+                    {"m": "m1", "lt": 6, "lon": 0.2, "lat": 0.3},
+                ],
+            }
+        }
+    }
+
+    assets = render_alert_visual_assets(visual_context)
+
+    ensemble = next(asset for asset in assets if asset["kind"] == "ensemble_probability")
+    assert ensemble["filename"] == "ensemble-probability-50kt.png"
+    assert ensemble["alt_text"] == "Wind exposure probability map (50kt)"
+    assert ensemble["data_uri"].startswith("data:image/png;base64,")
+
+
+def test_alert_claims_include_visual_asset_claims_when_visual_context_has_source_data() -> None:
+    alert_context = {
+        "identity": {"storm": "ALPHA", "country": "TST"},
+        "visual_context": {
+            "impact_evolution": {"available": True, "threshold": 50, "rows": [{"population": 100}]},
+            "admin_choropleth": {"available": True, "threshold": 50, "rows": [{"name": "North"}]},
+            "ensemble_probability": {"50": {"available": True, "threshold": 50, "tiles": [{"z": "0", "p": 0.7}]}, "34": {"available": False}},
+        },
+    }
+
+    claims = build_alert_claims(alert_context)
+
+    assert claims["visual_assets"] == [
+        {
+            "kind": "impact_evolution",
+            "threshold": 50,
+            "alt_text": "Forecast evolution chart",
+            "caption": "Total population at risk at storm-force winds (50 kt) across recent forecast runs.",
+        },
+        {
+            "kind": "admin_choropleth",
+            "threshold": 50,
+            "alt_text": "Admin impact map",
+            "caption": "Expected children at risk by administrative area at the 50 kt threshold.",
+        },
+        {
+            "kind": "ensemble_probability",
+            "threshold": 50,
+            "alt_text": "Wind exposure probability map (50kt)",
+            "caption": "Probability of wind exposure at the 50 kt threshold.",
+        },
+    ]
+
+
+def test_compare_alert_output_fails_when_required_visual_asset_is_missing_from_presentation() -> None:
+    alert_claims = {
+        "identity": {"storm": "ALPHA", "country": "TST"},
+        "required_caveats": [{"text": "AI system based on probabilistic model outputs", "provenance_labels": ["inferred"]}],
+        "provenance_labels": ["data", "inferred"],
+        "visual_assets": [
+            {
+                "kind": "impact_evolution",
+                "threshold": 50,
+                "alt_text": "Forecast evolution chart",
+                "caption": "Total population at risk at storm-force winds (50 kt) across recent forecast runs.",
+            }
+        ],
+    }
+    rendered_alert_html = """<!doctype html><html><body>
+      <h1>Storm ALPHA - TST</h1>
+      <p>AI system based on probabilistic model outputs</p>
+      <code>data</code><code>inferred</code>
+    </body></html>"""
+
+    comparison = compare_alert_output(alert_claims, rendered_alert_html)
+
+    assert comparison.status == "failed"
+    assert [failure.code for failure in comparison.failures] == ["missing_alert_visual_asset"]
 
 
 def test_compare_alert_output_passes_for_committed_caveat_fixture() -> None:

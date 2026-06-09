@@ -5,7 +5,17 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 
-ArtifactRole = Literal["admin", "tiles", "facilities", "cci", "tracks", "envelopes", "vulnerability"]
+ArtifactRole = Literal[
+    "admin",
+    "tiles",
+    "facilities",
+    "cci",
+    "tracks",
+    "envelopes",
+    "vulnerability",
+    "geometry",
+    "visualization",
+]
 ExpectedReportProvenance = Literal[
     "independent_current_output",
     "portable_wrapper_generated",
@@ -81,6 +91,7 @@ class SnapshotOutputBundle(AotsModel):
     alert_claims_path: str | None = None
     rendered_alert_html_path: str | None = None
     alert_comparison_json_path: str | None = None
+    alert_visual_asset_paths: list[str] = Field(default_factory=list)
     quarto_source_dir: str
     site_dir: str
 

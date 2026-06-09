@@ -80,7 +80,7 @@ uv run aots-report export-snowflake \
   --json
 ```
 
-For a real export, provide `SNOWFLAKE_*` environment variables or `--env-file <path>`. Do not pass passwords on the command line. Real Known-Good Baseline exports should stay outside the repo; `known-good-baselines/` is the ignored local baseline root. Use `--case-name <name>` to write to `known-good-baselines/<name>` or pass `--out <path>` explicitly. Add `--include-alert-html` to export the independent Snowflake alert-agent email from `ALERT_SENT_LOG.EMAIL_BODY` as `expected-alert.html`; snapshots keep that file separate from the local `rendered-alert.html` artifact and the JSON alert audit bundle (`alert-context.json`, `alert-claims.json`, `alert-comparison.json`).
+For a real export, provide `SNOWFLAKE_*` environment variables or `--env-file <path>`. Do not pass passwords on the command line. Real Known-Good Baseline exports should stay outside the repo; `known-good-baselines/` is the ignored local baseline root. Use `--case-name <name>` to write to `known-good-baselines/<name>` or pass `--out <path>` explicitly. Add `--include-alert-html` to export the independent Snowflake alert-agent email from `ALERT_SENT_LOG.EMAIL_BODY` as `expected-alert.html`; snapshots keep that file separate from the local `rendered-alert.html` artifact, the JSON alert audit bundle (`alert-context.json`, `alert-claims.json`, `alert-comparison.json`), and generated `alert-assets/*.png` when visual source data is available.
 
 See `docs/usage.qmd` for setup, fixture meanings, certification states, and troubleshooting.
 

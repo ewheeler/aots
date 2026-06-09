@@ -144,6 +144,14 @@ _Avoid_: Rendered alert HTML, expected alert artifact, prompt text.
 The alert-specific JSON files inside a Snapshot Output Bundle that make local alert generation auditable: alert context, alert claims, and alert comparison results.
 _Avoid_: Expected Alert Email, Rendered Alert HTML, publication bundle.
 
+**Alert Visual Asset**:
+A PNG image generated from portable alert inputs, written to `alert-assets/` for audit and embedded as a base64 data URI in Rendered Alert HTML for email portability.
+_Avoid_: External image URL, expected alert screenshot, Dash map.
+
+**Alert Visual Context**:
+The structured geometry, tile, track, timing, and forecast-evolution inputs used to generate Alert Visual Assets.
+_Avoid_: Rendered image, expected alert HTML, browser screenshot.
+
 **Ignored Local Baseline Root**:
 The local-only directory prefix, such as `known-good-baselines/`, used for real baseline exports that stay uncommitted.
 _Avoid_: Fixture directory, publication output, shared artifact store.
@@ -183,6 +191,8 @@ _Avoid_: Pipeline, job, DAG when the user-facing report production concept is me
 - **Alert Provenance Labels** travel with **Alert Context**, **Alert Claims**, and **Rendered Alert HTML**, not with baseline-path metadata.
 - **Alert Claims** should be derived from **Alert Context** and report data first; rendered HTML is checked as presentation evidence, not as the source of truth.
 - An **Alert Audit Bundle** belongs inside a **Snapshot Output Bundle** so local alert rendering can be reviewed without treating raw baselines as publication inputs.
+- **Alert Visual Assets** are written as PNG files for audit/debug and embedded inline in **Rendered Alert HTML** so the email remains portable.
+- **Alert Visual Context** is the source of truth for **Alert Visual Assets**; visual parity checks should not scrape expected alert HTML for map facts.
 - An **Ignored Local Baseline Root** keeps real baselines out of git while letting the portable flow reuse them locally.
 - A **Baseline Manifest** is the contract for a **Known-Good Baseline**.
 - A **Baseline Exporter** creates a **Known-Good Baseline** but does not validate the **Portable Report Flow** by itself.

@@ -5,6 +5,7 @@ import shutil
 from pathlib import Path
 
 from aots_portable_reports.alert_contract import (
+    ALERT_ASSETS_DIRNAME,
     ALERT_CLAIMS_FILENAME,
     ALERT_COMPARISON_FILENAME,
     ALERT_CONTEXT_FILENAME,
@@ -272,11 +273,33 @@ def test_snapshot_bundle_manifest_records_alert_artifact_paths_when_emitted(tmp_
     assert manifest["alert_context_path"] == ALERT_CONTEXT_FILENAME
     assert manifest["alert_claims_path"] == ALERT_CLAIMS_FILENAME
     assert manifest["alert_comparison_json_path"] == ALERT_COMPARISON_FILENAME
+    assert manifest["alert_visual_asset_paths"]
     assert bundle.expected_alert_html_path == str(out_dir / EXPECTED_ALERT_EMAIL_FILENAME)
     assert bundle.rendered_alert_html_path == str(out_dir / RENDERED_ALERT_HTML_FILENAME)
     assert bundle.alert_context_path == str(out_dir / ALERT_CONTEXT_FILENAME)
     assert bundle.alert_claims_path == str(out_dir / ALERT_CLAIMS_FILENAME)
     assert bundle.alert_comparison_json_path == str(out_dir / ALERT_COMPARISON_FILENAME)
+    assert bundle.alert_visual_asset_paths
+
+
+def test_snapshot_bundle_writes_visual_png_assets_and_inline_images_when_source_data_exists(tmp_path: Path) -> None:
+    baseline = copy_fixture(tmp_path, "synthetic_alert_present_baseline")
+    out_dir = tmp_path / "out"
+
+    bundle = run_snapshot(baseline, out_dir)
+
+    manifest = json.loads((out_dir / "manifest.json").read_text())
+    rendered = (out_dir / RENDERED_ALERT_HTML_FILENAME).read_text()
+    asset_paths = manifest["alert_visual_asset_paths"]
+    assert asset_paths
+    for relative_path in asset_paths:
+        path = out_dir / relative_path
+        assert path.is_file()
+        assert path.parent.name == ALERT_ASSETS_DIRNAME
+        assert path.read_bytes().startswith(b"\x89PNG")
+    assert bundle.alert_visual_asset_paths
+    assert "data:image/png;base64," in rendered
+    assert "Forecast Evolution" in rendered or "Wind Exposure Probability by Wind Threshold" in rendered
 
 
 def test_snapshot_bundle_manifest_omits_alert_paths_when_expected_alert_is_missing(tmp_path: Path) -> None:
@@ -292,6 +315,7 @@ def test_snapshot_bundle_manifest_omits_alert_paths_when_expected_alert_is_missi
         "alert_context_path",
         "alert_claims_path",
         "alert_comparison_json_path",
+        "alert_visual_asset_paths",
     ]:
         assert key not in manifest
     assert bundle.expected_alert_html_path is None
@@ -299,6 +323,7 @@ def test_snapshot_bundle_manifest_omits_alert_paths_when_expected_alert_is_missi
     assert bundle.alert_context_path is None
     assert bundle.alert_claims_path is None
     assert bundle.alert_comparison_json_path is None
+    assert bundle.alert_visual_asset_paths == []
 
 
 def test_snapshot_command_uses_committed_sparse_alert_fixture(tmp_path: Path) -> None:

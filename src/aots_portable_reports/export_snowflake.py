@@ -258,6 +258,46 @@ def build_export_artifact_specs(
             query_filter=base_filter(request) | {"admin_level": request.admin_level},
         ),
         ExportArtifactSpec(
+            name="admin_geometry",
+            role="geometry",
+            relative_path="artifacts/geometry/admin_geometry.parquet",
+            source_table=qualified_table(config, "BASE_ADMIN_GEOM_MAT"),
+            sql=f"""
+            SELECT NAME,
+                   CAST(ST_ASGEOJSON(GEOMETRY) AS VARCHAR) AS GEOJSON,
+                   ST_X(ST_CENTROID(GEOMETRY)) AS CENTROID_LON,
+                   ST_Y(ST_CENTROID(GEOMETRY)) AS CENTROID_LAT
+            FROM {qualified_table(config, "BASE_ADMIN_GEOM_MAT")}
+            WHERE COUNTRY = %s AND ADMIN_LEVEL = %s
+            ORDER BY NAME
+            """,
+            params=[request.country, request.admin_level],
+            query_filter={"country": request.country, "admin_level": request.admin_level},
+        ),
+        ExportArtifactSpec(
+            name="impact_evolution_50",
+            role="visualization",
+            relative_path="artifacts/visualization/impact_evolution_50.parquet",
+            source_table=qualified_table(config, "MERCATOR_TILE_IMPACT_MAT"),
+            sql=f"""
+            SELECT FORECAST_DATE,
+                   SUM(COALESCE(E_POPULATION, 0)) AS POP,
+                   SUM(COALESCE(E_INFANT_POPULATION, 0)) AS INFANT,
+                   SUM(COALESCE(E_SCHOOL_AGE_POPULATION, 0)) AS SCHOOL_AGE,
+                   SUM(COALESCE(E_ADOLESCENT_POPULATION, 0)) AS ADOLESCENT
+            FROM {qualified_table(config, "MERCATOR_TILE_IMPACT_MAT")}
+            WHERE COUNTRY = %s
+              AND STORM = %s
+              AND FORECAST_DATE <= %s
+              AND WIND_THRESHOLD = 50
+              AND ZOOM_LEVEL = %s
+            GROUP BY FORECAST_DATE
+            ORDER BY FORECAST_DATE
+            """,
+            params=[request.country, request.storm, compact_forecast_time(request.forecast_time), request.zoom_level],
+            query_filter=base_filter(request) | {"wind_threshold": 50, "zoom_level": request.zoom_level},
+        ),
+        ExportArtifactSpec(
             name="envelopes",
             role="envelopes",
             relative_path="artifacts/envelopes/envelopes.parquet",

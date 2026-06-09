@@ -115,10 +115,13 @@ When `expected-alert.html` is present, `snapshot` also writes a separate local a
 - `alert-context.json`: structured inputs used to render the local alert.
 - `alert-claims.json`: normalized factual claims used for alert parity.
 - `alert-comparison.json`: claim and DOM-presence comparison results.
+- `alert-assets/*.png`: generated alert visuals for audit/debug when the baseline has enough source data. The same PNG bytes are embedded inline in `rendered-alert.html` as base64 data URIs for email portability.
 
 The generated snapshot `manifest.json` records relative paths for these alert files only when they are emitted, so alert-missing bundles stay portable without dangling alert entries.
 
 Alert parity is intentionally not byte-for-byte HTML or pixel parity. It blocks on significant factual differences or omissions and treats exact prose wording or visual layout differences as review concerns.
+
+Visual parity follows the same rule: `alert-comparison.json` fails when a required visual section is missing despite available source data. Unavailable optional visual inputs should produce warnings rather than block the snapshot.
 
 Do not pass passwords as CLI arguments. Use `SNOWFLAKE_*` variables from the shell or `--env-file <path>`.
 

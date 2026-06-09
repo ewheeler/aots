@@ -171,11 +171,14 @@ Current live-baseline status:
 - The alert audit slice now keeps the local `rendered-alert.html` artifact separate from the JSON alert audit bundle (`alert-context.json`, `alert-claims.json`, `alert-comparison.json`) whenever a baseline provides `expected-alert.html`.
 - The current local alert renderer uses a Baseline Replay Prose Provider: it reuses prose extracted from the expected alert while regenerating deterministic layout, fact tables, provenance labels, and caveats.
 - A Melissa/JAM alert audit run at `/tmp/aots-report-melissa-alert-audit` produced a passing `alert-comparison.json`; the separate `rendered-alert.html` artifact loaded in Playwright with title `Storm MELISSA - JAM`, expected sections, two tables, and only a favicon 404.
+- Alert visualization alignment now writes generated PNGs under `alert-assets/` for audit/debug and embeds the same PNG bytes inline in `rendered-alert.html` for email portability.
+- Generated visual assets include admin choropleth at 50kt, ensemble probability maps for 50kt plus available 34kt/64kt thresholds, and a 50kt forecast-evolution chart when the corresponding source artifacts are present.
 - The snapshot command normalizes volatile `report_date` to the baseline value before comparison.
 - The report wrapper caches country-boundary lookups in-process and quiets `AdminBoundaries`/`EntityManager` logs to reduce repeated GADM/GigaSpatial noise.
 - The report wrapper can patch `load_json_report(...)` to use a baseline-local previous report and reorders previous admin rows by current admin name for change calculations.
 - Alert-agent email HTML is a separate artifact from the Dash impact report page. It comes from `ALERT_SENT_LOG.EMAIL_BODY`; the Dash impact report page still renders from stage template plus JSON at runtime.
 - Alert parity is claim-based: exact prose and pixel parity are not required, but significant factual differences or omissions should fail `alert-comparison.json`.
+- Visual asset parity is also claim-based: generated sections, image presence, alt text, captions, and provenance labels must match available source data; pixel-perfect comparison remains advisory.
 
 Additional local coverage exports:
 
@@ -194,6 +197,8 @@ Exported Snowflake source artifact groups:
 - `TRACK_MAT` to `artifacts/tracks/tracks_<wind>.parquet`.
 - `TC_TRACKS` to `artifacts/tracks/raw_tracks.parquet` for landfall calculation.
 - `TC_ENVELOPES_COMBINED` to `artifacts/envelopes/envelopes.parquet` with WKT geometry.
+- `BASE_ADMIN_GEOM_MAT` to `artifacts/geometry/admin_geometry.parquet` for alert choropleths.
+- Historical 50kt `MERCATOR_TILE_IMPACT_MAT` aggregates to `artifacts/visualization/impact_evolution_50.parquet` for alert evolution charts.
 
 ## Comparison Report Semantics
 
@@ -226,6 +231,12 @@ The output directory should be self-auditing and easy to diff.
   report-snapshot.json
   comparison.json
   comparison.md
+  alert-assets/
+    admin-choropleth-50kt.png
+    ensemble-probability-50kt.png
+    ensemble-probability-34kt.png
+    ensemble-probability-64kt.png
+    impact-evolution-50kt.png
   quarto/
     index.qmd
     _quarto.yml

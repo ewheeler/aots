@@ -14,6 +14,51 @@
       "checksum_sha256": "48cf9c9323049dddfd126113a9f098e2cca18df14d977ebe7d79ae468100e9bd",
       "schema_hash": "33adfa03952bc0bee6046cec9f23c0af78a58e5af2929b74007ebf75e2a0c9eb",
       "row_count": 1
+    },
+    {
+      "name": "admin_50",
+      "role": "admin",
+      "path": "artifacts/admin/admin_50.parquet",
+      "required": true,
+      "checksum_sha256": "b1eb956e866b7c1a8596976474f6efbda09e4d31efcd052a8a871774e81be0a9",
+      "schema_hash": "8d98889aff504aeae7c860a7ed58e695483d3ec964ae50dc32416e0f84d473a5",
+      "row_count": 1
+    },
+    {
+      "name": "tiles_50",
+      "role": "tiles",
+      "path": "artifacts/tiles/tiles_50.parquet",
+      "required": true,
+      "checksum_sha256": "2e8d18f41a0ce5310eff412f9d3cd9fd0551bd6211493d3b52b02db95321ca66",
+      "schema_hash": "0de38177d58202348b8e8cc672abfcab1914f16860607c5abe18e3717f5a2ac3",
+      "row_count": 1
+    },
+    {
+      "name": "raw_tracks",
+      "role": "tracks",
+      "path": "artifacts/tracks/raw_tracks.parquet",
+      "required": true,
+      "checksum_sha256": "6084e9518101bb7590acc3868fb939b5e8f3903b155d4d4b3e138885fc565f04",
+      "schema_hash": "b85cb149f604158b1bf56d18b6fb14b95a432a2a9883ca8ddf36220f825fd3d0",
+      "row_count": 2
+    },
+    {
+      "name": "admin_geometry",
+      "role": "geometry",
+      "path": "artifacts/geometry/admin_geometry.parquet",
+      "required": true,
+      "checksum_sha256": "c8fff3298bc9b76f823252242e6dba46250cb0b02f67d1e651ca6ed6bff91c3b",
+      "schema_hash": "7c6659726e7f55db81a1b3a547b7f276bbdab8aaa47a1e3995e13dc098dd6454",
+      "row_count": 1
+    },
+    {
+      "name": "impact_evolution_50",
+      "role": "visualization",
+      "path": "artifacts/visualization/impact_evolution_50.parquet",
+      "required": true,
+      "checksum_sha256": "c60bc22939a50b0d99ef21d6a210de905a8a804f91489382f8b87a33c8036380",
+      "schema_hash": "f994dae3d336d816a4ce5706057b3f865f8d05aba5c60ee8ae517df95a9c8dba",
+      "row_count": 2
     }
   ]
 }

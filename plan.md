@@ -327,6 +327,8 @@ Current live-baseline status:
 - The alert audit slice now writes `alert-context.json`, `alert-claims.json`, `rendered-alert.html`, and `alert-comparison.json` whenever a baseline provides `expected-alert.html`.
 - The current local alert renderer uses a Baseline Replay Prose Provider: it reuses prose extracted from the expected alert while regenerating deterministic layout, fact tables, provenance labels, and caveats.
 - A Melissa/JAM alert audit bundle at `/tmp/aots-report-melissa-alert-audit` produced a passing `alert-comparison.json`; `rendered-alert.html` loaded in Playwright with title `Storm MELISSA - JAM`, expected sections, two tables, and only a favicon 404.
+- Alert visualization alignment now writes generated PNGs under `alert-assets/` for audit/debug and embeds the same PNG bytes inline in `rendered-alert.html` for email portability.
+- Generated visual assets include admin choropleth at 50kt, ensemble probability maps for 50kt plus available 34kt/64kt thresholds, and a 50kt forecast-evolution chart when the corresponding source artifacts are present.
 - The snapshot command normalizes volatile `report_date` to the baseline value before comparison.
 - The report wrapper caches country-boundary lookups in-process and quiets `AdminBoundaries`/`EntityManager` logs to reduce repeated GADM/GigaSpatial noise.
 - The report wrapper can patch `load_json_report(...)` to use a baseline-local previous report and reorders previous admin rows by current admin name for change calculations.
@@ -350,6 +352,8 @@ Exported Snowflake source artifact groups:
 - `TRACK_MAT` to `artifacts/tracks/tracks_<wind>.parquet`.
 - `TC_TRACKS` to `artifacts/tracks/raw_tracks.parquet` for landfall calculation.
 - `TC_ENVELOPES_COMBINED` to `artifacts/envelopes/envelopes.parquet` with WKT geometry.
+- `BASE_ADMIN_GEOM_MAT` to `artifacts/geometry/admin_geometry.parquet` for alert choropleths.
+- Historical 50kt `MERCATOR_TILE_IMPACT_MAT` aggregates to `artifacts/visualization/impact_evolution_50.parquet` for alert evolution charts.
 
 ### Report-Generation Wrapper Boundary
 

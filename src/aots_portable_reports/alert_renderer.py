@@ -1,9 +1,24 @@
 from __future__ import annotations
 
+import base64
+import io
+import json
+import math
 from dataclasses import dataclass
 from html import escape
 from html.parser import HTMLParser
 from typing import Any, Mapping, Protocol, TypedDict
+
+import matplotlib
+
+matplotlib.use("Agg")
+import matplotlib.colors as mcolors
+import matplotlib.pyplot as plt
+import matplotlib.ticker as mticker
+import numpy as np
+from matplotlib.collections import PatchCollection
+from matplotlib.patches import Rectangle
+from shapely.geometry import shape
 
 from aots_portable_reports.alert_contract import ALERT_PROVENANCE_LABELS
 from aots_portable_reports.models import ComparisonIssue, ComparisonReport, ReportSnapshot
@@ -13,6 +28,7 @@ MAIN_ALERT_THRESHOLD = 50
 SITUATION_SUMMARY_HEADING = "Situation Summary"
 SITUATION_SUMMARY_SLOT = "situation_summary"
 AI_PROBABILISTIC_CAVEAT = "AI system based on probabilistic model outputs"
+VISUAL_THRESHOLDS = (50, 34, 64)
 
 
 class AlertProseSlots(TypedDict, total=False):
@@ -45,9 +61,16 @@ class _AlertTableEvidence:
 
 
 @dataclass(frozen=True)
+class _AlertImageEvidence:
+    alt_text: str
+    caption: str
+
+
+@dataclass(frozen=True)
 class _AlertPresentationEvidence:
     text: str
     tables: tuple[_AlertTableEvidence, ...]
+    images: tuple[_AlertImageEvidence, ...]
     list_items: tuple[str, ...]
 
 
@@ -143,8 +166,99 @@ def build_alert_claims(alert_context: dict[str, Any]) -> dict[str, Any]:
         "threshold_rows": [
             {key: value for key, value in row.items() if key != "provenance_labels"} for row in cross_threshold_rows
         ],
+        "visual_assets": _visual_asset_claims(alert_context.get("visual_context")),
         "required_caveat": required_caveats[0]["text"] if required_caveats else None,
     }
+
+
+def build_alert_visual_context(
+    report_snapshot: ReportSnapshot,
+    *,
+    source_artifacts: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    del report_snapshot
+    artifacts = source_artifacts or {}
+    admin_rows = _records(artifacts.get("admin_50"))
+    admin_geometry_rows = _records(artifacts.get("admin_geometry"))
+    children_by_name = {_norm_key(row.get("name")): _children_at_risk(row) for row in admin_rows if row.get("name")}
+    admin_visual_rows = []
+    for row in admin_geometry_rows:
+        name = row.get("name") or row.get("NAME")
+        if not name:
+            continue
+        admin_visual_rows.append(
+            {
+                "name": str(name),
+                "geojson": row.get("geojson") or row.get("GEOGEOJSON") or row.get("geometry_geojson"),
+                "clon": _float_or_none(row.get("clon") or row.get("centroid_lon")),
+                "clat": _float_or_none(row.get("clat") or row.get("centroid_lat")),
+                "children": children_by_name.get(_norm_key(name), 0),
+            }
+        )
+    ensemble = {}
+    for threshold in VISUAL_THRESHOLDS:
+        tiles = [_tile_visual_row(row) for row in _records(artifacts.get(f"tiles_{threshold}"))]
+        tiles = [row for row in tiles if row is not None]
+        ensemble[str(threshold)] = {
+            "available": bool(tiles),
+            "threshold": threshold,
+            "tiles": tiles,
+            "tracks": [_track_visual_row(row) for row in _records(artifacts.get("raw_tracks"))],
+        }
+    evolution_rows = [_evolution_visual_row(row) for row in _records(artifacts.get("impact_evolution_50"))]
+    evolution_rows = [row for row in evolution_rows if row is not None]
+    return {
+        "admin_choropleth": {"available": bool(admin_visual_rows), "threshold": 50, "rows": admin_visual_rows},
+        "ensemble_probability": ensemble,
+        "impact_evolution": {"available": bool(evolution_rows), "threshold": 50, "rows": evolution_rows},
+    }
+
+
+def render_alert_visual_assets(alert_visual_context: dict[str, Any]) -> list[dict[str, Any]]:
+    assets: list[dict[str, Any]] = []
+    evolution = alert_visual_context.get("impact_evolution", {})
+    if isinstance(evolution, dict) and evolution.get("available"):
+        assets.append(
+            _asset(
+                kind="impact_evolution",
+                threshold=50,
+                filename="impact-evolution-50kt.png",
+                png_base64=_render_impact_evolution_chart(evolution.get("rows", [])),
+                alt_text="Forecast evolution chart",
+                caption="Total population at risk at storm-force winds (50 kt) across recent forecast runs.",
+            )
+        )
+    admin = alert_visual_context.get("admin_choropleth", {})
+    if isinstance(admin, dict) and admin.get("available"):
+        assets.append(
+            _asset(
+                kind="admin_choropleth",
+                threshold=50,
+                filename="admin-choropleth-50kt.png",
+                png_base64=_render_admin_choropleth(admin.get("rows", [])),
+                alt_text="Admin impact map",
+                caption="Expected children at risk by administrative area at the 50 kt threshold.",
+            )
+        )
+    ensemble = alert_visual_context.get("ensemble_probability", {})
+    if isinstance(ensemble, dict):
+        for threshold in VISUAL_THRESHOLDS:
+            entry = ensemble.get(str(threshold), {})
+            if not isinstance(entry, dict) or not entry.get("available"):
+                continue
+            assets.append(
+                _asset(
+                    kind="ensemble_probability",
+                    threshold=threshold,
+                    filename=f"ensemble-probability-{threshold}kt.png",
+                    png_base64=_render_ensemble_probability_map(
+                        entry.get("tiles", []), entry.get("tracks", []), threshold=threshold
+                    ),
+                    alt_text=f"Wind exposure probability map ({threshold}kt)",
+                    caption=f"Probability of wind exposure at the {threshold} kt threshold.",
+                )
+            )
+    return [asset for asset in assets if asset["status"] == "rendered"]
 
 
 def build_alert_prose_slots(
@@ -161,7 +275,12 @@ def build_alert_prose_slots(
     )
 
 
-def render_alert_html(alert_context: dict[str, Any], *, prose_slots: AlertProseSlots | None = None) -> str:
+def render_alert_html(
+    alert_context: dict[str, Any],
+    *,
+    prose_slots: AlertProseSlots | None = None,
+    visual_assets: list[dict[str, Any]] | None = None,
+) -> str:
     situation_summary = _bounded_alert_prose_slots(prose_slots or {}).get(SITUATION_SUMMARY_SLOT, "")
     identity = _context_identity(alert_context)
     main_threshold = _context_main_threshold(alert_context)
@@ -184,6 +303,7 @@ def render_alert_html(alert_context: dict[str, Any], *, prose_slots: AlertProseS
     caveat_items = _required_caveat_items(_required_caveat_claims(alert_context))
     provenance_items = _provenance_list_items(alert_context.get("provenance_labels", []))
     required_caveat = _required_caveat_text(alert_context)
+    visual_sections = _visual_asset_sections(visual_assets or [])
     return f"""<!doctype html>
 <html lang="en">
 <head>
@@ -222,6 +342,7 @@ def render_alert_html(alert_context: dict[str, Any], *, prose_slots: AlertProseS
         <h2 id="threshold-heading" style="margin:0 0 10px; font-size:22px;">Threshold Exposure</h2>
         {_table_html("threshold-exposure-caption", "Population and children exposed across wind thresholds.", ["Wind Threshold", "Population", "Children", "Provenance"], threshold_rows)}
       </section>
+      {visual_sections}
       <section aria-labelledby="caveats-heading" style="margin:0 0 24px;">
         <h2 id="caveats-heading" style="margin:0 0 10px; font-size:22px;">Required Caveats</h2>
         <ul style="margin:0; padding-left:20px;">{caveat_items}</ul>
@@ -288,6 +409,14 @@ def compare_alert_output(alert_claims: dict[str, Any], rendered_alert_html: str)
     for label in alert_claims.get("provenance_labels", []):
         if not _text_or_list_item_matches(evidence, label):
             failures.append(_failure("missing_provenance_label", f"rendered alert is missing provenance label: {label}"))
+    for claim in _claim_rows(alert_claims.get("visual_assets")):
+        if not _visual_asset_claim_matches(evidence.images, claim):
+            failures.append(
+                _failure(
+                    "missing_alert_visual_asset",
+                    f"rendered alert is missing visual asset: {claim.get('kind')} {claim.get('threshold')}kt",
+                )
+            )
     if not cross_threshold_claims:
         warnings.append(_warning("missing_threshold_claims", "no cross-threshold alert claims were available"))
     return ComparisonReport(status="failed" if failures else "passed", failures=failures, warnings=warnings)
@@ -312,6 +441,318 @@ def _bounded_alert_prose_slots(values: Mapping[str, Any]) -> AlertProseSlots:
     if situation_summary is not None:
         bounded[SITUATION_SUMMARY_SLOT] = str(situation_summary)
     return bounded
+
+
+def _asset(
+    *,
+    kind: str,
+    threshold: int,
+    filename: str,
+    png_base64: str | None,
+    alt_text: str,
+    caption: str,
+) -> dict[str, Any]:
+    if not png_base64:
+        return {"kind": kind, "threshold": threshold, "filename": filename, "status": "skipped"}
+    return {
+        "kind": kind,
+        "threshold": threshold,
+        "filename": filename,
+        "status": "rendered",
+        "mime_type": "image/png",
+        "png_base64": png_base64,
+        "data_uri": f"data:image/png;base64,{png_base64}",
+        "alt_text": alt_text,
+        "caption": caption,
+        "provenance_labels": ["data", "inferred"] if kind == "admin_choropleth" else ["data"],
+    }
+
+
+def _render_impact_evolution_chart(rows: Any) -> str | None:
+    data = [row for row in rows if isinstance(row, dict)]
+    if not data:
+        return None
+    labels = [str(row.get("label") or row.get("forecast_date") or index + 1) for index, row in enumerate(data)]
+    population = [_float(row.get("population") or row.get("pop")) for row in data]
+    children = [
+        _float(row.get("children"))
+        if row.get("children") is not None
+        else _float(row.get("infant")) + _float(row.get("school_age")) + _float(row.get("adolescent"))
+        for row in data
+    ]
+    x = np.arange(len(labels))
+    fig, ax = plt.subplots(figsize=(7.2, 3.0))
+    fig.patch.set_facecolor("white")
+    ax.set_facecolor("white")
+    zeros = [0.0] * len(labels)
+    ax.fill_between(x, zeros, population, color="#d8d8d8", alpha=0.85, label="Total population at risk")
+    ax.fill_between(x, zeros, children, color="#1CABE2", alpha=0.9, label="of which: children 0-19")
+    if len(x) > 0:
+        ax.axvspan(x[-1] - 0.45, x[-1] + 0.45, alpha=0.12, color="#1CABE2", zorder=0)
+        ax.text(x[-1], 0, "current", ha="center", va="bottom", fontsize=6.5, color="#1A6080", style="italic")
+    ax.set_xticks(x)
+    ax.set_xticklabels(labels, rotation=40, ha="right", fontsize=7.5)
+    ax.set_ylabel("People at risk (50 kt)", fontsize=8)
+    ax.yaxis.set_major_formatter(mticker.FuncFormatter(lambda value, _: f"{int(value):,}"))
+    ax.legend(loc="upper left", fontsize=7, framealpha=0.9, edgecolor="#e0e0e0")
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+    ax.yaxis.grid(True, color="#f0f0f0", linewidth=0.7, zorder=0)
+    ax.set_axisbelow(True)
+    ax.tick_params(axis="both", length=0)
+    ax.set_xlim(-0.5, len(x) - 0.5)
+    ax.set_ylim(bottom=0)
+    plt.tight_layout(pad=0.6)
+    return _figure_png_base64(fig, dpi=130)
+
+
+def _render_admin_choropleth(rows: Any) -> str | None:
+    features = []
+    for row in rows if isinstance(rows, list) else []:
+        if not isinstance(row, dict) or not row.get("geojson"):
+            continue
+        try:
+            features.append(
+                {
+                    "name": str(row.get("name") or ""),
+                    "geom": shape(json.loads(str(row["geojson"]))),
+                    "children": _float(row.get("children")),
+                    "clon": _float_or_none(row.get("clon")),
+                    "clat": _float_or_none(row.get("clat")),
+                }
+            )
+        except Exception:
+            continue
+    if not features:
+        return None
+    colors = ["#ffffcc", "#ffeda0", "#fed976", "#feb24c", "#fd8d3c", "#fc4e2a", "#e31a1c", "#bd0026", "#800026"]
+    rgb = [_hex_to_rgb(color) for color in colors]
+    max_value = max(feature["children"] for feature in features) or 1
+    fig, ax = plt.subplots(figsize=(10, 6), dpi=150)
+    fig.patch.set_facecolor("white")
+    ax.set_facecolor("white")
+    bounds_lons: list[float] = []
+    bounds_lats: list[float] = []
+    for feature in features:
+        color = _value_color(feature["children"], max_value, rgb)
+        for poly in _polygons(feature["geom"]):
+            x, y = poly.exterior.xy
+            ax.fill(x, y, facecolor=color, edgecolor=color, linewidth=0.6, antialiased=False)
+            ax.plot(x, y, color="#888888", linewidth=0.4)
+        west, south, east, north = feature["geom"].bounds
+        bounds_lons.extend([west, east])
+        bounds_lats.extend([south, north])
+    for feature in features:
+        if feature["clon"] is None or feature["clat"] is None:
+            continue
+        ax.text(feature["clon"], feature["clat"], feature["name"], fontsize=6.5, ha="center", va="center", bbox=dict(boxstyle="round,pad=0.15", facecolor="white", alpha=0.75, edgecolor="none"))
+    if bounds_lons and bounds_lats:
+        lon_range = max(bounds_lons) - min(bounds_lons) or 1
+        lat_range = max(bounds_lats) - min(bounds_lats) or 1
+        ax.set_xlim(min(bounds_lons) - lon_range * 0.22, max(bounds_lons) + lon_range * 0.22)
+        ax.set_ylim(min(bounds_lats) - lat_range * 0.22, max(bounds_lats) + lat_range * 0.22)
+        mid_lat = (min(bounds_lats) + max(bounds_lats)) / 2
+        ax.set_aspect(1.0 / max(math.cos(math.radians(mid_lat)), 0.1))
+    ax.axis("off")
+    plt.tight_layout(rect=(0, 0.04, 1, 1))
+    return _figure_png_base64(fig, dpi=150)
+
+
+def _render_ensemble_probability_map(rows: Any, tracks: Any, *, threshold: int) -> str | None:
+    tiles = [row for row in rows if isinstance(row, dict)] if isinstance(rows, list) else []
+    if not tiles:
+        return None
+    fig, ax = plt.subplots(figsize=(10, 6), dpi=150)
+    fig.patch.set_facecolor("white")
+    ax.set_facecolor("white")
+    patches = []
+    colors = []
+    for tile in tiles:
+        z = tile.get("z")
+        p = _float(tile.get("p"))
+        if not z or p <= 0:
+            continue
+        try:
+            west, south, east, north = _qk_bounds(str(z))
+        except Exception:
+            continue
+        patches.append(Rectangle((west, south), east - west, north - south))
+        colors.append(p)
+    if not patches:
+        return None
+    cmap = mcolors.LinearSegmentedColormap.from_list("ylorrd", ["#ffffcc", "#ffeda0", "#fed976", "#feb24c", "#fd8d3c", "#fc4e2a", "#e31a1c", "#bd0026", "#800026"])
+    norm = mcolors.Normalize(vmin=0, vmax=max(colors) or 0.1)
+    ax.add_collection(PatchCollection(patches, array=np.array(colors), cmap=cmap, norm=norm, linewidths=0, alpha=1.0))
+    track_rows = [row for row in tracks if isinstance(row, dict)] if isinstance(tracks, list) else []
+    members: dict[str, list[tuple[int, float, float]]] = {}
+    for row in track_rows:
+        member = str(row.get("m") or row.get("ENSEMBLE_MEMBER") or row.get("ensemble_member") or "member")
+        lon = _float_or_none(row.get("lon") or row.get("LONGITUDE") or row.get("longitude"))
+        lat = _float_or_none(row.get("lat") or row.get("LATITUDE") or row.get("latitude"))
+        lead = int(_float(row.get("lt") or row.get("LEAD_TIME") or row.get("lead_time")))
+        if lon is None or lat is None:
+            continue
+        members.setdefault(member, []).append((lead, lon, lat))
+    for points in members.values():
+        points.sort(key=lambda item: item[0])
+        ax.plot([point[1] for point in points], [point[2] for point in points], color="#888888", alpha=0.25, linewidth=0.6)
+    all_x = [patch.get_x() for patch in patches] + [patch.get_x() + patch.get_width() for patch in patches]
+    all_y = [patch.get_y() for patch in patches] + [patch.get_y() + patch.get_height() for patch in patches]
+    if all_x and all_y:
+        x_range = max(all_x) - min(all_x) or 1
+        y_range = max(all_y) - min(all_y) or 1
+        ax.set_xlim(min(all_x) - x_range * 0.22, max(all_x) + x_range * 0.22)
+        ax.set_ylim(min(all_y) - y_range * 0.22, max(all_y) + y_range * 0.22)
+    ax.set_title(f"P({threshold}kt winds)", fontsize=9)
+    ax.axis("off")
+    sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
+    sm.set_array([])
+    cbar = fig.colorbar(sm, ax=ax, orientation="horizontal", fraction=0.035, pad=0.04)
+    cbar.ax.tick_params(labelsize=6.5)
+    cbar.set_label(f"P({threshold}kt winds)", fontsize=6.5)
+    plt.tight_layout(pad=0.2)
+    return _figure_png_base64(fig, dpi=150)
+
+
+def _figure_png_base64(fig, *, dpi: int) -> str:
+    buffer = io.BytesIO()
+    fig.savefig(buffer, format="png", dpi=dpi, bbox_inches="tight", facecolor="white")
+    plt.close(fig)
+    buffer.seek(0)
+    return base64.b64encode(buffer.read()).decode("utf-8")
+
+
+def _records(value: Any) -> list[dict[str, Any]]:
+    if value is None:
+        return []
+    to_dict = getattr(value, "to_dict", None)
+    if callable(to_dict):
+        try:
+            records = to_dict("records")
+            if not isinstance(records, list):
+                return []
+            return [_casefold_record(record) for record in records if isinstance(record, dict)]
+        except TypeError:
+            pass
+    if isinstance(value, list):
+        return [_casefold_record(record) for record in value if isinstance(record, dict)]
+    return []
+
+
+def _casefold_record(record: dict[str, Any]) -> dict[str, Any]:
+    normalized = dict(record)
+    for key, value in record.items():
+        normalized.setdefault(str(key).lower(), value)
+    return normalized
+
+
+def _children_at_risk(row: dict[str, Any]) -> float:
+    explicit = _float(row.get("children") or row.get("children_at_risk"))
+    if explicit:
+        return explicit
+    return sum(
+        _float(row.get(key))
+        for key in ["e_school_age_population", "e_infant_population", "e_adolescent_population"]
+    )
+
+
+def _tile_visual_row(row: dict[str, Any]) -> dict[str, Any] | None:
+    z = row.get("z") or row.get("ZONE_ID") or row.get("zone_id")
+    p = row.get("p") or row.get("PROBABILITY") or row.get("probability")
+    if z is None or p is None:
+        return None
+    return {"z": str(z), "p": float(p)}
+
+
+def _track_visual_row(row: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "m": str(row.get("m") or row.get("ENSEMBLE_MEMBER") or row.get("ensemble_member") or "member"),
+        "lt": int(_float(row.get("lt") or row.get("LEAD_TIME") or row.get("lead_time"))),
+        "lon": _float(row.get("lon") or row.get("LONGITUDE") or row.get("longitude")),
+        "lat": _float(row.get("lat") or row.get("LATITUDE") or row.get("latitude")),
+    }
+
+
+def _evolution_visual_row(row: dict[str, Any]) -> dict[str, Any] | None:
+    forecast_date = row.get("forecast_date") or row.get("FORECAST_DATE")
+    population = row.get("population") or row.get("pop") or row.get("POP")
+    if forecast_date is None or population is None:
+        return None
+    return {
+        "forecast_date": str(forecast_date),
+        "label": str(row.get("label") or _forecast_label(str(forecast_date))),
+        "population": _float(population),
+        "infant": _float(row.get("infant") or row.get("INFANT")),
+        "school_age": _float(row.get("school_age") or row.get("SCHOOL_AGE")),
+        "adolescent": _float(row.get("adolescent") or row.get("ADOLESCENT")),
+    }
+
+
+def _forecast_label(value: str) -> str:
+    digits = "".join(ch for ch in value if ch.isdigit())
+    if len(digits) >= 10:
+        return f"{digits[4:6]}/{digits[6:8]} {digits[8:10]}Z"
+    return value
+
+
+def _norm_key(value: Any) -> str:
+    return str(value).strip().casefold()
+
+
+def _float(value: Any) -> float:
+    try:
+        if value is None:
+            return 0.0
+        return float(value)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def _float_or_none(value: Any) -> float | None:
+    try:
+        if value is None:
+            return None
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _hex_to_rgb(value: str) -> tuple[float, float, float]:
+    value = value.lstrip("#")
+    return (
+        int(value[0:2], 16) / 255.0,
+        int(value[2:4], 16) / 255.0,
+        int(value[4:6], 16) / 255.0,
+    )
+
+
+def _value_color(value: float, max_value: float, colors: list[tuple[float, float, float]]) -> tuple[float, float, float]:
+    if value <= 0 or max_value <= 0:
+        return (1.0, 1.0, 1.0)
+    index = min(int((value / max_value) * len(colors)), len(colors) - 1)
+    return colors[index]
+
+
+def _polygons(geometry):
+    return list(geometry.geoms) if geometry.geom_type == "MultiPolygon" else [geometry]
+
+
+def _qk_bounds(qk: str) -> tuple[float, float, float, float]:
+    x = y = 0
+    z = len(qk)
+    for index, char in enumerate(reversed(qk)):
+        mask = 1 << index
+        digit = int(char)
+        if digit & 1:
+            x |= mask
+        if digit & 2:
+            y |= mask
+    n = 1 << z
+    west = x / n * 360.0 - 180.0
+    east = (x + 1) / n * 360.0 - 180.0
+    north = math.degrees(math.atan(math.sinh(math.pi * (1 - 2 * y / n))))
+    south = math.degrees(math.atan(math.sinh(math.pi * (1 - 2 * (y + 1) / n))))
+    return west, south, east, north
 
 
 def _first_paragraph_after_heading(expected_alert_html: str, heading: str) -> str:
@@ -462,6 +903,46 @@ def _required_caveat_texts(values: dict[str, Any]) -> list[str]:
     return fallback
 
 
+def _visual_asset_claims(visual_context: Any) -> list[dict[str, Any]]:
+    if not isinstance(visual_context, dict):
+        return []
+    claims: list[dict[str, Any]] = []
+    impact = visual_context.get("impact_evolution")
+    if isinstance(impact, dict) and impact.get("available"):
+        claims.append(
+            {
+                "kind": "impact_evolution",
+                "threshold": 50,
+                "alt_text": "Forecast evolution chart",
+                "caption": "Total population at risk at storm-force winds (50 kt) across recent forecast runs.",
+            }
+        )
+    admin = visual_context.get("admin_choropleth")
+    if isinstance(admin, dict) and admin.get("available"):
+        claims.append(
+            {
+                "kind": "admin_choropleth",
+                "threshold": 50,
+                "alt_text": "Admin impact map",
+                "caption": "Expected children at risk by administrative area at the 50 kt threshold.",
+            }
+        )
+    ensemble = visual_context.get("ensemble_probability")
+    if isinstance(ensemble, dict):
+        for threshold in VISUAL_THRESHOLDS:
+            entry = ensemble.get(str(threshold))
+            if isinstance(entry, dict) and entry.get("available"):
+                claims.append(
+                    {
+                        "kind": "ensemble_probability",
+                        "threshold": threshold,
+                        "alt_text": f"Wind exposure probability map ({threshold}kt)",
+                        "caption": f"Probability of wind exposure at the {threshold} kt threshold.",
+                    }
+                )
+    return claims
+
+
 def _required_caveat_text(alert_context: dict[str, Any]) -> str:
     texts = _required_caveat_texts(alert_context)
     return texts[0] if texts else AI_PROBABILISTIC_CAVEAT
@@ -487,6 +968,46 @@ def _table_html(caption_id: str, caption: str, headers: list[str], body_rows: st
         + '">'
         + f'<caption id="{escape(caption_id)}">{escape(caption)}</caption>'
         + f"<thead><tr>{header_html}</tr></thead><tbody>{body_rows}</tbody></table>"
+    )
+
+
+def _visual_asset_sections(visual_assets: list[dict[str, Any]]) -> str:
+    rendered_assets = [asset for asset in visual_assets if asset.get("status") == "rendered" and asset.get("data_uri")]
+    if not rendered_assets:
+        return ""
+    by_kind: dict[str, list[dict[str, Any]]] = {}
+    for asset in rendered_assets:
+        by_kind.setdefault(str(asset.get("kind")), []).append(asset)
+    sections: list[str] = []
+    if by_kind.get("ensemble_probability"):
+        images = "".join(_visual_asset_figure(asset) for asset in sorted(by_kind["ensemble_probability"], key=lambda item: int(item.get("threshold") or 0)))
+        sections.append(_visual_section("visual-ensemble-heading", "Wind Exposure Probability by Wind Threshold", images))
+    if by_kind.get("admin_choropleth"):
+        sections.append(_visual_section("visual-admin-heading", "Expected Children at Risk by Admin Area", _visual_asset_figure(by_kind["admin_choropleth"][0])))
+    if by_kind.get("impact_evolution"):
+        sections.append(_visual_section("visual-evolution-heading", "Forecast Evolution - Expected People at Risk", _visual_asset_figure(by_kind["impact_evolution"][0])))
+    return "".join(sections)
+
+
+def _visual_section(heading_id: str, heading: str, body: str) -> str:
+    return (
+        f'<section aria-labelledby="{escape(heading_id)}" style="margin:0 0 24px;">'
+        f'<h2 id="{escape(heading_id)}" style="margin:0 0 10px; font-size:22px;">{escape(heading)}</h2>'
+        f'{body}'
+        '</section>'
+    )
+
+
+def _visual_asset_figure(asset: dict[str, Any]) -> str:
+    data_uri = escape(str(asset.get("data_uri") or ""), quote=True)
+    alt_text = escape(str(asset.get("alt_text") or "Alert visual asset"), quote=True)
+    caption = escape(str(asset.get("caption") or "Alert visual asset."))
+    labels = _provenance_labels_html(list(asset.get("provenance_labels") or []))
+    return (
+        '<figure style="margin:12px 0 18px;">'
+        f'<img src="{data_uri}" alt="{alt_text}" style="width:100%; max-width:700px; display:block; margin:0 auto;" />'
+        f'<figcaption style="font-size:0.88em; color:#666; margin-top:6px;">{caption} {labels}</figcaption>'
+        '</figure>'
     )
 
 
@@ -610,6 +1131,7 @@ def _presentation_evidence(rendered_alert_html: str) -> _AlertPresentationEviden
     return _AlertPresentationEvidence(
         text=" ".join(parser.parts),
         tables=tuple(parser.tables),
+        images=tuple(parser.images),
         list_items=tuple(parser.list_items),
     )
 
@@ -745,6 +1267,20 @@ def _threshold_claim_matches(rows: dict[str, dict[str, Any]], claim: dict[str, A
     return _labels_match(row.get("provenance_labels"), claim.get("provenance_labels"))
 
 
+def _visual_asset_claim_matches(images: tuple[_AlertImageEvidence, ...], claim: dict[str, Any]) -> bool:
+    alt = _normalize_text(claim.get("alt_text"))
+    caption = _normalize_text(claim.get("caption"))
+    if not alt:
+        return True
+    for image in images:
+        if alt != _normalize_text(image.alt_text):
+            continue
+        if caption and caption not in _normalize_text(image.caption):
+            return False
+        return True
+    return False
+
+
 def _metric_claim_message(kind: str, claim: dict[str, Any]) -> str:
     return f"rendered alert is missing {kind} claim evidence: {claim.get('metric')}={claim.get('value')}"
 
@@ -875,6 +1411,7 @@ class _PresentationEvidenceExtractor(HTMLParser):
         super().__init__()
         self.parts: list[str] = []
         self.tables: list[_AlertTableEvidence] = []
+        self.images: list[_AlertImageEvidence] = []
         self.list_items: list[str] = []
         self._table_caption_parts: list[str] = []
         self._table_headers: list[str] = []
@@ -882,14 +1419,17 @@ class _PresentationEvidenceExtractor(HTMLParser):
         self._row_cells: list[str] = []
         self._cell_parts: list[str] = []
         self._list_item_parts: list[str] = []
+        self._figure_image_alt: str | None = None
+        self._figure_caption_parts: list[str] = []
         self._in_table = False
         self._in_caption = False
+        self._in_figcaption = False
         self._in_cell = False
         self._in_list_item = False
         self._table_section: str | None = None
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
-        del attrs
+        attrs_dict = {key: value for key, value in attrs}
         if tag == "table":
             self._in_table = True
             self._table_caption_parts = []
@@ -908,6 +1448,14 @@ class _PresentationEvidenceExtractor(HTMLParser):
         elif tag == "li":
             self._in_list_item = True
             self._list_item_parts = []
+        elif tag == "figure":
+            self._figure_image_alt = None
+            self._figure_caption_parts = []
+        elif tag == "img":
+            self._figure_image_alt = attrs_dict.get("alt") or ""
+        elif tag == "figcaption":
+            self._in_figcaption = True
+            self._figure_caption_parts = []
 
     def handle_endtag(self, tag: str) -> None:
         if tag == "caption" and self._in_caption:
@@ -938,6 +1486,18 @@ class _PresentationEvidenceExtractor(HTMLParser):
             item = " ".join(self._list_item_parts).strip()
             if item:
                 self.list_items.append(item)
+        elif tag == "figcaption" and self._in_figcaption:
+            self._in_figcaption = False
+        elif tag == "figure":
+            if self._figure_image_alt is not None:
+                self.images.append(
+                    _AlertImageEvidence(
+                        alt_text=self._figure_image_alt,
+                        caption=" ".join(self._figure_caption_parts).strip(),
+                    )
+                )
+            self._figure_image_alt = None
+            self._figure_caption_parts = []
 
     def handle_data(self, data: str) -> None:
         stripped = data.strip()
@@ -950,3 +1510,5 @@ class _PresentationEvidenceExtractor(HTMLParser):
             self._cell_parts.append(stripped)
         if self._in_list_item:
             self._list_item_parts.append(stripped)
+        if self._in_figcaption:
+            self._figure_caption_parts.append(stripped)
