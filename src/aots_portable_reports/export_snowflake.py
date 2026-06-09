@@ -14,6 +14,7 @@ from typing import Any, Protocol
 from dotenv import dotenv_values
 import pandas as pd
 
+from aots_portable_reports.alert_contract import EXPECTED_ALERT_EMAIL_FILENAME
 from aots_portable_reports.validation import dataframe_schema_hash, sha256_file
 
 
@@ -74,6 +75,7 @@ class ExportRequest:
     wind_thresholds: tuple[int, ...] = ()
     zoom_level: int = 14
     admin_level: int = 1
+    include_alert_html: bool = False
 
 
 @dataclass(frozen=True)
@@ -144,8 +146,16 @@ def export_snowflake_baseline(request: ExportRequest, query_runner: QueryRunner 
             raise SnowflakeExportError("no wind thresholds found for requested country/storm/forecast")
         specs = build_export_artifact_specs(config, request, thresholds)
         artifacts = export_artifact_specs(runner, temp_dir, specs)
-        write_manifest(temp_dir, request, artifacts)
-        write_expected_report(temp_dir, request, artifacts)
+        expected_alert_path = write_expected_alert_email_html(runner, config, temp_dir, request) if request.include_alert_html else None
+        write_manifest(temp_dir, request, artifacts, expected_alert_path=expected_alert_path)
+        expected_report_provenance = write_expected_report(temp_dir, request, artifacts)
+        write_manifest(
+            temp_dir,
+            request,
+            artifacts,
+            expected_report_provenance=expected_report_provenance,
+            expected_alert_path=expected_alert_path,
+        )
         validate_export_layout(temp_dir)
         if request.out.exists():
             shutil.rmtree(request.out)
@@ -159,11 +169,17 @@ def export_snowflake_baseline(request: ExportRequest, query_runner: QueryRunner 
         if callable(close):
             close()
     total_rows = sum(int(artifact["row_count"]) for artifact in artifacts)
+    alert_line = (
+        f"Alert HTML exported: {EXPECTED_ALERT_EMAIL_FILENAME}"
+        if request.include_alert_html
+        else "Alert HTML exported: no (--include-alert-html not set)"
+    )
     return "\n".join(
         [
             f"Exported Known-Good Baseline to {request.out}",
             f"Artifacts exported: {len(artifacts)}",
             f"Rows exported: {total_rows}",
+            alert_line,
             "Next snapshot command:",
             f"  uv run aots-report snapshot --baseline {request.out} --out /tmp/aots-report-{request.out.name}",
         ]
@@ -210,6 +226,32 @@ def build_export_artifact_specs(
             sql=f"""
             SELECT *
             FROM {qualified_table(config, "ADMIN_ALL_CCI_MAT")}
+            WHERE COUNTRY = %s AND STORM = %s AND FORECAST_DATE = %s AND ADMIN_LEVEL = %s
+            """,
+            params=[request.country, request.storm, compact_forecast_time(request.forecast_time), request.admin_level],
+            query_filter=base_filter(request) | {"admin_level": request.admin_level},
+        ),
+        ExportArtifactSpec(
+            name="tile_vulnerability",
+            role="vulnerability",
+            relative_path="artifacts/vulnerability/tile_vulnerability.parquet",
+            source_table=qualified_table(config, "MERCATOR_TILE_VULNERABILITY_MAT"),
+            sql=f"""
+            SELECT *
+            FROM {qualified_table(config, "MERCATOR_TILE_VULNERABILITY_MAT")}
+            WHERE COUNTRY = %s AND STORM = %s AND FORECAST_DATE = %s AND ZOOM_LEVEL = %s
+            """,
+            params=[request.country, request.storm, compact_forecast_time(request.forecast_time), request.zoom_level],
+            query_filter=base_filter(request) | {"zoom_level": request.zoom_level},
+        ),
+        ExportArtifactSpec(
+            name="admin_vulnerability",
+            role="vulnerability",
+            relative_path="artifacts/vulnerability/admin_vulnerability.parquet",
+            source_table=qualified_table(config, "ADMIN_ALL_VULNERABILITY_MAT"),
+            sql=f"""
+            SELECT *
+            FROM {qualified_table(config, "ADMIN_ALL_VULNERABILITY_MAT")}
             WHERE COUNTRY = %s AND STORM = %s AND FORECAST_DATE = %s AND ADMIN_LEVEL = %s
             """,
             params=[request.country, request.storm, compact_forecast_time(request.forecast_time), request.admin_level],
@@ -331,7 +373,7 @@ def write_expected_report_seed(root: Path, request: ExportRequest, artifacts: li
     (root / "expected-report.json").write_text(json.dumps(payload, indent=2) + "\n")
 
 
-def write_expected_report(root: Path, request: ExportRequest, artifacts: list[dict[str, Any]]) -> None:
+def write_expected_report(root: Path, request: ExportRequest, artifacts: list[dict[str, Any]]) -> str:
     from aots_portable_reports.models import BaselineManifest
     from aots_portable_reports.report_wrapper import generate_report_from_baseline
     from aots_portable_reports.validation import ValidatedBaseline
@@ -345,20 +387,59 @@ def write_expected_report(root: Path, request: ExportRequest, artifacts: list[di
         report = {}
     if not report:
         write_expected_report_seed(root, request, artifacts)
-        return
+        return "seed_placeholder"
     (root / "expected-report.json").write_text(json.dumps(report, indent=2, default=str) + "\n")
+    return "portable_wrapper_generated"
 
 
-def write_manifest(root: Path, request: ExportRequest, artifacts: list[dict[str, Any]]) -> None:
+def write_expected_alert_email_html(
+    runner: QueryRunner,
+    config: SnowflakeConfig,
+    root: Path,
+    request: ExportRequest,
+) -> str | None:
+    table = qualified_table(config, "ALERT_SENT_LOG")
+    sql = f"""
+    SELECT EMAIL_BODY
+    FROM {table}
+    WHERE TRACK_ID = %s
+      AND COUNTRY_CODE = %s
+      AND FORECAST_TIME = %s
+      AND EMAIL_BODY IS NOT NULL
+    ORDER BY SENT_AT DESC
+    LIMIT 1
+    """
+    df = runner.query(sql, [request.storm, request.country, request.forecast_time])
+    if df.empty or "EMAIL_BODY" not in df.columns:
+        return None
+    html = df.iloc[0]["EMAIL_BODY"]
+    if not isinstance(html, str) or not html.strip():
+        return None
+    relative_path = EXPECTED_ALERT_EMAIL_FILENAME
+    (root / relative_path).write_text(html)
+    return relative_path
+
+
+def write_manifest(
+    root: Path,
+    request: ExportRequest,
+    artifacts: list[dict[str, Any]],
+    *,
+    expected_report_provenance: str = "unknown",
+    expected_alert_path: str | None = None,
+) -> None:
     payload = {
         "baseline_version": 1,
         "country": request.country,
         "storm": request.storm,
         "forecast_time": request.forecast_time,
         "expected_report_path": "expected-report.json",
+        "expected_report_provenance": expected_report_provenance,
         "exported_at": datetime.now(UTC).isoformat(),
         "artifacts": artifacts,
     }
+    if expected_alert_path is not None:
+        payload["expected_alert_path"] = expected_alert_path
     (root / "manifest.json").write_text(json.dumps(payload, indent=2, default=str) + "\n")
 
 

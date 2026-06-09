@@ -1,0 +1,21 @@
+{
+  "fixture": "synthetic-alert-present-baseline",
+  "country": "TST",
+  "storm": "ALPHA",
+  "forecast_time": "2026-01-01T00:00:00Z",
+  "expected_pop": 123,
+  "expected_children": 45,
+  "expected_hcs": 6,
+  "expected_shelters": 2,
+  "expected_wash": 7,
+  "E_people_in_need": 90,
+  "E_children_in_need": 30,
+  "expected_pop_34": 200,
+  "expected_children_34": 80,
+  "rows_admins_pop_total": [
+    {
+      "name": "North District",
+      "50": 70
+    }
+  ]
+}

@@ -21,6 +21,39 @@ The current architectural planning focus is a Snowflake-agnostic report publicat
 - Add explicit repository/store interfaces for forecast data, country metadata, impact artifacts, report artifacts, and static publication outputs.
 - Start with a static Quarto report package for one country/storm/forecast snapshot before touching live dashboard or orchestration behavior.
 
+## Portable Report Flow
+
+Current implemented flow:
+
+```text
+Snowflake source tables
+  -> aots-report export-snowflake
+  -> Known-Good Baseline
+  -> aots-report snapshot
+  -> Snapshot Output Bundle
+  -> aots-report publish
+  -> publication-manifest.json + Quarto index
+```
+
+Trust boundaries:
+
+- `export-snowflake` creates local baseline source artifacts and records expected-report provenance.
+- Baseline validation checks manifest shape, required artifacts, checksums, schema hashes, and row counts.
+- `snapshot` regenerates a report and compares it to `expected-report.json`.
+- A passing comparison is certifying only when `expected-report.json` has independent trusted-current-output provenance.
+- `publish` consumes Snapshot Output Bundles, not raw baselines.
+
+Current module map:
+
+- `src/aots_portable_reports/cli.py`: command entry points.
+- `src/aots_portable_reports/export_snowflake.py`: read-only Snowflake baseline export.
+- `src/aots_portable_reports/validation.py`: baseline integrity checks.
+- `src/aots_portable_reports/dag.py`: Hamilton snapshot materialization flow.
+- `src/aots_portable_reports/report_wrapper.py`: thin wrapper around current `do_report(...)` behavior.
+- `src/aots_portable_reports/comparison.py`: comparison and certification-state logic.
+- `src/aots_portable_reports/local_adapter.py`: local Snapshot Output Bundle discovery.
+- `src/aots_portable_reports/publication.py`: publication manifest and Quarto index generation.
+
 ## Generated Assets
 
 This repository vendors generated assets from `repo-familiar`. Provenance is recorded in `.repo-familiar/bootstrap.yml`.

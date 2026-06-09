@@ -4,7 +4,158 @@ title: "Usage"
 
 ## Local Development
 
-Document project setup, common commands, and operating assumptions here.
+Prerequisites:
+
+- Python 3.11, managed through `uv`.
+- Quarto on `PATH` for docs and snapshot/site rendering.
+- Snowflake credentials only when running `export-snowflake` against real data.
+
+Set up the environment:
+
+```bash
+uv sync --dev
+```
+
+Run the core checks:
+
+```bash
+uv run pytest
+quarto render docs
+```
+
+## Portable Report Commands
+
+| Command | Purpose | Writes real data? |
+| --- | --- | --- |
+| `uv run aots-report snapshot --baseline <dir> --out <dir>` | Validate a baseline, regenerate a Report Snapshot, compare outputs, and render an audit site. | No Snowflake access; reads local baseline artifacts. |
+| `uv run aots-report export-snowflake ... --dry-run --json` | Show the read-only Snowflake export plan without connecting or writing files. | No. |
+| `uv run aots-report export-snowflake ... --out <dir>` | Export a local Known-Good Baseline from Snowflake source artifacts. | Yes, but only to local ignored output. |
+| `uv run aots-report publish --snapshots-dir <dir> --out <dir>` | Build a publication manifest and index over Snapshot Output Bundles. | No. |
+
+## Fixture Meanings
+
+- `tests/fixtures/synthetic_baseline/` is a smoke fixture. It proves CLI wiring, validation failures, output-bundle layout, and Quarto rendering. It does not prove independent report reproduction.
+- `tests/fixtures/synthetic_report_baseline/` is a richer fixture. It proves artifact grouping into the `do_report(...)` wrapper path without real locations or beneficiary-sensitive values.
+- `known-good-baselines/<case>/` is the ignored local baseline root for real exports. It should not be committed.
+
+Current local coverage examples:
+
+- `known-good-baselines/melissa-jam/`: operational Melissa/Jamaica case; passes provisionally.
+- `known-good-baselines/melissa-jam-2025102718/`: same storm and country, different forecast time; passes provisionally.
+- `known-good-baselines/melissa-cub-2025102800/`: different country with full facility layers; passes provisionally.
+- `known-good-baselines/melissa-tca-2025102800/`: small-island/edge-geography case with zero shelter rows; passes provisionally.
+
+An independent Melissa/Jamaica report from Snowflake stage now produces `certifying_comparison` when the baseline includes the independent current report, a previous report via `previous_report_path`, and vulnerability MAT artifacts. Equal-probability top facility descriptor order may still appear as warnings.
+
+## Snapshot Workflow
+
+Run a smoke snapshot:
+
+```bash
+uv run aots-report snapshot \
+  --baseline tests/fixtures/synthetic_baseline \
+  --out /tmp/aots-report-smoke
+```
+
+Run a snapshot against a real local baseline:
+
+```bash
+uv run aots-report snapshot \
+  --baseline known-good-baselines/melissa-jam \
+  --out /tmp/aots-report-melissa-jam
+```
+
+Read `/tmp/aots-report-melissa-jam/comparison.json` before trusting the output. A passing comparison is certifying only when `certifying` is `true` and `certification_state` is `certifying_comparison`.
+
+## Snowflake Export Workflow
+
+Preview a Snowflake export plan without connecting:
+
+```bash
+uv run aots-report export-snowflake \
+  --country JAM \
+  --storm MELISSA \
+  --forecast-time '2025-10-28 00:00:00' \
+  --case-name melissa-jam \
+  --env-file .env \
+  --dry-run \
+  --json
+```
+
+Run the export:
+
+```bash
+uv run aots-report export-snowflake \
+  --country JAM \
+  --storm MELISSA \
+  --forecast-time '2025-10-28 00:00:00' \
+  --case-name melissa-jam \
+  --env-file .env \
+  --overwrite
+```
+
+Include the Snowflake alert-agent email HTML when a matching alert exists in `ALERT_SENT_LOG`:
+
+```bash
+uv run aots-report export-snowflake \
+  --country JAM \
+  --storm MELISSA \
+  --forecast-time '2025-10-28 00:00:00' \
+  --case-name melissa-jam \
+  --env-file .env \
+  --include-alert-html \
+  --overwrite
+```
+
+This writes `expected-alert.html` and records `expected_alert_path` in `manifest.json`. The snapshot command copies that independent Snowflake alert-agent email artifact into the Snapshot Output Bundle so Playwright or another browser tool can visually inspect it directly.
+
+When `expected-alert.html` is present, `snapshot` also writes a separate local alert artifact plus an alert audit bundle:
+
+- `rendered-alert.html`: locally generated alert HTML using baseline-replayed prose for the first slice.
+- `alert-context.json`: structured inputs used to render the local alert.
+- `alert-claims.json`: normalized factual claims used for alert parity.
+- `alert-comparison.json`: claim and DOM-presence comparison results.
+
+The generated snapshot `manifest.json` records relative paths for these alert files only when they are emitted, so alert-missing bundles stay portable without dangling alert entries.
+
+Alert parity is intentionally not byte-for-byte HTML or pixel parity. It blocks on significant factual differences or omissions and treats exact prose wording or visual layout differences as review concerns.
+
+Do not pass passwords as CLI arguments. Use `SNOWFLAKE_*` variables from the shell or `--env-file <path>`.
+
+## Publication Workflow
+
+First generate one or more Snapshot Output Bundles:
+
+```bash
+uv run aots-report snapshot \
+  --baseline known-good-baselines/melissa-jam \
+  --out /tmp/aots-snapshots/melissa-jam
+```
+
+Then publish an index over those bundles:
+
+```bash
+uv run aots-report publish \
+  --snapshots-dir /tmp/aots-snapshots \
+  --out /tmp/aots-publication
+```
+
+`publish` does not consume raw baseline directories. Baselines are source inputs; Snapshot Output Bundles are publication inputs.
+
+## Common Failure Modes
+
+- `missing Snowflake configuration`: fill in `SNOWFLAKE_*` values in `.env` or your shell environment.
+- `refusing to overwrite`: pass `--overwrite` only after confirming the target baseline directory can be replaced.
+- `missing required artifacts`: the baseline is not complete enough for validation.
+- `checksum mismatch`: a source artifact changed after the manifest was written.
+- `schema mismatch` or `row count mismatch`: the manifest no longer describes the artifact on disk.
+- `comparison.status == failed`: inspect `comparison.json` and `comparison.md`; do not publish as a trusted report.
+
+## Safety Notes
+
+- Real baselines may include facility-level or operationally sensitive data. Keep them in ignored local directories unless a sharing policy says otherwise.
+- Current Quarto output is an audit/debug rendering, not a finished public report.
+- Before external or broad internal publication, apply the privacy, accessibility, and public-interest gates in [Snowflake-Agnostic Report Publication](snowflake-agnostic-report-publication.qmd).
 
 ## Agent Setup
 

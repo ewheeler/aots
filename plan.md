@@ -155,7 +155,7 @@ Generated with repo-familiar.
 - Wrapper boundary: keep the wrapper thin; it may adapt baseline artifacts into existing function inputs and adapt outputs into `ReportSnapshot`, but it must not add new report calculations.
 - Materialization strategy: require Hamilton from the start, but keep the first DAG small and boring.
 - Comparison report failures: missing required artifacts, manifest checksum mismatch, schema mismatch, or numeric report fields outside tolerance.
-- Comparison report warnings: presentation-only Quarto differences, optional facility layers absent for a country, or extra non-contract fields in source artifacts.
+- Comparison report warnings: presentation-only Quarto differences and optional facility layers absent for a country. Extra report fields currently fail until a Report Contract allowlist exists.
 - Numeric comparison tolerance: exact match for integer counts and categorical fields; absolute tolerance of `1e-9` for raw probabilities and `0.01` for rendered percentages.
 - Rounding rules: encode display rounding in the Pydantic model or comparison layer, not hidden in Quarto templates.
 - Snapshot output layout: create a self-auditing, easy-to-diff output bundle with generated manifest, regenerated snapshot artifact, comparison outputs, Quarto source, and rendered site output.
@@ -239,7 +239,31 @@ Initial scaffold status:
 - Milestone 2 complete: added a richer committed synthetic fixture that exercises the report wrapper artifact-grouping path without real data.
 - Milestone 3 complete: added `--case-name`, `--dry-run`, JSON planning, and clearer export summaries with artifact counts, row counts, and the next snapshot command.
 - Milestone 4 complete: report generation now quiets known noisy geodata loggers and patches the loaded report module with a cached country-boundary lookup for landfall calculation.
-- Milestone 5 complete: added a local baseline repository adapter and `aots-report publish` command that writes a publication manifest and renders a Quarto index for multiple local baselines.
+- Milestone 5 complete: added a local snapshot repository adapter and `aots-report publish` command that writes a publication manifest and renders a Quarto index for multiple Snapshot Output Bundles.
+
+### Current Truth vs Target State
+
+| Area | Current behavior | Target behavior |
+| --- | --- | --- |
+| Baseline validation | Manifest shape, checksums, schema hashes, and row counts prove baseline integrity. | A Reproduction-Ready Baseline also proves that enough artifacts exist to regenerate without fallback. |
+| Comparison certification | `comparison.status == passed` can be provisional when `expected-report.json` came from the wrapper, a seed, or unknown provenance. | A Certifying Comparison requires independent current-output provenance for `expected-report.json`. |
+| Report contract | `ReportSnapshot.report` is still a generic dictionary around current `do_report(...)` behavior. | A typed Report Contract will define required, optional, volatile, and tolerated fields. |
+| Extra fields | Extra fields currently fail comparison. | Extra non-contract fields may become warnings after a field allowlist exists. |
+| Quarto output | Snapshot Quarto output is an audit/debug rendering of report JSON. | Human-facing report pages need separate design, accessibility, and privacy review. |
+| Publication | `aots-report publish` consumes Snapshot Output Bundles and writes a publication manifest/index. | Publication can expand to a multi-snapshot site only after privacy/accessibility gates pass. |
+
+Certification states:
+
+- `integrity_checked`: baseline manifest and artifact integrity checks pass.
+- `reproduction_ready`: report regeneration ran far enough to compare outputs, but comparison failed.
+- `provisional_comparison`: comparison passed without independent expected-report provenance.
+- `certifying_comparison`: comparison passed with independent trusted expected-report provenance.
+
+Fixture evidence:
+
+- `tests/fixtures/synthetic_baseline/`: smoke-tests CLI, validation, and output-bundle plumbing only.
+- `tests/fixtures/synthetic_report_baseline/`: tests wrapper artifact grouping without real locations or sensitive values.
+- `known-good-baselines/melissa-jam/`: local ignored real baseline that passed snapshot comparison; not committed.
 
 ### Snowflake Baseline Exporter
 
@@ -283,18 +307,38 @@ Initial exporter scaffold status:
 - The exporter writes Parquet source artifacts, `expected-report.json`, and `manifest.json` through a temporary sibling directory before the final move.
 - `tests/aots_portable_reports/test_export_snowflake_cli.py` covers missing configuration, overwrite protection, and non-secret config previews.
 - `tests/aots_portable_reports/test_export_snowflake_live_path.py` covers live-export behavior with a fake query runner, not live credentials.
-- `src/aots_portable_reports/local_adapter.py` discovers valid local baseline directories from a filesystem root.
-- `src/aots_portable_reports/publication.py` writes `publication-manifest.json`, Quarto source, and rendered site output for a multi-snapshot index.
-- `tests/aots_portable_reports/test_publication.py` covers local baseline discovery and `aots-report publish` output.
+- `src/aots_portable_reports/local_adapter.py` discovers valid local Snapshot Output Bundles from a filesystem root.
+- `src/aots_portable_reports/publication.py` writes `publication-manifest.json`, Quarto source, and rendered site output for a multi-snapshot index over Snapshot Output Bundles.
+- `tests/aots_portable_reports/test_publication.py` covers local Snapshot Output Bundle discovery and `aots-report publish` output.
 
 Current live-baseline status:
 
 - A real Known-Good Baseline was created locally at `known-good-baselines/melissa-jam`; this directory is ignored and should not be committed.
-- The Melissa/JAM baseline snapshot comparison passes with `comparison.json` status `passed`.
+- The Melissa/JAM baseline snapshot comparison was re-run at `/tmp/aots-report-melissa-jam-current` and passes with `comparison.json` status `passed`, `certification_state` `provisional_comparison`, and `certifying` `false`.
+- The Melissa/JAM comparison is provisional unless `expected-report.json` is replaced by an independent trusted current report output.
+- An independent current Melissa/JAM report was found in Snowflake stage `AOTS_ANALYSIS/results/jsons/JAM_MELISSA_20251028000000.json` and tested in `/tmp/aots-melissa-certifying-baseline` with `expected_report_provenance` set to `independent_current_output`.
+- A fresh independent Melissa/JAM candidate at `/tmp/aots-melissa-certifying-v2-baseline` now certifies: `/tmp/aots-report-melissa-certifying-v2/comparison.json` reports `status` `passed`, `certification_state` `certifying_comparison`, `certifying` `true`, and no failures.
+- The certifying run depends on `previous_report_path`, vulnerability source artifacts, name-keyed admin-row comparison, and top-facility tie-order warnings for equal-probability slots.
+- The certifying run still reports nine `top_facility_tie_order` warnings because tied school and health-center probabilities make descriptor slot order unstable while the compared probabilities match.
 - The exporter uses compact `FORECAST_DATE` values for impact MAT tables and timestamp `FORECAST_TIME` values for track/envelope tables.
-- The exporter writes a generated `expected-report.json` through the existing `do_report(...)` path when enough artifacts are present.
+- The exporter writes vulnerability MAT artifacts, Parquet source artifacts, a generated `expected-report.json`, and `manifest.json` through a temporary sibling directory before the final move.
+- With `--include-alert-html`, the exporter reads `ALERT_SENT_LOG.EMAIL_BODY` for the requested country, storm, and forecast time, writes `expected-alert.html`, and records `expected_alert_path` in `manifest.json`.
+- A Melissa/JAM alert-agent email was exported at `/tmp/aots-melissa-alert-baseline/expected-alert.html`, copied to `/tmp/aots-report-melissa-alert/expected-alert.html`, checksum-matched, and rendered in Playwright. The rendered alert showed the Storm MELISSA — Jamaica email with one favicon 404 and no other browser console warnings.
+- The alert audit slice now writes `alert-context.json`, `alert-claims.json`, `rendered-alert.html`, and `alert-comparison.json` whenever a baseline provides `expected-alert.html`.
+- The current local alert renderer uses a Baseline Replay Prose Provider: it reuses prose extracted from the expected alert while regenerating deterministic layout, fact tables, provenance labels, and caveats.
+- A Melissa/JAM alert audit bundle at `/tmp/aots-report-melissa-alert-audit` produced a passing `alert-comparison.json`; `rendered-alert.html` loaded in Playwright with title `Storm MELISSA - JAM`, expected sections, two tables, and only a favicon 404.
 - The snapshot command normalizes volatile `report_date` to the baseline value before comparison.
 - The report wrapper caches country-boundary lookups in-process and quiets `AdminBoundaries`/`EntityManager` logs to reduce repeated GADM/GigaSpatial noise.
+- The report wrapper can patch `load_json_report(...)` to use a baseline-local previous report and reorders previous admin rows by current admin name for change calculations.
+- Alert-agent email HTML is a separate artifact from the Dash impact report page. It comes from `ALERT_SENT_LOG.EMAIL_BODY`; the Dash impact report page still renders from stage template plus JSON at runtime.
+- Alert parity is claim-based: exact prose and pixel parity are not required, but significant factual differences or omissions should fail `alert-comparison.json`.
+
+Additional local coverage exports:
+
+- `known-good-baselines/melissa-jam-2025102718/`: same storm and country, different forecast time; snapshot at `/tmp/aots-report-melissa-jam-2025102718` passes provisionally.
+- `known-good-baselines/melissa-cub-2025102800/`: different country with full facility layers for the operational Melissa run; snapshot at `/tmp/aots-report-melissa-cub-2025102800` passes provisionally.
+- `known-good-baselines/melissa-tca-2025102800/`: small-island/edge-geography case with zero shelter rows; snapshot at `/tmp/aots-report-melissa-tca-2025102800` passes provisionally.
+- `known-good-baselines/cristina-cub-2026060818/` and `known-good-baselines/cristina-tca-2026060818/`: 2026 Cristina export probes; both export source artifacts, but expected report generation falls back to `seed_placeholder`, so their snapshots are `reproduction_ready` failures rather than usable comparison examples.
 
 Exported Snowflake source artifact groups:
 
@@ -302,6 +346,7 @@ Exported Snowflake source artifact groups:
 - `MERCATOR_TILE_IMPACT_MAT` to `artifacts/tiles/tiles_<wind>.parquet`.
 - `SCHOOL_IMPACT_MAT`, `HC_IMPACT_MAT`, `SHELTER_IMPACT_MAT`, and `WASH_IMPACT_MAT` to `artifacts/facilities/`.
 - `MERCATOR_TILE_CCI_MAT` and `ADMIN_ALL_CCI_MAT` to `artifacts/cci/`.
+- `MERCATOR_TILE_VULNERABILITY_MAT` and `ADMIN_ALL_VULNERABILITY_MAT` to `artifacts/vulnerability/`.
 - `TRACK_MAT` to `artifacts/tracks/tracks_<wind>.parquet`.
 - `TC_TRACKS` to `artifacts/tracks/raw_tracks.parquet` for landfall calculation.
 - `TC_ENVELOPES_COMBINED` to `artifacts/envelopes/envelopes.parquet` with WKT geometry.
@@ -349,7 +394,10 @@ Warning conditions:
 
 - Presentation-only Quarto differences.
 - Optional facility layers absent for a country.
-- Extra non-contract fields in source artifacts.
+
+Future warning candidates after a Report Contract allowlist exists:
+
+- Extra non-contract fields in report payloads or source artifacts.
 
 ### Snapshot Output Layout
 
@@ -394,3 +442,12 @@ Commit policy:
 - Do not rewrite the geospatial impact engine in Polars before proving the file-backed report path.
 - Do not change production credentials, deployment settings, or data-sharing contracts.
 - Do not begin by modifying one submodule as if it owns the whole portable report flow; the first slice crosses forecast, impact, report, and publication boundaries.
+
+### Publication Gates
+
+Before treating Quarto output as publishable beyond controlled internal evaluation:
+
+- Privacy: identify facility-level, child-impact, and operationally sensitive fields; document retention and sharing rules; redact or aggregate when needed.
+- Accessibility: review headings, table semantics, keyboard navigation, color/contrast, alt text for figures/maps, and zoom/reflow behavior.
+- Public-interest use: distinguish public, partner, and internal audiences; support low-bandwidth access; avoid exposing unsupported precision or false certainty.
+- Certification: publish only snapshots whose certification state is appropriate for the audience and clearly labeled.

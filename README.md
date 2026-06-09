@@ -38,7 +38,7 @@ If `quarto` is installed outside your shell `PATH` on macOS, try `/usr/local/bin
 
 The root package provides a Snowflake-agnostic report snapshot flow for one country/storm/forecast tuple.
 
-Generate and compare a snapshot from a Known-Good Baseline export:
+Generate and compare a smoke snapshot from the tiny fixture:
 
 ```bash
 uv run aots-report snapshot \
@@ -46,13 +46,23 @@ uv run aots-report snapshot \
   --out /tmp/aots-report-snapshot
 ```
 
-The output bundle contains `manifest.json`, `report-snapshot.json`, `comparison.json`, `comparison.md`, Quarto source under `quarto/`, and rendered site output under `site/`.
+This fixture proves command wiring and output-bundle layout, not independent report reproduction. A Snapshot Output Bundle contains `manifest.json`, `report-snapshot.json`, `comparison.json`, `comparison.md`, Quarto source under `quarto/`, and rendered site output under `site/`.
 
-Publish a simple index from local baseline directories:
+Generate a real local Snapshot Output Bundle after exporting a baseline:
+
+```bash
+uv run aots-report snapshot \
+  --baseline known-good-baselines/<case-name> \
+  --out /tmp/aots-snapshots/<case-name>
+```
+
+Check `comparison.json`. A passing comparison is certifying only when `certifying` is `true` and `certification_state` is `certifying_comparison`.
+
+Publish a simple index from local Snapshot Output Bundles:
 
 ```bash
 uv run aots-report publish \
-  --snapshots-dir known-good-baselines \
+  --snapshots-dir /tmp/aots-snapshots \
   --out /tmp/aots-report-publication
 ```
 
@@ -70,7 +80,9 @@ uv run aots-report export-snowflake \
   --json
 ```
 
-For a real export, provide `SNOWFLAKE_*` environment variables or `--env-file <path>`. Do not pass passwords on the command line. Real Known-Good Baseline exports should stay outside the repo; `known-good-baselines/` is ignored. Use `--case-name <name>` to write to `known-good-baselines/<name>` or pass `--out <path>` explicitly.
+For a real export, provide `SNOWFLAKE_*` environment variables or `--env-file <path>`. Do not pass passwords on the command line. Real Known-Good Baseline exports should stay outside the repo; `known-good-baselines/` is the ignored local baseline root. Use `--case-name <name>` to write to `known-good-baselines/<name>` or pass `--out <path>` explicitly. Add `--include-alert-html` to export the independent Snowflake alert-agent email from `ALERT_SENT_LOG.EMAIL_BODY` as `expected-alert.html`; snapshots keep that file separate from the local `rendered-alert.html` artifact and the JSON alert audit bundle (`alert-context.json`, `alert-claims.json`, `alert-comparison.json`).
+
+See `docs/usage.qmd` for setup, fixture meanings, certification states, and troubleshooting.
 
 ## Development Checks
 

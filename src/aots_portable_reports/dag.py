@@ -5,6 +5,21 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
+from aots_portable_reports.alert_contract import (
+    write_alert_audit_bundle,
+    write_expected_alert_email_html,
+    write_rendered_alert_html_artifact,
+)
+from aots_portable_reports.alert_renderer import (
+    AlertProseProvider,
+    AlertProseSlots,
+    DEFAULT_ALERT_PROSE_PROVIDER,
+    build_alert_claims,
+    build_alert_context,
+    build_alert_prose_slots,
+    compare_alert_output,
+    render_alert_html,
+)
 from aots_portable_reports.comparison import compare_report_payloads
 from aots_portable_reports.models import (
     ArtifactManifest,
@@ -46,7 +61,55 @@ def report_snapshot(validated_baseline: ValidatedBaseline, report_wrapper_output
 
 
 def comparison_report(validated_baseline: ValidatedBaseline, report_snapshot: ReportSnapshot) -> ComparisonReport:
-    return compare_report_payloads(validated_baseline.expected_report, report_snapshot.report)
+    return compare_report_payloads(
+        validated_baseline.expected_report,
+        report_snapshot.report,
+        expected_report_provenance=validated_baseline.manifest.expected_report_provenance,
+    )
+
+
+def alert_context(report_snapshot: ReportSnapshot) -> dict[str, Any]:
+    return build_alert_context(report_snapshot)
+
+
+def alert_claims(alert_context: dict[str, Any]) -> dict[str, Any]:
+    return build_alert_claims(alert_context)
+
+
+def alert_prose_provider() -> AlertProseProvider:
+    return DEFAULT_ALERT_PROSE_PROVIDER
+
+
+def alert_prose_slots(
+    validated_baseline: ValidatedBaseline,
+    alert_context: dict[str, Any],
+    alert_prose_provider: AlertProseProvider,
+) -> AlertProseSlots:
+    return build_alert_prose_slots(
+        alert_context,
+        expected_alert_html=validated_baseline.expected_alert_html,
+        provider=alert_prose_provider,
+    )
+
+
+def alert_summary_prose(alert_prose_slots: AlertProseSlots) -> str:
+    return alert_prose_slots.get("situation_summary", "")
+
+
+def rendered_alert_html(
+    validated_baseline: ValidatedBaseline,
+    alert_context: dict[str, Any],
+    alert_prose_slots: AlertProseSlots,
+) -> str | None:
+    if validated_baseline.expected_alert_html is None:
+        return None
+    return render_alert_html(alert_context, prose_slots=alert_prose_slots)
+
+
+def alert_comparison(alert_claims: dict[str, Any], rendered_alert_html: str | None) -> ComparisonReport | None:
+    if rendered_alert_html is None:
+        return None
+    return compare_alert_output(alert_claims, rendered_alert_html)
 
 
 def quarto_source(report_snapshot: ReportSnapshot) -> dict[str, str]:
@@ -61,6 +124,10 @@ def snapshot_output_bundle(
     validated_baseline: ValidatedBaseline,
     report_snapshot: ReportSnapshot,
     comparison_report: ComparisonReport,
+    alert_context: dict[str, Any],
+    alert_claims: dict[str, Any],
+    rendered_alert_html: str | None,
+    alert_comparison: ComparisonReport | None,
     quarto_source: dict[str, str],
 ) -> SnapshotOutputBundle:
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -69,22 +136,28 @@ def snapshot_output_bundle(
     quarto_dir.mkdir(parents=True, exist_ok=True)
     site_dir.mkdir(parents=True, exist_ok=True)
 
-    output_manifest = {
-        "country": validated_baseline.manifest.country,
-        "storm": validated_baseline.manifest.storm,
-        "forecast_time": validated_baseline.manifest.forecast_time,
-        "baseline_version": validated_baseline.manifest.baseline_version,
-        "artifact_count": len(validated_baseline.manifest.artifacts),
-    }
     manifest_path = out_dir / "manifest.json"
     report_snapshot_path = out_dir / "report-snapshot.json"
     comparison_json_path = out_dir / "comparison.json"
     comparison_markdown_path = out_dir / "comparison.md"
 
-    manifest_path.write_text(json.dumps(output_manifest, indent=2) + "\n")
     report_snapshot_path.write_text(report_snapshot.model_dump_json(indent=2) + "\n")
     comparison_json_path.write_text(comparison_report.model_dump_json(indent=2) + "\n")
     comparison_markdown_path.write_text(_comparison_markdown(comparison_report))
+    copied_alert_path = None
+    copied_alert_context_path = None
+    copied_alert_claims_path = None
+    copied_rendered_alert_path = None
+    copied_alert_comparison_path = None
+    if validated_baseline.expected_alert_html is not None:
+        copied_alert_path = write_expected_alert_email_html(out_dir, validated_baseline.expected_alert_html)
+    if rendered_alert_html is not None:
+        copied_rendered_alert_path = write_rendered_alert_html_artifact(out_dir, rendered_alert_html)
+    if alert_comparison is not None:
+        alert_audit_bundle = write_alert_audit_bundle(out_dir, alert_context, alert_claims, alert_comparison)
+        copied_alert_context_path = alert_audit_bundle.alert_context_path
+        copied_alert_claims_path = alert_audit_bundle.alert_claims_path
+        copied_alert_comparison_path = alert_audit_bundle.alert_comparison_json_path
     for name, content in quarto_source.items():
         (quarto_dir / name).write_text(content)
     subprocess.run(
@@ -95,11 +168,40 @@ def snapshot_output_bundle(
         text=True,
     )
 
+    output_manifest = {
+        "country": validated_baseline.manifest.country,
+        "storm": validated_baseline.manifest.storm,
+        "forecast_time": validated_baseline.manifest.forecast_time,
+        "baseline_version": validated_baseline.manifest.baseline_version,
+        "artifact_count": len(validated_baseline.manifest.artifacts),
+        "report_snapshot_path": _bundle_relative_path(report_snapshot_path, out_dir),
+        "comparison_json_path": _bundle_relative_path(comparison_json_path, out_dir),
+        "comparison_markdown_path": _bundle_relative_path(comparison_markdown_path, out_dir),
+        "quarto_source_dir": _bundle_relative_path(quarto_dir, out_dir),
+        "site_dir": _bundle_relative_path(site_dir, out_dir),
+    }
+    if copied_alert_path is not None:
+        output_manifest["expected_alert_html_path"] = _bundle_relative_path(Path(copied_alert_path), out_dir)
+    if copied_rendered_alert_path is not None:
+        output_manifest["rendered_alert_html_path"] = _bundle_relative_path(Path(copied_rendered_alert_path), out_dir)
+    if copied_alert_context_path is not None:
+        output_manifest["alert_context_path"] = _bundle_relative_path(Path(copied_alert_context_path), out_dir)
+    if copied_alert_claims_path is not None:
+        output_manifest["alert_claims_path"] = _bundle_relative_path(Path(copied_alert_claims_path), out_dir)
+    if copied_alert_comparison_path is not None:
+        output_manifest["alert_comparison_json_path"] = _bundle_relative_path(Path(copied_alert_comparison_path), out_dir)
+    manifest_path.write_text(json.dumps(output_manifest, indent=2) + "\n")
+
     return SnapshotOutputBundle(
         manifest_path=str(manifest_path),
         report_snapshot_path=str(report_snapshot_path),
         comparison_json_path=str(comparison_json_path),
         comparison_markdown_path=str(comparison_markdown_path),
+        expected_alert_html_path=copied_alert_path,
+        alert_context_path=copied_alert_context_path,
+        alert_claims_path=copied_alert_claims_path,
+        rendered_alert_html_path=copied_rendered_alert_path,
+        alert_comparison_json_path=copied_alert_comparison_path,
         quarto_source_dir=str(quarto_dir),
         site_dir=str(site_dir),
     )
@@ -116,3 +218,7 @@ def _comparison_markdown(comparison_report: ComparisonReport) -> str:
         lines.extend(f"- {issue.code}: {issue.message}" for issue in comparison_report.warnings)
         lines.append("")
     return "\n".join(lines)
+
+
+def _bundle_relative_path(path: Path, out_dir: Path) -> str:
+    return str(path.relative_to(out_dir))

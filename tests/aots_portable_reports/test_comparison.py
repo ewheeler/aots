@@ -20,7 +20,21 @@ def test_comparison_passes_within_probability_and_percentage_tolerances() -> Non
     comparison = compare_report_payloads(expected, actual)
 
     assert comparison.status == "passed"
+    assert comparison.certification_state == "provisional_comparison"
+    assert comparison.certifying is False
     assert comparison.failures == []
+
+
+def test_comparison_is_certifying_only_with_independent_expected_report() -> None:
+    comparison = compare_report_payloads(
+        {"count": 1},
+        {"count": 1},
+        expected_report_provenance="independent_current_output",
+    )
+
+    assert comparison.status == "passed"
+    assert comparison.certification_state == "certifying_comparison"
+    assert comparison.certifying is True
 
 
 def test_comparison_fails_on_integer_and_categorical_mismatch() -> None:
@@ -30,6 +44,8 @@ def test_comparison_fails_on_integer_and_categorical_mismatch() -> None:
     )
 
     assert comparison.status == "failed"
+    assert comparison.certification_state == "reproduction_ready"
+    assert comparison.certifying is False
     assert [issue.code for issue in comparison.failures] == ["value_mismatch", "value_mismatch"]
 
 
@@ -51,3 +67,24 @@ def test_comparison_fails_on_missing_and_extra_contract_fields() -> None:
 
     assert comparison.status == "failed"
     assert [issue.code for issue in comparison.failures] == ["missing_field", "extra_field"]
+
+
+def test_comparison_matches_admin_rows_by_name_not_list_position() -> None:
+    comparison = compare_report_payloads(
+        {"rows_admins_pop_total": [{"name": "Admin B", "34": 2}, {"name": "Admin A", "34": 1}]},
+        {"rows_admins_pop_total": [{"name": "Admin A", "34": 1}, {"name": "Admin B", "34": 2}]},
+    )
+
+    assert comparison.status == "passed"
+    assert comparison.failures == []
+
+
+def test_comparison_warns_on_top_facility_equal_probability_tie_order() -> None:
+    comparison = compare_report_payloads(
+        {"school_name_1": "Alpha School", "school_prob_1": 0.5, "school_edulevel_1": "Primary"},
+        {"school_name_1": "Beta School", "school_prob_1": 0.5, "school_edulevel_1": "Secondary"},
+    )
+
+    assert comparison.status == "passed"
+    assert comparison.failures == []
+    assert [issue.code for issue in comparison.warnings] == ["top_facility_tie_order", "top_facility_tie_order"]

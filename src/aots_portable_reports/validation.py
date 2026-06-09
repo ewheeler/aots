@@ -21,6 +21,8 @@ class ValidatedBaseline:
     root: Path
     manifest: BaselineManifest
     expected_report: dict[str, Any]
+    expected_alert_html: str | None = None
+    previous_report: dict[str, Any] | None = None
 
 
 def sha256_file(path: Path) -> str:
@@ -63,6 +65,16 @@ def validate_baseline(baseline_dir: Path, manifest: BaselineManifest) -> Validat
     expected_report_path = baseline_dir / manifest.expected_report_path
     if not expected_report_path.is_file():
         missing.append(manifest.expected_report_path)
+    expected_alert_path = None
+    if manifest.expected_alert_path is not None:
+        expected_alert_path = baseline_dir / manifest.expected_alert_path
+        if not expected_alert_path.is_file():
+            missing.append(manifest.expected_alert_path)
+    previous_report_path = None
+    if manifest.previous_report_path is not None:
+        previous_report_path = baseline_dir / manifest.previous_report_path
+        if not previous_report_path.is_file():
+            missing.append(manifest.previous_report_path)
 
     for artifact in manifest.artifacts:
         artifact_path = baseline_dir / artifact.path
@@ -93,5 +105,18 @@ def validate_baseline(baseline_dir: Path, manifest: BaselineManifest) -> Validat
         expected_report = json.loads(expected_report_path.read_text())
     except json.JSONDecodeError as exc:
         raise BaselineValidationError(f"schema mismatch: {manifest.expected_report_path}: {exc}") from exc
+    previous_report = None
+    if previous_report_path is not None:
+        try:
+            previous_report = json.loads(previous_report_path.read_text())
+        except json.JSONDecodeError as exc:
+            raise BaselineValidationError(f"schema mismatch: {manifest.previous_report_path}: {exc}") from exc
+    expected_alert_html = expected_alert_path.read_text() if expected_alert_path is not None else None
 
-    return ValidatedBaseline(root=baseline_dir, manifest=manifest, expected_report=expected_report)
+    return ValidatedBaseline(
+        root=baseline_dir,
+        manifest=manifest,
+        expected_report=expected_report,
+        expected_alert_html=expected_alert_html,
+        previous_report=previous_report,
+    )

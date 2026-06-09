@@ -4,6 +4,7 @@ import argparse
 import sys
 from pathlib import Path
 
+from aots_portable_reports.alert_contract import IGNORED_LOCAL_BASELINE_ROOT
 from aots_portable_reports.export_snowflake import ExportRequest, SnowflakeExportError, export_snowflake_baseline
 from aots_portable_reports.publication import publish_snapshot_index
 from aots_portable_reports.runner import run_snapshot
@@ -21,11 +22,12 @@ def build_parser() -> argparse.ArgumentParser:
     export.add_argument("--storm", required=True)
     export.add_argument("--forecast-time", required=True)
     export.add_argument("--out", type=Path)
-    export.add_argument("--case-name", help="Write to known-good-baselines/<case-name> when --out is omitted.")
+    export.add_argument("--case-name", help=f"Write to {IGNORED_LOCAL_BASELINE_ROOT}/<case-name> when --out is omitted.")
     export.add_argument("--env-file", type=Path)
     export.add_argument("--wind-threshold", type=int, action="append", default=[])
     export.add_argument("--zoom-level", type=int, default=14)
     export.add_argument("--admin-level", type=int, default=1)
+    export.add_argument("--include-alert-html", action="store_true", help="Export ALERT_SENT_LOG.EMAIL_BODY as expected-alert.html when available.")
     export.add_argument("--overwrite", action="store_true")
     export.add_argument("--plan-only", action="store_true", help="Validate config and print the export plan without connecting.")
     export.add_argument("--dry-run", action="store_true", help="Alias for --plan-only.")
@@ -47,7 +49,7 @@ def main(argv: list[str] | None = None) -> int:
             return 2
         return 0
     if args.command == "export-snowflake":
-        out = args.out or (Path("known-good-baselines") / args.case_name if args.case_name else None)
+        out = args.out or (IGNORED_LOCAL_BASELINE_ROOT / args.case_name if args.case_name else None)
         if out is None:
             print("either --out or --case-name is required", file=sys.stderr)
             return 2
@@ -65,6 +67,7 @@ def main(argv: list[str] | None = None) -> int:
                     wind_thresholds=tuple(args.wind_threshold),
                     zoom_level=args.zoom_level,
                     admin_level=args.admin_level,
+                    include_alert_html=args.include_alert_html,
                 )
             )
         except SnowflakeExportError as exc:

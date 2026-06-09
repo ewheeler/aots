@@ -1,0 +1,10 @@
+{
+  "fixture": "synthetic-alert-missing-baseline",
+  "country": "TST",
+  "storm": "ALPHA",
+  "forecast_time": "2026-01-01T00:00:00Z",
+  "summary": {
+    "admin_areas_at_risk": 1,
+    "maximum_probability": 0.25
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "identity": {
+    "storm": "ALPHA",
+    "country": "TST"
+  },
+  "required_caveat": "AI system based on probabilistic model outputs",
+  "provenance_labels": [
+    "data",
+    "inferred"
+  ],
+  "threshold_rows": []
+}

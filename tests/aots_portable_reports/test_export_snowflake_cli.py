@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 import json
 
+from aots_portable_reports.alert_contract import IGNORED_LOCAL_BASELINE_ROOT
 from aots_portable_reports.cli import main
 
 
@@ -203,5 +204,5 @@ def test_export_snowflake_supports_case_name_and_dry_run_alias(tmp_path: Path, m
 
     captured = capsys.readouterr()
     assert exit_code == 0
-    assert "known-good-baselines/alpha-tst" in captured.out
+    assert str(IGNORED_LOCAL_BASELINE_ROOT / "alpha-tst") in captured.out
     assert "Plan only" in captured.out
