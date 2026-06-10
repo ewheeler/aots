@@ -49,6 +49,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "graphviz>=0.21",
     "pytest>=8.0.0",
 ]
 

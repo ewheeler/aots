@@ -54,6 +54,25 @@ Current module map:
 - `src/aots_portable_reports/local_adapter.py`: local Snapshot Output Bundle discovery.
 - `src/aots_portable_reports/publication.py`: publication manifest and Quarto index generation.
 
+## Hamilton DAG
+
+The snapshot materialization flow is implemented as a Hamilton DAG in `src/aots_portable_reports/dag.py`. The graph below is generated from the current Python module with Hamilton's `display_all_functions(...)`, so it reflects the actual node dependencies used by `aots-report snapshot`.
+
+![Hamilton DAG for portable report and alert snapshot generation.](assets/architecture/portable-report-hamilton-dag.png){fig-alt="Hamilton DAG showing baseline validation, report generation, alert context and visual asset generation, comparisons, Quarto source creation, and Snapshot Output Bundle materialization."}
+
+To regenerate the image after DAG changes:
+
+```bash
+uv run python - <<'PY'
+from pathlib import Path
+from hamilton import driver
+from aots_portable_reports import dag
+
+out = Path('docs/assets/architecture/portable-report-hamilton-dag.png')
+driver.Driver({}, dag).display_all_functions(str(out), render_kwargs={'format': 'png'})
+PY
+```
+
 ## Generated Assets
 
 This repository vendors generated assets from `repo-familiar`. Provenance is recorded in `.repo-familiar/bootstrap.yml`.
