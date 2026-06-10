@@ -15,6 +15,7 @@ ArtifactRole = Literal[
     "vulnerability",
     "geometry",
     "visualization",
+    "timing",
 ]
 ExpectedReportProvenance = Literal[
     "independent_current_output",

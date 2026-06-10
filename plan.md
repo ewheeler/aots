@@ -334,6 +334,14 @@ Current live-baseline status:
 - The report wrapper can patch `load_json_report(...)` to use a baseline-local previous report and reorders previous admin rows by current admin name for change calculations.
 - Alert-agent email HTML is a separate artifact from the Dash impact report page. It comes from `ALERT_SENT_LOG.EMAIL_BODY`; the Dash impact report page still renders from stage template plus JSON at runtime.
 - Alert parity is claim-based: exact prose and pixel parity are not required, but significant factual differences or omissions should fail `alert-comparison.json`.
+- `docs/comparison-cases.qmd` records JAM/CUB/PHL comparison runs and commits Playwright screenshots for real JAM/CUB expected-vs-rendered alert emails by explicit data-sharing decision.
+- `docs/alert-email-design.qmd` records the Snowflake-aligned target section order, style tokens, and visual asset placement for portable alert emails.
+- The local alert renderer now follows that target with bounded `summary`, `narrative`, `shift`, and `oscillation` prose slots plus refreshed JAM/CUB rendered-alert screenshots.
+- Donut/composition charts and stricter Baseline Replay prose cleanup are now implemented so tables/lists do not leak into verbose summary paragraphs. The standalone wind-threshold bar chart was removed because Snowflake's "Wind Exposure Probability by Wind Threshold" is a map-group heading, not a separate plot.
+- Portable threshold exposure tables now include facility columns, and portable admin tables sort by 50kt population exposure to match the Snowflake top-admin ordering for the JAM/CUB comparison cases.
+- Optional `alert_timing` artifacts now let portable snapshots render threshold-arrival timing tables with local timezone labels. Delta arrows remain gated on reliable previous-run context rather than fabricated from no-previous provisional baselines.
+- The 50kt wind exposure probability map now ports Snowflake's blue ensemble-track probability bands and contour labels; secondary 34kt/64kt maps omit ghost tracks like Snowflake.
+- The portable alert palette now mirrors Snowflake's UNICEF-blue header/table headers, deep-blue urgency strip, neutral body text, and light-gray table borders more closely.
 
 Additional local coverage exports:
 

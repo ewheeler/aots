@@ -123,6 +123,8 @@ Alert parity is intentionally not byte-for-byte HTML or pixel parity. It blocks 
 
 Visual parity follows the same rule: `alert-comparison.json` fails when a required visual section is missing despite available source data. Unavailable optional visual inputs should produce warnings rather than block the snapshot.
 
+See [Comparison Cases](comparison-cases.qmd) for real JAM/CUB/PHL comparison results and committed Playwright screenshots for the two cases that had Snowflake alert-agent emails.
+
 Do not pass passwords as CLI arguments. Use `SNOWFLAKE_*` variables from the shell or `--env-file <path>`.
 
 ## Publication Workflow

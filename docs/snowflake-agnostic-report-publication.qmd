@@ -179,6 +179,11 @@ Current live-baseline status:
 - Alert-agent email HTML is a separate artifact from the Dash impact report page. It comes from `ALERT_SENT_LOG.EMAIL_BODY`; the Dash impact report page still renders from stage template plus JSON at runtime.
 - Alert parity is claim-based: exact prose and pixel parity are not required, but significant factual differences or omissions should fail `alert-comparison.json`.
 - Visual asset parity is also claim-based: generated sections, image presence, alt text, captions, and provenance labels must match available source data; pixel-perfect comparison remains advisory.
+- Real comparison cases and committed JAM/CUB Playwright screenshots are documented in [Comparison Cases](comparison-cases.qmd).
+- The target visual language and section order for portable alert emails are documented in [Alert Email Design](alert-email-design.qmd).
+- The local alert renderer now follows that Snowflake-aligned section order with bounded `summary`, `narrative`, `shift`, and `oscillation` prose slots.
+- The renderer also includes data-dependent donut/composition charts when the source artifacts contain the needed values.
+- The Snowflake exporter now writes optional `alert_timing` artifacts so snapshots can render threshold-arrival timing tables locally.
 
 Additional local coverage exports:
 

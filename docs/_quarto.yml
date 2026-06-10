@@ -6,6 +6,8 @@ project:
     - usage.qmd
     - architecture.qmd
     - snowflake-agnostic-report-publication.qmd
+    - comparison-cases.qmd
+    - alert-email-design.qmd
 
 website:
   title: "Ahead of the Storm"
@@ -20,6 +22,10 @@ website:
         text: Architecture
       - href: snowflake-agnostic-report-publication.qmd
         text: Portable Reports
+      - href: comparison-cases.qmd
+        text: Comparison Cases
+      - href: alert-email-design.qmd
+        text: Alert Email Design
 
 format:
   html:

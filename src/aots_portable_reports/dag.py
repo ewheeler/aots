@@ -86,6 +86,8 @@ def alert_visual_context(report_snapshot: ReportSnapshot, alert_source_artifacts
 def alert_context(report_snapshot: ReportSnapshot, alert_visual_context: dict[str, Any]) -> dict[str, Any]:
     context = build_alert_context(report_snapshot)
     context["visual_context"] = alert_visual_context
+    if alert_visual_context.get("timing_rows"):
+        context["timing_rows"] = alert_visual_context["timing_rows"]
     return context
 
 
@@ -255,7 +257,7 @@ def _bundle_relative_path(path: Path, out_dir: Path) -> str:
     return str(path.relative_to(out_dir))
 
 
-_ALERT_VISUAL_ARTIFACT_NAMES = {"admin_geometry", "raw_tracks", "impact_evolution_50"}
+_ALERT_VISUAL_ARTIFACT_NAMES = {"admin_geometry", "raw_tracks", "impact_evolution_50", "alert_timing"}
 
 
 def _is_threshold_visual_artifact(name: str) -> bool:

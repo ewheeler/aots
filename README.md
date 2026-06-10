@@ -33,6 +33,7 @@ Verified milestones so far:
 - Melissa/Jamaica report reproduction reaches `certifying_comparison` when the baseline uses an independent current report, previous report, and vulnerability artifacts.
 - Melissa/Jamaica alert-agent email can be exported from Snowflake and browser-reviewed as an independent expected artifact.
 - Local alert HTML renders with structured claims, provenance labels, caveats, tables, and generated PNG visual sections without requiring exact prose or pixel parity.
+- Real JAM/CUB/PHL comparison cases are documented in `docs/comparison-cases.qmd`, including committed Playwright screenshots for JAM and CUB expected-vs-rendered alert emails.
 
 ## Repository Layout
 
@@ -204,7 +205,7 @@ For alert or HTML changes, also load generated HTML in a real browser or Playwri
 
 ## Safety and Data Handling
 
-- Do not commit real baselines, `/tmp` outputs, screenshots, Playwright scratch directories, `.env` files, or credentials.
+- Do not commit real baselines, `/tmp` outputs, screenshots, Playwright scratch directories, `.env` files, or credentials unless there is an explicit data-sharing decision. The JAM/CUB comparison screenshots in `docs/assets/comparison-cases/` are an approved exception.
 - Real baseline exports may contain operationally sensitive facility or beneficiary-related data.
 - Synthetic fixtures under `tests/fixtures/` are safe to commit and should be used for regression tests.
 - Treat accessibility, privacy, dignity, and public-interest review as part of publication readiness, not polish.
@@ -213,6 +214,8 @@ For alert or HTML changes, also load generated HTML in a real browser or Playwri
 
 - `docs/usage.qmd`: command walkthroughs and troubleshooting.
 - `docs/snowflake-agnostic-report-publication.qmd`: architecture and current status.
+- `docs/comparison-cases.qmd`: real comparison case summaries and expected-vs-rendered alert screenshots.
+- `docs/alert-email-design.qmd`: target section order, visual hierarchy, and intentional design differences for portable alert emails.
 - `docs/architecture.qmd`: repository architecture notes.
 - `docs/adr/`: accepted architecture decisions.
 - `CONTEXT.md`: glossary for project terminology.

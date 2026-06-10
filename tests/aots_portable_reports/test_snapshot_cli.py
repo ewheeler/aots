@@ -173,7 +173,7 @@ def test_snapshot_command_uses_structured_alert_inputs_for_claims_and_rendering(
     assert context["main_threshold"] == {"wind_threshold": 50, "label": "50kt"}
     assert context["impact_totals"]["population"] == 123
     assert context["people_in_need"] == {"population": 90, "children": 30}
-    assert context["top_admin_areas"] == [{"name": "North District", "population": 70, "people_in_need": None}]
+    assert context["top_admin_areas"] == [{"name": "North District", "population": 70}]
     assert context["cross_threshold_rows"] == [{"wind_threshold": 34, "population": 200, "children": 80}]
     assert context["required_caveats"] == [
         {
@@ -198,7 +198,6 @@ def test_snapshot_command_uses_structured_alert_inputs_for_claims_and_rendering(
         {
             "name": "North District",
             "population": 70,
-            "people_in_need": None,
             "provenance_labels": ["data", "inferred"],
         }
     ]
@@ -237,8 +236,10 @@ def test_snapshot_command_writes_reviewable_rendered_alert_html(tmp_path: Path) 
 
     assert exit_code == 0
     rendered = (out_dir / RENDERED_ALERT_HTML_FILENAME).read_text()
-    assert "Alert Facts" in rendered
-    assert "Expected Impact Totals" in rendered
+    assert "Active Forecast" in rendered
+    assert "Timing &amp; Forecast Details" in rendered
+    assert "Expected Impact" in rendered
+    assert "Wind Exposure Probability - 50kt" in rendered
     assert "Most Affected Administrative Areas" in rendered
     assert "Threshold Exposure" in rendered
     assert "Required Caveats" in rendered

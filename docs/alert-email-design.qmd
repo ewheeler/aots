@@ -1,0 +1,98 @@
+---
+title: "Alert Email Design"
+---
+
+This page records the design target for local `rendered-alert.html` outputs. The goal is stronger visual and layout alignment with the Snowflake alert-agent email while preserving the portable renderer's clearer separation between structured facts, bounded prose, deterministic visual assets, and audit files.
+
+The target is product-family parity, not pixel parity. A reviewer should be able to place a Snowflake alert-agent email and portable rendered alert side by side and recognize the same information hierarchy, alert affordances, and visual sections.
+
+## Design Principles
+
+- Match the Snowflake alert-agent email's section order and visual hierarchy where practical.
+- Keep deterministic facts, tables, visual assets, provenance labels, and caveats outside unrestricted LLM output.
+- Use bounded prose slots that mirror Snowflake's current prompt sections: summary, narrative, shift, and oscillation.
+- Keep `expected-alert.html` as an independent reference; do not use it as the source of factual claims.
+- Do not require exact prose, byte-for-byte HTML, or pixel-perfect screenshots.
+- Prefer accessible semantic HTML: headings, regions, tables, captions, image alt text, and readable fallback labels.
+
+## Layout Target
+
+The portable alert should follow this section order:
+
+1. Branded header.
+2. Urgency strip for review status and forecast threshold.
+3. Situation summary.
+4. Timing and forecast details.
+5. Situation overview / narrative.
+6. Expected impact totals.
+7. Impact composition donut charts.
+8. Primary 50kt wind exposure probability map.
+9. Optional 34kt and 64kt secondary probability maps.
+10. Wind exposure probability by threshold plot.
+11. Admin choropleth for expected children at risk.
+12. Forecast shift prose.
+13. Most affected administrative areas table.
+14. Forecast evolution chart.
+15. Oscillation notice prose.
+16. Required caveats, provenance labels, and footer.
+
+## Style Tokens
+
+The portable renderer owns a small internal theme rather than copying SQL string-concatenated HTML. The current target tokens are:
+
+| Token | Use |
+| --- | --- |
+| UNICEF blue `#1CABE2` | Header, table headers, section rails, and primary accents. |
+| Blue border `#1499c7` | Table header borders. |
+| Deep blue `#1A6080` | Urgency strip and provenance label text. |
+| Neutral text `#222` | Body text. |
+| Light gray `#e8e8e8` / `#ddd` | Section dividers and table borders. |
+| Pale blue `#f0f9ff` | Situation summary callout background. |
+
+## Visual Asset Placement
+
+Generated PNG files remain under `alert-assets/` for audit/debug and are embedded inline in `rendered-alert.html` as `data:image/png;base64,...` for email portability.
+
+| Visual asset | Placement |
+| --- | --- |
+| `ensemble-probability-50kt.png` | Full-width primary visual in Expected Impact. |
+| `ensemble-probability-34kt.png` and `ensemble-probability-64kt.png` | Optional side-by-side secondary visuals when available. |
+| `population-composition-50kt.png` | Donut chart beside Expected Impact totals, showing children/adult composition. |
+| `people-in-need-composition-50kt.png` | Donut chart beside people-in-need values, showing child/other composition. |
+| `admin-choropleth-50kt.png` | Admin impact section before the admin table. |
+| `impact-evolution-50kt.png` | Forecast evolution section near the bottom before caveats. |
+
+## Prose Formatting
+
+Baseline Replay prose is useful for parity scaffolding, but it must not turn copied table/list text into verbose paragraphs. The portable renderer should:
+
+- Extract bounded prose paragraphs only, not table contents.
+- Cap long replayed prose and remove repeated whitespace.
+- Keep factual metrics in deterministic tables and charts rather than prose blocks.
+- Preserve future LLM output within bounded `summary`, `narrative`, `shift`, and `oscillation` slots.
+
+## Acceptance Criteria
+
+- Alert comparison still blocks significant factual differences or omissions.
+- Renderer tests verify bounded prose slots, section order, and visual hierarchy.
+- Playwright can load generated HTML and observe expected headings, tables, images, alt text, and captions.
+- The comparison-case docs show real Snowflake-agent and portable screenshots for cases where both outputs exist.
+
+## Current Implementation Status
+
+- `rendered-alert.html` now uses a Snowflake-aligned section order and internal style tokens.
+- The visual palette now mirrors the Snowflake email more closely: UNICEF-blue header/table headers, blue urgency strip, neutral text, light-gray borders, and pale-blue summary callout.
+- The renderer supports bounded `summary`, `narrative`, `shift`, and `oscillation` prose slots, with `situation_summary` kept as a compatibility alias.
+- The 50kt ensemble probability map is presented as the primary visual; 34kt and 64kt maps are secondary views when available.
+- The 50kt ensemble probability map now ports Snowflake's blue ensemble-track probability bands and contour labels; secondary 34kt/64kt maps omit ghost tracks like the Snowflake email.
+- Donut charts are implemented when source data is available.
+- Admin choropleth and forecast evolution chart placement now match the target information hierarchy.
+- Exported `alert_timing` artifacts let portable alerts render Snowflake-style threshold-arrival timing tables without live Snowflake access during snapshot generation.
+- Threshold Exposure and Most Affected Administrative Areas tables now include facility columns where report data provides them.
+- Existing comparison gates remain claim-based and continue to avoid exact prose or pixel matching.
+
+## Intentional Differences
+
+- The portable renderer may use cleaner componentized HTML than the Snowflake procedure's string-concatenated email.
+- Prose does not need to match exactly; future LLM providers should fill bounded slots only.
+- Exact dimensions and pixels remain advisory, not pass/fail gates.

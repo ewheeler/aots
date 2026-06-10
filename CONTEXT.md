@@ -152,6 +152,10 @@ _Avoid_: External image URL, expected alert screenshot, Dash map.
 The structured geometry, tile, track, timing, and forecast-evolution inputs used to generate Alert Visual Assets.
 _Avoid_: Rendered image, expected alert HTML, browser screenshot.
 
+**Alert Email Design Spec**:
+The visual and structural reference for Rendered Alert HTML, derived from the Snowflake alert-agent email but owned by the portable renderer.
+_Avoid_: Pixel-perfect screenshot target, full Snowflake HTML clone.
+
 **Ignored Local Baseline Root**:
 The local-only directory prefix, such as `known-good-baselines/`, used for real baseline exports that stay uncommitted.
 _Avoid_: Fixture directory, publication output, shared artifact store.
@@ -193,6 +197,7 @@ _Avoid_: Pipeline, job, DAG when the user-facing report production concept is me
 - An **Alert Audit Bundle** belongs inside a **Snapshot Output Bundle** so local alert rendering can be reviewed without treating raw baselines as publication inputs.
 - **Alert Visual Assets** are written as PNG files for audit/debug and embedded inline in **Rendered Alert HTML** so the email remains portable.
 - **Alert Visual Context** is the source of truth for **Alert Visual Assets**; visual parity checks should not scrape expected alert HTML for map facts.
+- The **Alert Email Design Spec** aligns section order, hierarchy, visual placement, and styling tokens with the Snowflake alert-agent email while keeping exact pixels and exact prose out of scope.
 - An **Ignored Local Baseline Root** keeps real baselines out of git while letting the portable flow reuse them locally.
 - A **Baseline Manifest** is the contract for a **Known-Good Baseline**.
 - A **Baseline Exporter** creates a **Known-Good Baseline** but does not validate the **Portable Report Flow** by itself.

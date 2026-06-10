@@ -6,6 +6,7 @@ import uuid
 import warnings
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from zoneinfo import ZoneInfo
 import json
 from pathlib import Path
 import re
@@ -146,6 +147,9 @@ def export_snowflake_baseline(request: ExportRequest, query_runner: QueryRunner 
             raise SnowflakeExportError("no wind thresholds found for requested country/storm/forecast")
         specs = build_export_artifact_specs(config, request, thresholds)
         artifacts = export_artifact_specs(runner, temp_dir, specs)
+        timing_artifact = write_alert_timing_artifact(runner, temp_dir, request)
+        if timing_artifact is not None:
+            artifacts.append(timing_artifact)
         expected_alert_path = write_expected_alert_email_html(runner, config, temp_dir, request) if request.include_alert_html else None
         write_manifest(temp_dir, request, artifacts, expected_alert_path=expected_alert_path)
         expected_report_provenance = write_expected_report(temp_dir, request, artifacts)
@@ -458,6 +462,97 @@ def write_expected_alert_email_html(
     relative_path = EXPECTED_ALERT_EMAIL_FILENAME
     (root / relative_path).write_text(html)
     return relative_path
+
+
+def write_alert_timing_artifact(runner: QueryRunner, root: Path, request: ExportRequest) -> dict[str, Any] | None:
+    rows: list[dict[str, Any]] = []
+    timezone_name = lookup_country_timezone(runner, config=None, request=request)
+    for threshold in [34, 50, 64]:
+        sql = "CALL AOTS.TC_ECMWF.GET_STORM_ARRIVAL_TIMING(%s, %s, %s, %s)"
+        df = runner.query(sql, [request.country, request.storm, compact_forecast_time(request.forecast_time), str(threshold)])
+        if df.empty:
+            continue
+        raw = df.iloc[0, 0]
+        if not raw:
+            continue
+        try:
+            payload = json.loads(raw) if isinstance(raw, str) else raw
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(payload, dict) or not payload.get("has_timing"):
+            continue
+        add_local_timing_fields(payload, timezone_name)
+        rows.append(payload)
+    if not rows:
+        return None
+    relative_path = "artifacts/timing/alert_timing.parquet"
+    path = root / relative_path
+    path.parent.mkdir(parents=True, exist_ok=True)
+    df = pd.DataFrame(rows)
+    df.to_parquet(path, index=False)
+    return {
+        "name": "alert_timing",
+        "role": "timing",
+        "path": relative_path,
+        "required": False,
+        "checksum_sha256": sha256_file(path),
+        "schema_hash": dataframe_schema_hash(df),
+        "row_count": len(df),
+        "source_table": "GET_STORM_ARRIVAL_TIMING",
+        "query_filter": {
+            "country": request.country,
+            "storm": request.storm,
+            "forecast_date": compact_forecast_time(request.forecast_time),
+        },
+    }
+
+
+def lookup_country_timezone(runner: QueryRunner, config: SnowflakeConfig | None, request: ExportRequest) -> str:
+    del config
+    try:
+        df = runner.query(
+            "SELECT COALESCE(TIMEZONE, 'UTC') AS TIMEZONE FROM AOTS.TC_ECMWF.PIPELINE_COUNTRIES WHERE COUNTRY_CODE = %s LIMIT 1",
+            [request.country],
+        )
+    except Exception:
+        return "UTC"
+    if df.empty or "TIMEZONE" not in df.columns:
+        return "UTC"
+    value = df.iloc[0]["TIMEZONE"]
+    return str(value) if value else "UTC"
+
+
+def add_local_timing_fields(payload: dict[str, Any], timezone_name: str) -> None:
+    try:
+        zone = ZoneInfo(timezone_name)
+    except Exception:
+        zone = ZoneInfo("UTC")
+        timezone_name = "UTC"
+    for key in ["earliest", "consensus", "latest"]:
+        time_key = f"{key}_impact_time"
+        local_key = f"{key}_local"
+        if not payload.get(time_key):
+            continue
+        try:
+            value = datetime.fromisoformat(str(payload[time_key]).replace(" ", "T"))
+        except ValueError:
+            continue
+        local = value.replace(tzinfo=UTC).astimezone(zone)
+        payload[local_key] = local.strftime("%b %d %H:%M")
+    payload["timezone"] = timezone_name
+    payload["tz_offset"] = _timezone_offset_label(zone)
+
+
+def _timezone_offset_label(zone: ZoneInfo) -> str:
+    offset = datetime.now(UTC).astimezone(zone).utcoffset()
+    if offset is None:
+        return "UTC"
+    minutes = int(offset.total_seconds() // 60)
+    sign = "+" if minutes >= 0 else "−"
+    abs_minutes = abs(minutes)
+    hours, remainder = divmod(abs_minutes, 60)
+    suffix = f":{str(remainder).zfill(2)}" if remainder else ""
+    return f"UTC{sign}{hours}{suffix}"
 
 
 def write_manifest(
