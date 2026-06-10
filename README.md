@@ -1,177 +1,219 @@
-# Ahead of the Storm
+# Ahead of the Storm Workspace
 
-Generated with repo-familiar.
+This repository is the integration workspace for the Ahead of the Storm tropical cyclone impact-reporting system. It brings together the application, data pipeline, forecast pipeline, and orchestration repositories as submodules, and adds a root Python package for portable report and alert generation.
 
-This repository was generated with `repo-familiar`.
+The current focus is to make impact reports and alert emails reproducible from portable artifacts instead of requiring live Snowflake access at publication time. Snowflake remains a supported source system, but generated Snapshot Output Bundles are the intended handoff format for audit, comparison, browser review, and future publication.
 
-## Generated Assets
+## Intentions
 
-- `AGENTS.md` contains agent-facing repository instructions.
-- `.agents/models.yml` contains selected non-secret model/provider profiles.
-- `.agents/tools.yml` contains selected non-secret tool setup guidance.
-- `.agents/memory.yml` contains selected memory guidance.
-- `.agents/prompts.yml` contains selected prompt migration and evaluation guidance.
-- `.agents/safety.yml` contains selected prompt/output safety guidance.
-- `.agents/privacy.yml` contains selected data and privacy review guidance.
-- `.agents/public-interest.yml` contains selected public-interest digital guidance.
-- `.agents/repomap.yml` contains selected codebase graph guidance.
-- `.agents/sandbox.yml` contains selected sandbox guidance.
-- `.agents/secrets.yml` contains selected local environment and secret-loading guidance.
-- `.agents/design.yml` contains selected design guidance.
-- `.agents/worktrees.yml` contains selected worktree guidance.
-- `.agents/skills/` contains selected vendored skills.
-- `docs/` contains the Quarto documentation scaffold.
-- `plan.md` records initial goals, milestones, and open questions.
-- `.repo-familiar/bootstrap.yml` records generation provenance.
+- Reproduce one country/storm/forecast report from a Known-Good Baseline of exported source artifacts.
+- Distinguish baseline integrity from certification: a passing comparison is certifying only when the expected output came from an independent trusted current artifact.
+- Publish from Snapshot Output Bundles, not from raw baseline directories.
+- Replace the current Snowflake alert-agent email path over time with a portable hybrid Alert Renderer.
+- Keep deterministic facts, tables, caveats, provenance labels, and visual assets outside unrestricted LLM output.
+- Allow future LLM use through bounded Alert Prose Provider slots rather than whole-email generation.
+- Keep real baselines local and ignored; committed fixtures are synthetic only.
 
-## Documentation
+## Current Progress
 
-Render docs with:
+Implemented in the root `aots_portable_reports` package:
+
+- `aots-report snapshot` validates a baseline, regenerates a report snapshot, compares it with expected output, and renders a Quarto audit site.
+- `aots-report export-snowflake` performs read-only Snowflake exports into local Known-Good Baseline directories.
+- `aots-report publish` builds a publication index from Snapshot Output Bundles.
+- Certifying comparison support is in place for independent expected report JSON.
+- Previous-report artifacts and vulnerability artifacts support change-from-previous and people-in-need fields.
+- Alert-agent email export is supported through `ALERT_SENT_LOG.EMAIL_BODY` as `expected-alert.html`.
+- Local alert generation emits `rendered-alert.html`, `alert-context.json`, `alert-claims.json`, and `alert-comparison.json`.
+- Alert visual assets are generated as PNG files under `alert-assets/` and embedded inline in `rendered-alert.html` for email portability.
+- Synthetic fixtures cover smoke snapshots, report-wrapper paths, alert-present/alert-missing/sparse cases, and visual alert assets.
+
+Verified milestones so far:
+
+- Melissa/Jamaica report reproduction reaches `certifying_comparison` when the baseline uses an independent current report, previous report, and vulnerability artifacts.
+- Melissa/Jamaica alert-agent email can be exported from Snowflake and browser-reviewed as an independent expected artifact.
+- Local alert HTML renders with structured claims, provenance labels, caveats, tables, and generated PNG visual sections without requiring exact prose or pixel parity.
+
+## Repository Layout
+
+```text
+.
+├── src/aots_portable_reports/        # Root portable report/alert package
+├── tests/aots_portable_reports/      # Package tests
+├── tests/fixtures/                   # Synthetic committed baselines only
+├── docs/                             # Quarto project docs
+├── docs/adr/                         # Architecture decision records
+├── CONTEXT.md                        # Project glossary and domain language
+├── plan.md                           # Current implementation plan/status notes
+├── Ahead-of-the-Storm/               # Application submodule
+├── Ahead-of-the-Storm-DATAPIPELINE/  # Data pipeline submodule
+├── Ahead-of-the-Storm-ORCHESTRATION/ # Snowflake/orchestration submodule
+└── TC-ECMWF-Forecast-Pipeline/       # Forecast pipeline submodule
+```
+
+`known-good-baselines/` is intentionally ignored. Use it for real local exports, but do not commit it.
+
+## Prerequisites
+
+- Python 3.11
+- `uv`
+- Quarto on `PATH`
+- Snowflake credentials only for real `export-snowflake` runs
+
+Install the Python environment:
+
+```bash
+uv sync --dev
+```
+
+Initialize or update submodules:
+
+```bash
+git submodule update --init --recursive
+```
+
+Render project docs:
 
 ```bash
 quarto render docs
 ```
 
-If `quarto` is installed outside your shell `PATH` on macOS, try `/usr/local/bin/quarto render docs`.
+Run tests:
 
-## Portable Report Snapshots
+```bash
+uv run pytest
+```
 
-The root package provides a Snowflake-agnostic report snapshot flow for one country/storm/forecast tuple.
+## Snapshot Workflow
 
-Generate and compare a smoke snapshot from the tiny fixture:
+Run a smoke snapshot from the tiny synthetic fixture:
 
 ```bash
 uv run aots-report snapshot \
   --baseline tests/fixtures/synthetic_baseline \
-  --out /tmp/aots-report-snapshot
+  --out /tmp/aots-report-smoke
 ```
 
-This fixture proves command wiring and output-bundle layout, not independent report reproduction. A Snapshot Output Bundle contains `manifest.json`, `report-snapshot.json`, `comparison.json`, `comparison.md`, Quarto source under `quarto/`, and rendered site output under `site/`.
-
-Generate a real local Snapshot Output Bundle after exporting a baseline:
+Run a richer alert snapshot with synthetic visual assets:
 
 ```bash
 uv run aots-report snapshot \
-  --baseline known-good-baselines/<case-name> \
-  --out /tmp/aots-snapshots/<case-name>
+  --baseline tests/fixtures/synthetic_alert_present_baseline \
+  --out /tmp/aots-alert-smoke
 ```
 
-Check `comparison.json`. A passing comparison is certifying only when `certifying` is `true` and `certification_state` is `certifying_comparison`.
+Important output files:
 
-Publish a simple index from local Snapshot Output Bundles:
+- `manifest.json`: generated snapshot metadata and relative artifact paths.
+- `report-snapshot.json`: regenerated report payload.
+- `comparison.json` / `comparison.md`: report comparison status.
+- `expected-alert.html`: independent Snowflake alert email when exported.
+- `rendered-alert.html`: local portable alert email artifact.
+- `alert-context.json`: structured alert inputs.
+- `alert-claims.json`: normalized factual claims.
+- `alert-comparison.json`: claim/DOM-present alert parity results.
+- `alert-assets/*.png`: generated visual assets for audit/debug; also embedded inline in `rendered-alert.html`.
+- `quarto/` and `site/`: audit-site source and rendered output.
 
-```bash
-uv run aots-report publish \
-  --snapshots-dir /tmp/aots-snapshots \
-  --out /tmp/aots-report-publication
+Read `comparison.json` before trusting output. A report comparison is certifying only when:
+
+```json
+{
+  "status": "passed",
+  "certification_state": "certifying_comparison",
+  "certifying": true
+}
 ```
 
-Preview a read-only Snowflake baseline export plan without connecting or writing files:
+Alert parity is intentionally not byte-for-byte HTML, exact prose, or pixel parity. It fails on significant factual differences or omissions, including missing required visual sections when source data exists.
+
+## Snowflake Export Workflow
+
+Preview a read-only export plan without connecting:
 
 ```bash
 uv run aots-report export-snowflake \
-  --country TST \
-  --storm ALPHA \
-  --forecast-time 2026-01-01T00:00:00Z \
-  --case-name alpha-tst \
-  --env-file .env.snowflake \
-  --wind-threshold 34 \
+  --country JAM \
+  --storm MELISSA \
+  --forecast-time '2025-10-28 00:00:00' \
+  --case-name melissa-jam \
+  --env-file .env \
   --dry-run \
   --json
 ```
 
-For a real export, provide `SNOWFLAKE_*` environment variables or `--env-file <path>`. Do not pass passwords on the command line. Real Known-Good Baseline exports should stay outside the repo; `known-good-baselines/` is the ignored local baseline root. Use `--case-name <name>` to write to `known-good-baselines/<name>` or pass `--out <path>` explicitly. Add `--include-alert-html` to export the independent Snowflake alert-agent email from `ALERT_SENT_LOG.EMAIL_BODY` as `expected-alert.html`; snapshots keep that file separate from the local `rendered-alert.html` artifact, the JSON alert audit bundle (`alert-context.json`, `alert-claims.json`, `alert-comparison.json`), and generated `alert-assets/*.png` when visual source data is available.
+Run a real local export:
 
-See `docs/usage.qmd` for setup, fixture meanings, certification states, and troubleshooting.
+```bash
+uv run aots-report export-snowflake \
+  --country JAM \
+  --storm MELISSA \
+  --forecast-time '2025-10-28 00:00:00' \
+  --case-name melissa-jam \
+  --env-file .env \
+  --overwrite
+```
+
+Include the Snowflake alert-agent email HTML when a matching alert exists:
+
+```bash
+uv run aots-report export-snowflake \
+  --country JAM \
+  --storm MELISSA \
+  --forecast-time '2025-10-28 00:00:00' \
+  --case-name melissa-jam \
+  --env-file .env \
+  --include-alert-html \
+  --overwrite
+```
+
+Credentials come from `SNOWFLAKE_*` environment variables or `--env-file`; never pass passwords as positional CLI arguments.
+
+Exported artifact groups include impact MAT tables, facility impact tables, CCI artifacts, vulnerability artifacts, tracks, envelopes, admin geometry, and alert visualization aggregates. See `docs/usage.qmd` and `docs/snowflake-agnostic-report-publication.qmd` for details.
+
+## Publication Workflow
+
+Generate one or more Snapshot Output Bundles:
+
+```bash
+uv run aots-report snapshot \
+  --baseline known-good-baselines/melissa-jam \
+  --out /tmp/aots-snapshots/melissa-jam
+```
+
+Publish an index over those bundles:
+
+```bash
+uv run aots-report publish \
+  --snapshots-dir /tmp/aots-snapshots \
+  --out /tmp/aots-publication
+```
+
+`publish` consumes Snapshot Output Bundles, not raw baselines.
 
 ## Development Checks
+
+Before handing off changes, run:
 
 ```bash
 uv run pytest
 quarto render docs
 ```
 
-## Agent Harnesses
+For alert or HTML changes, also load generated HTML in a real browser or Playwright when practical. Check visible headings, semantic sections, table/image presence, alt text, captions, and console errors. A missing `favicon.ico` in local preview is currently an acceptable warning.
 
-- `opencode`
-- `paseo`
+## Safety and Data Handling
 
-## Model Profiles
+- Do not commit real baselines, `/tmp` outputs, screenshots, Playwright scratch directories, `.env` files, or credentials.
+- Real baseline exports may contain operationally sensitive facility or beneficiary-related data.
+- Synthetic fixtures under `tests/fixtures/` are safe to commit and should be used for regression tests.
+- Treat accessibility, privacy, dignity, and public-interest review as part of publication readiness, not polish.
 
-- `default-coding`
+## More Documentation
 
-## Tool Profiles
-
-- `cq`
-- `a11y-scanner`
-- `browser-automation`
-- `headroom-context-compression`
-- `headroom-mcp`
-- `headroom-proxy`
-- `opencode-context7-mcp`
-- `opencode-cq-mcp`
-- `opencode-headroom-mcp`
-- `opencode-homebrew-path`
-- `opencode-playwright-mcp`
-
-## Memory Profiles
-
-- `memory-local`
-
-## Prompt Profiles
-
-- `prompt-migration-gpt55`
-- `prompt-evals-dag`
-
-## Safety Profiles
-
-- `prompt-output-safety`
-
-## Privacy Profiles
-
-
-
-## Public Interest Profiles
-
-
-
-## Repo Map Profiles
-
-- `hamilton-dag`
-
-## Sandbox Profiles
-
-- `sandbox-light`
-
-## Secrets Profiles
-
-- `dotenv-local`
-- `kvenv-azure-keyvault`
-
-## Design Profiles
-
-
-
-## Worktree Profiles
-
-- `parallel-worktrees`
-
-## Skills
-
-- `grill-with-docs`
-- `prompt-migration`
-- `prompt-eval-design`
-- `prompt-output-safety`
-- `cq`
-- `session-focus`
-- `diagnose`
-- `security-audit`
-- `to-prd`
-- `to-issues`
-- `a11y-web-scan`
-- `caveman`
-- `get-api-docs`
-- `improve-codebase-architecture`
-- `liteparse`
-- `tdd`
-- `zoom-out`
+- `docs/usage.qmd`: command walkthroughs and troubleshooting.
+- `docs/snowflake-agnostic-report-publication.qmd`: architecture and current status.
+- `docs/architecture.qmd`: repository architecture notes.
+- `docs/adr/`: accepted architecture decisions.
+- `CONTEXT.md`: glossary for project terminology.
+- `plan.md`: implementation history, current status, and open follow-ups.
