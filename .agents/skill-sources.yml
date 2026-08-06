@@ -8,9 +8,9 @@ skills:
     verify:
       - "Confirm `.agents/skills/a11y-web-scan/SKILL.md` exists after generation or bootstrap"
   caveman:
-    source_type: "external"
-    source_url: "https://github.com/mattpocock/skills/blob/main/skills/productivity/caveman/SKILL.md"
-    notes: "Adapted from mattpocock/skills."
+    source_type: "local-adapted"
+    source_url: "https://github.com/mattpocock/skills"
+    notes: "Originally adapted from mattpocock/skills; upstream skill no longer exists at the recorded path."
     setup:
       - "Select with repo-familiar using `--skill caveman` when generating or bootstrapping a repository"
       - "For source installs outside repo-familiar, run `npx skills@latest add mattpocock/skills`"
@@ -26,8 +26,8 @@ skills:
       - "Confirm cq MCP tools are available in the agent harness"
   diagnose:
     source_type: "external"
-    source_url: "https://github.com/mattpocock/skills/blob/main/skills/engineering/diagnose/SKILL.md"
-    notes: "Adapted from mattpocock/skills."
+    source_url: "https://github.com/mattpocock/skills/blob/main/skills/engineering/diagnosing-bugs/SKILL.md"
+    notes: "Adapted from mattpocock/skills; upstream renamed from diagnose to diagnosing-bugs."
     setup:
       - "Select with repo-familiar using `--skill diagnose` when generating or bootstrapping a repository"
       - "For source installs outside repo-familiar, run `npx skills@latest add mattpocock/skills`"
@@ -42,18 +42,18 @@ skills:
     verify:
       - "chub --help"
   grill-with-docs:
-    source_type: "external"
+    source_type: "local-adapted"
     source_url: "https://github.com/mattpocock/skills/blob/main/skills/engineering/grill-with-docs/SKILL.md"
-    notes: "Adapted from mattpocock/skills for repo-familiar documentation and planning workflows."
+    notes: "Originally adapted from mattpocock/skills; upstream simplified to delegate to /grilling and /domain-modeling. Local version retains full documentation workflow guidance."
     setup:
       - "Select with repo-familiar using `--skill grill-with-docs` when generating or bootstrapping a repository"
       - "For source installs outside repo-familiar, run `npx skills@latest add mattpocock/skills`"
     verify:
       - "Confirm `.agents/skills/grill-with-docs/SKILL.md` exists after generation or bootstrap"
   improve-codebase-architecture:
-    source_type: "external"
+    source_type: "local-adapted"
     source_url: "https://github.com/mattpocock/skills/blob/main/skills/engineering/improve-codebase-architecture/SKILL.md"
-    notes: "Adapted from mattpocock/skills."
+    notes: "Originally adapted from mattpocock/skills; upstream now depends on /codebase-design and /domain-modeling skills not vendored here. Local version retains inline vocabulary in LANGUAGE.md."
     setup:
       - "Select with repo-familiar using `--skill improve-codebase-architecture` when generating or bootstrapping a repository"
       - "For source installs outside repo-familiar, run `npx skills@latest add mattpocock/skills`"
@@ -70,6 +70,23 @@ skills:
     verify:
       - "lit --version"
       - "Confirm `.agents/skills/liteparse/SKILL.md` exists after generation or bootstrap"
+      - "Confirm `.agents/skills/liteparse/scripts/search.py` exists when BM25 search is needed"
+  playwright-cli:
+    source_type: "external"
+    source_url: "https://github.com/microsoft/playwright-cli/blob/main/skills/playwright-cli/SKILL.md"
+    notes: "Adapted from Microsoft playwright-cli skill for repo-familiar browser automation guidance."
+    setup:
+      - "Install Playwright CLI with `npm install -g @playwright/cli@latest` or use `npx playwright cli` when Playwright is available project-locally"
+    verify:
+      - "playwright-cli --help or npx --no-install playwright --version"
+  privacy-review:
+    source_type: "local"
+    source_url: "local:repo-familiar"
+    notes: "Authored for repo-familiar privacy review workflows."
+    setup:
+      - "Select with repo-familiar using `--skill privacy-review` when generating or bootstrapping a repository"
+    verify:
+      - "Confirm `.agents/skills/privacy-review/SKILL.md` exists after generation or bootstrap"
   prompt-eval-design:
     source_type: "local"
     source_url: "local:repo-familiar"
@@ -94,6 +111,14 @@ skills:
       - "Select with repo-familiar using `--skill prompt-output-safety` when generating or bootstrapping a repository"
     verify:
       - "Confirm `.agents/skills/prompt-output-safety/SKILL.md` exists after generation or bootstrap"
+  repository-map:
+    source_type: "local"
+    source_url: "local:repo-familiar"
+    notes: "Authored for selective semantic repository routing maps."
+    setup:
+      - "Select with repo-familiar using `--skill repository-map` when generating or bootstrapping a repository"
+    verify:
+      - "Confirm `.agents/skills/repository-map/SKILL.md` exists after generation or bootstrap"
   security-audit:
     source_type: "external"
     source_url: "https://github.com/omega-memory/omega-skills/blob/main/skills/security-audit/SKILL.md"
@@ -112,6 +137,14 @@ skills:
       - "For source installs outside repo-familiar, copy the matching skill from omega-memory/omega-skills"
     verify:
       - "Confirm `.agents/skills/session-focus/SKILL.md` exists after generation or bootstrap"
+  setup-python-guardrails:
+    source_type: "local"
+    source_url: "local:repo-familiar"
+    notes: "Authored for repo-familiar Python guardrail setup, informed by deterministic guardrails article (balajeerc.info)."
+    setup:
+      - "Select with repo-familiar using `--skill setup-python-guardrails` when generating or bootstrapping a repository"
+    verify:
+      - "Confirm `.agents/skills/setup-python-guardrails/SKILL.md` exists after generation or bootstrap"
   tdd:
     source_type: "external"
     source_url: "https://github.com/mattpocock/skills/blob/main/skills/engineering/tdd/SKILL.md"
@@ -122,27 +155,25 @@ skills:
     verify:
       - "Confirm `.agents/skills/tdd/SKILL.md` exists after generation or bootstrap"
   to-issues:
-    source_type: "external"
-    source_url: "https://github.com/mattpocock/skills/blob/main/skills/engineering/to-issues/SKILL.md"
-    notes: "Adapted from mattpocock/skills."
+    source_type: "local-adapted"
+    source_url: "https://github.com/mattpocock/skills"
+    notes: "Originally adapted from mattpocock/skills; upstream skill no longer exists at the recorded path."
     setup:
       - "Select with repo-familiar using `--skill to-issues` when generating or bootstrapping a repository"
-      - "For source installs outside repo-familiar, run `npx skills@latest add mattpocock/skills`"
     verify:
       - "Confirm `.agents/skills/to-issues/SKILL.md` exists after generation or bootstrap"
   to-prd:
-    source_type: "external"
-    source_url: "https://github.com/mattpocock/skills/blob/main/skills/engineering/to-prd/SKILL.md"
-    notes: "Adapted from mattpocock/skills."
+    source_type: "local-adapted"
+    source_url: "https://github.com/mattpocock/skills"
+    notes: "Originally adapted from mattpocock/skills; upstream skill no longer exists at the recorded path."
     setup:
       - "Select with repo-familiar using `--skill to-prd` when generating or bootstrapping a repository"
-      - "For source installs outside repo-familiar, run `npx skills@latest add mattpocock/skills`"
     verify:
       - "Confirm `.agents/skills/to-prd/SKILL.md` exists after generation or bootstrap"
   zoom-out:
-    source_type: "external"
-    source_url: "https://github.com/mattpocock/skills/blob/main/skills/engineering/zoom-out/SKILL.md"
-    notes: "Adapted from mattpocock/skills."
+    source_type: "local-adapted"
+    source_url: "https://github.com/mattpocock/skills"
+    notes: "Originally adapted from mattpocock/skills; upstream skill no longer exists at the recorded path."
     setup:
       - "Select with repo-familiar using `--skill zoom-out` when generating or bootstrapping a repository"
       - "For source installs outside repo-familiar, run `npx skills@latest add mattpocock/skills`"

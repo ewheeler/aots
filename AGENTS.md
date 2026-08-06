@@ -1,36 +1,68 @@
 # Ahead of the Storm Agent Instructions
 
-This repository was generated with `repo-familiar`.
+This integration workspace was bootstrapped with `repo-familiar`.
 
 ## Working Defaults
 
 - Treat documentation as part of the implementation.
-- Preserve project-specific terminology in `CONTEXT.md` when present.
-- Keep agent runtime configuration in `.agents/`.
-- Keep generator provenance in `.repo-familiar/bootstrap.yml`.
+- Preserve the canonical project language and evidence boundaries in `CONTEXT.md`.
+- Keep agent runtime configuration in `.agents/` and generator provenance in `.repo-familiar/bootstrap.yml`.
+- Keep fixes narrow and prefer built-in, well-supported framework or library features.
+- Use red/green TDD for behavior changes when practical and add a regression test for user-reported bugs.
 
-## Engineering Defaults
+## Repository Routing
 
-- Use red/green TDD for behavior changes whenever practical.
-- For user-reported bugs, add or update a regression test that would have caught the issue.
-- Prefer focused tests first, then run the project's documented test command before handoff when shared behavior changes.
-- Keep fixes narrow and preserve existing content/workflows unless the task explicitly asks for broader refactoring.
-- Prefer built-in, well-supported framework/library features before custom implementations.
-- For site, layout, navigation, or browser-sensitive changes, verify behavior in a real browser flow when browser tooling is available.
-- Browser checks should assert visible behavior when relevant: layout, viewport position, scrolling, interactability, and geometry, not only DOM presence.
-- For layout-sensitive work, check more than one viewport width when practical.
-- Ensure web markup and rendered content are accessible to screen readers and keyboard users: semantic structure, headings, landmarks, labels, alt text, focus order, and visible focus states matter.
-- Anchor web and learning-facing experiences in Universal Design for Learning (UDL): provide multiple ways to perceive information, navigate/interact, and understand or act on content.
-- Treat automated accessibility scans as a baseline, not proof of accessibility; pair them with manual review of keyboard flow, screen reader semantics, contrast, zoom/reflow, and error messaging.
-- Design layouts and UI primitives with future internationalization in mind, including right-to-left language support: prefer logical CSS properties, avoid hard-coded left/right assumptions, and keep text expansion in mind.
+- Read `docs/agents/repository-map.md` before broad code search or architectural work.
+- Use `CONTEXT.md` for terminology, `docs/adr/` for durable decisions, `docs/architecture.qmd` for current architecture, and `plan.md` for mixed current status and proposed work.
+- Route changes through the owning root-package module, adjacent contracts or configuration, and nearest focused tests before widening the search.
+- Treat the four submodule directories as pinned upstream repositories, not root-package implementation authority.
+- Treat Snapshot Output Bundles, rendered sites, generated images, real baselines, and caches according to the durable/generated boundaries in the repository map.
+- Update the repository map when ownership moves or a high-leverage seam is added.
 
-## Public Interest Digital Defaults
+## Change-Type Checks
 
-- Treat safety, dignity, privacy, accessibility, inclusion, and maintainability as product requirements, not optional review passes.
-- Prefer data minimization, transparent user-facing behavior, and clear human escalation or correction paths when decisions affect people.
-- Design for constrained environments: low connectivity, low-end devices, shared devices, varied literacy, multiple languages, assistive technology, and intermittent access.
-- Avoid dark patterns, manipulative engagement mechanics, unnecessary profiling, and surveillance-like defaults.
-- Prefer boring, well-supported technology and document operational assumptions so partners or local teams can inherit the system.
+| Change type | Required checks |
+|---|---|
+| Behavior change or bug fix | Run the nearest focused test first; add a regression for reported bugs; run `uv run --frozen pytest` when shared behavior changes. |
+| Baseline contract, validation, checksum, schema, or artifact-role change | Update the producer, consumer, fixture manifest, and focused snapshot tests together. |
+| Snowflake export query, filter, artifact layout, or write-safety change | Keep exports read-only; run both exporter test files; never require live credentials in tests. |
+| Existing report integration change | Keep `report_wrapper.py` limited to adaptation and explicit normalization; put report calculations in their owning upstream repository. |
+| Hamilton DAG dependency or Snapshot Output Bundle change | Update DAG tests and architecture docs; regenerate the DAG image when graph structure changes. |
+| Comparison or certification change | Preserve independent expected-output provenance; update comparison tests and document trust-semantics changes. |
+| Alert facts, prose, HTML, visual assets, or parity change | Keep deterministic facts separate from bounded prose; run alert renderer tests and snapshot integration coverage. |
+| Visible report, alert, or documentation change | Render the affected output and verify visible behavior in a real browser at relevant viewport widths. |
+| Python source, tests, or scripts | Run `uv run --frozen pre-commit run --all-files`; expand the Ruff and mypy ratchet rather than weakening it. |
+| Third-party API, SDK, or library integration | Use `get-api-docs` before implementation and keep credentials in the environment. |
+
+## Portable Report Invariants
+
+- Publish from Snapshot Output Bundles, not raw Known-Good Baselines.
+- Do not treat baseline integrity as certification. A Certifying Comparison requires independent trusted-current expected output.
+- Keep wrapper-generated, seed, unknown-provenance, and independent expected outputs distinct.
+- Keep deterministic alert facts, tables, caveats, provenance labels, layout, and visual assets outside unrestricted LLM output.
+- Keep the root package artifact-oriented; do not move forecast, impact, dashboard, or orchestration ownership into it by convenience.
+
+## Data And Public-Interest Defaults
+
+- Real baselines may contain facility-level, beneficiary, geospatial, or operational data; keep them local and ignored.
+- Commit synthetic fixtures only unless an explicit data-sharing decision documents an exception.
+- Never put Snowflake passwords or other secrets in CLI arguments, logs, fixtures, screenshots, or committed configuration.
+- Treat privacy, dignity, accessibility, inclusion, and maintainability as publication requirements, not polish.
+- Use browser automation for visible output, but treat automated accessibility scans as a baseline rather than proof.
+
+## Documentation Defaults
+
+- Keep each Quarto page focused as a tutorial, how-to guide, reference, or explanation page.
+- Keep command and schema details in reference or usage documentation; keep architecture, tradeoffs, and ADR rationale in explanation documents.
+- Update `docs/index.qmd` and `docs/_quarto.yml` when adding a durable documentation entry point.
+
+## Agent Skills And Guardrails
+
+- Before implementation or retrying an unexpected error, load the vendored `cq` skill and query the knowledge commons.
+- Use relevant workflows from `.agents/skills/` rather than recreating them.
+- Use `repository-map` when semantic ownership or focused-test routing changes.
+- Use `privacy-review` before broadening publication or handling real baseline artifacts.
+- Before task completion, run `uv run --frozen pre-commit run --all-files` and fix reported issues.
 
 ## Agent Harnesses
 
@@ -45,7 +77,7 @@ Selected model profiles are defined in `.agents/models.yml`:
 
 ## Tool Profiles
 
-Selected non-secret tool setup guidance is defined in `.agents/tools.yml`:
+Selected non-secret tool guidance is defined in `.agents/tools.yml`:
 
 - `cq`
 - `a11y-scanner`
@@ -58,87 +90,63 @@ Selected non-secret tool setup guidance is defined in `.agents/tools.yml`:
 - `opencode-headroom-mcp`
 - `opencode-homebrew-path`
 - `opencode-playwright-mcp`
+- `python-guardrails`
 
-## Memory Profiles
+## Memory And Prompt Profiles
 
-Selected memory guidance is defined in `.agents/memory.yml`:
+Selected guidance is defined in `.agents/memory.yml` and `.agents/prompts.yml`:
 
 - `memory-local`
-
-## Prompt Profiles
-
-Selected prompt migration and evaluation guidance is defined in `.agents/prompts.yml`:
-
 - `prompt-migration-gpt55`
 - `prompt-evals-dag`
 
-## Safety Profiles
+## Safety And Privacy Profiles
 
-Selected prompt/output safety guidance is defined in `.agents/safety.yml`:
+Selected guidance is defined in `.agents/safety.yml` and `.agents/privacy.yml`:
 
 - `prompt-output-safety`
+- `data-privacy-review`
 
-## Privacy Profiles
+## Repository Map Profiles
 
-Selected data and privacy review guidance is defined in `.agents/privacy.yml`:
-
-
-
-## Repo Map Profiles
-
-Selected repository map and codebase graph guidance is defined in `.agents/repomap.yml`:
+Selected guidance is defined in `.agents/repomap.yml`:
 
 - `hamilton-dag`
+- `semantic-routing-map`
 
-## Sandbox Profiles
+## Sandbox, Secrets, And Worktree Profiles
 
-Selected sandbox guidance is defined in `.agents/sandbox.yml`:
+Selected guidance is defined in `.agents/sandbox.yml`, `.agents/secrets.yml`, and `.agents/worktrees.yml`:
 
 - `sandbox-light`
-
-## Secrets Profiles
-
-Selected local environment and secret-loading guidance is defined in `.agents/secrets.yml`:
-
 - `dotenv-local`
 - `kvenv-azure-keyvault`
-
-## Design Profiles
-
-Selected design guidance is defined in `.agents/design.yml`:
-
-
-
-## Worktree Profiles
-
-Selected worktree guidance is defined in `.agents/worktrees.yml`:
-
 - `parallel-worktrees`
-
-## Public Interest Profiles
-
-Selected public-interest digital guidance is defined in `.agents/public-interest.yml`:
-
-
 
 ## Skills
 
 Selected skills are vendored under `.agents/skills/`:
 
+- `cq`
+- `session-focus`
 - `grill-with-docs`
+- `get-api-docs`
+- `diagnose`
+- `tdd`
+- `security-audit`
+- `improve-codebase-architecture`
+- `repository-map`
+- `setup-python-guardrails`
+- `playwright-cli`
+- `a11y-web-scan`
+- `privacy-review`
 - `prompt-migration`
 - `prompt-eval-design`
 - `prompt-output-safety`
-- `cq`
-- `session-focus`
-- `diagnose`
-- `security-audit`
+- `liteparse`
 - `to-prd`
 - `to-issues`
-- `a11y-web-scan`
-- `caveman`
-- `get-api-docs`
-- `improve-codebase-architecture`
-- `liteparse`
-- `tdd`
 - `zoom-out`
+- `caveman`
+
+Skill source provenance is recorded in `.agents/skill-sources.yml`.

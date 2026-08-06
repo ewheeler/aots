@@ -1,2 +1,9 @@
 profiles:
-  {}
+  data-privacy-review:
+    tool: "PII inventory, data classification, retention review, and privacy threat modeling"
+    purpose: "review repositories for sensitive data handling and privacy risks"
+    guidance:
+      - "Classify personal, sensitive, child-related, and operational data flows"
+      - "Check prompts, logs, caches, memory, analytics, and exported artifacts for data leakage"
+      - "Prefer data minimization and explicit retention boundaries"
+      - "Document privacy assumptions and unresolved risks before production-maintenance stage"

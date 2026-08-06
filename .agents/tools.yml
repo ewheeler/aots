@@ -34,10 +34,10 @@ profiles:
       - "Keep browser session directories such as .rodney/ out of version control"
       - "Record tested URLs, viewport sizes, screenshots, console errors, and remaining manual-review items in the task summary"
     setup:
-      - "Install Playwright CLI with npm install -g @playwright/cli@latest, or use npx --no-install playwright-cli when the CLI is already available project-locally"
+      - "Install Playwright CLI with npm install -g @playwright/cli@latest, or use npx playwright cli when Playwright is available project-locally"
       - "Install or build Rodney from https://github.com/simonw/rodney when persistent Chrome sessions or accessibility tree queries are needed"
     verify:
-      - "playwright-cli --help or npx playwright-cli --help"
+      - "playwright-cli --help or npx --no-install playwright --version"
       - "rodney --help"
   headroom-context-compression:
     purpose: "reduce agent context/token usage with local-first reversible compression, proxy, wrapper, and MCP workflows"
@@ -150,3 +150,23 @@ profiles:
     verify:
       - "npx -y @playwright/mcp --help"
       - "Restart OpenCode after opencode.json changes"
+  python-guardrails:
+    purpose: "document deterministic guardrails for Python projects using pre-commit, ruff, and mypy with opt-in deep coverage"
+    config: "Select the `setup-python-guardrails` skill to install the pre-commit framework with ruff and mypy; add deep-coverage hooks (bandit, pip-audit, vulture, import-linter, jscpd, radon) when the project needs them"
+    notes:
+      - "Ruff covers linting, import sorting, unused imports/variables, line length, and mccabe complexity in one tool"
+      - "Standardize on the Python pre-commit framework so hooks run in CI and locally with the same config"
+      - "The security-audit skill references bandit and pip-audit hooks configured by this guardrail setup"
+      - "Deep-coverage tools are opt-in; start with ruff alone and add tools when the project demonstrates the need"
+      - "Mandate `pre-commit run --all-files` in agent rules so agents run guardrails before task completion"
+    setup:
+      - "Run the `setup-python-guardrails` skill to create .pre-commit-config.yaml with ruff and mypy as defaults"
+      - "Add bandit and pip-audit hooks when the security-audit skill needs deterministic security checks"
+      - "Add import-linter when the project has feature folders that must not import across boundaries"
+      - "Add jscpd (npm i -g jscpd) when copy-paste detection is needed across files"
+      - "Add vulture when ruff's F-rules are not catching enough dead code"
+      - "Add radon when maintainability index scoring is needed beyond mccabe complexity"
+    verify:
+      - "pre-commit run --all-files"
+      - "Confirm .pre-commit-config.yaml exists with ruff and mypy hooks"
+      - "Confirm [tool.ruff] and [tool.mypy] sections exist in pyproject.toml"

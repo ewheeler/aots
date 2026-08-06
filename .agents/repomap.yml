@@ -11,3 +11,15 @@ profiles:
       - "Install Hamilton in the project environment when DAG visualization or fingerprints are needed"
     verify:
       - "python -c \"import hamilton; print(hamilton.__version__)\""
+  semantic-routing-map:
+    tool: "project-owned semantic repository routing map"
+    purpose: "route contributors and agents to owning interfaces, architecture seams, tests, and generated boundaries"
+    guidance:
+      - "Keep the map selective and semantic rather than copying an exhaustive filesystem tree"
+      - "Route changes through owning interfaces, adjacent configuration, and nearest focused tests"
+      - "Distinguish implemented behavior from accepted or proposed architecture"
+      - "Document durable inputs, generated outputs, and files that must not be hand-edited"
+      - "Update the map in the same change that moves ownership or adds a high-leverage seam"
+    verify:
+      - "Confirm `docs/agents/repository-map.md` is linked from repository-level agent instructions"
+      - "Confirm referenced repository paths exist or are explicitly marked as proposed"

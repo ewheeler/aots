@@ -15,7 +15,7 @@ Report first. Do not fix anything without explicit approval.
 
 1. Confirm scope: module/PR/full repo, target directory, language/framework, and review depth.
 2. Scan for hardcoded secrets and sensitive data in source, config, CI, Dockerfiles, docs, and test fixtures.
-3. Check dependency vulnerabilities with project-appropriate tools when available, such as `pip-audit`, `npm audit`, or package-manager audit commands.
+3. Check dependency vulnerabilities with project-appropriate tools when available, such as `pip-audit`, `npm audit`, or package-manager audit commands. When the `setup-python-guardrails` skill has configured `bandit` and `pip-audit` as pre-commit hooks, run `pre-commit run bandit --all-files` and `pre-commit run pip-audit --all-files` for deterministic security checks.
 4. Review OWASP-style risk categories: injection, authentication, sensitive data exposure, access control, misconfiguration, XSS, insecure deserialization, vulnerable dependencies, and logging/monitoring gaps.
 5. Review authentication and authorization patterns: token validation, session handling, API keys, RBAC/ABAC checks, CORS, and protected routes.
 6. Produce a prioritized findings report with file/line references and recommended remediation.

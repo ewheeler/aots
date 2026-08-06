@@ -30,6 +30,7 @@ Generated with repo-familiar.
 - `opencode-headroom-mcp`
 - `opencode-homebrew-path`
 - `opencode-playwright-mcp`
+- `python-guardrails`
 
 ## Memory Profiles
 
@@ -46,11 +47,12 @@ Generated with repo-familiar.
 
 ## Privacy Profiles
 
-
+- `data-privacy-review`
 
 ## Repo Map Profiles
 
 - `hamilton-dag`
+- `semantic-routing-map`
 
 ## Sandbox Profiles
 
@@ -88,6 +90,10 @@ Generated with repo-familiar.
 - `liteparse`
 - `tdd`
 - `zoom-out`
+- `setup-python-guardrails`
+- `repository-map`
+- `playwright-cli`
+- `privacy-review`
 
 ## First Milestones
 

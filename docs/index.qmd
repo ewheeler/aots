@@ -9,6 +9,7 @@ This documentation site was generated with `repo-familiar`.
 
 - Review `plan.md` for goals and first milestones.
 - Review `AGENTS.md` for agent-facing working instructions.
+- Review the [Repository Map](agents/repository-map.md) for semantic ownership, focused tests, and generated boundaries.
 - Review `.repo-familiar/bootstrap.yml` for generation provenance.
 - Review [Snowflake-Agnostic Report Publication](snowflake-agnostic-report-publication.qmd) for the current architecture track and planning questions.
 
@@ -16,6 +17,6 @@ This documentation site was generated with `repo-familiar`.
 
 This downstream repository is configured for `opencode` and `paseo` harnesses.
 
-Vendored skills currently include accessibility scanning, API documentation lookup, codebase architecture review, local document parsing, TDD, diagnosis, security audit, prompt migration/eval design, PRD and issue creation, CQ knowledge lookup, session focus, and zoom-out reviews.
+Vendored skills currently include repository mapping, Python guardrail setup, privacy review, Playwright browser automation, accessibility scanning, API documentation lookup, codebase architecture review, local document parsing, TDD, diagnosis, security audit, prompt migration/eval design, PRD and issue creation, CQ knowledge lookup, session focus, and zoom-out reviews.
 
-Tool profiles currently include CQ, accessibility scanning, browser automation, Headroom context compression/MCP/proxy guidance, OpenCode MCP entries for Context7, CQ, Headroom, and Playwright, plus Homebrew PATH guidance for OpenCode shells.
+Tool profiles currently include Python guardrails, CQ, accessibility scanning, browser automation, Headroom context compression/MCP/proxy guidance, OpenCode MCP entries for Context7, CQ, Headroom, and Playwright, plus Homebrew PATH guidance for OpenCode shells.

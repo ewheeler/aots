@@ -69,6 +69,10 @@ When domain relationships are being discussed, stress-test them with specific sc
 
 When the user states how something works, check whether the code agrees. If you find a contradiction, surface it: "Your code cancels entire Orders, but you just said partial cancellation is possible — which is right?"
 
+### Challenge documentation structure
+
+When the discussion turns into documentation, classify the page using the Divio documentation system before writing: tutorial, how-to guide, reference, or explanation. Keep the purpose clean. If a tutorial starts listing every option, move that detail to reference. If a how-to guide starts explaining background theory, link to explanation. If explanation starts giving step-by-step commands, link to a how-to guide.
+
 ### Update CONTEXT.md inline
 
 When a term is resolved, update `CONTEXT.md` right there. Don't batch these up — capture them as they happen. Use the format in [CONTEXT-FORMAT.md](./CONTEXT-FORMAT.md).

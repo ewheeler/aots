@@ -50,7 +50,10 @@ dependencies = [
 [dependency-groups]
 dev = [
     "graphviz>=0.21",
+    "mypy>=2.3.0",
+    "pre-commit>=4.6.1",
     "pytest>=8.0.0",
+    "ruff>=0.16.1",
 ]
 
 [project.scripts]
@@ -61,6 +64,30 @@ packages = ["src/aots_portable_reports"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "C901"]
+mccabe = { max-complexity = 22 }
+
+[tool.mypy]
+python_version = "3.11"
+files = [
+    "src/aots_portable_reports/alert_contract.py",
+    "src/aots_portable_reports/cli.py",
+    "src/aots_portable_reports/local_adapter.py",
+    "src/aots_portable_reports/models.py",
+    "src/aots_portable_reports/publication.py",
+]
+check_untyped_defs = true
+disallow_untyped_defs = false
+follow_imports = "skip"
+ignore_missing_imports = true
+warn_return_any = true
+warn_unused_configs = true
 
 [tool.aots-dependencies]
 sources = [

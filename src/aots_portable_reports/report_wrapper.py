@@ -320,7 +320,6 @@ def install_report_runtime_patches(module: Any) -> None:
         try:
             polygon = boundary_polygon(country)
             landfall_lead_times = []
-            n_total = gdf_tracks["ENSEMBLE_MEMBER"].nunique()
             for _, gdf_member in gdf_tracks.groupby("ENSEMBLE_MEMBER"):
                 inside_rows = gdf_member[gdf_member.within(polygon)]
                 if not inside_rows.empty:

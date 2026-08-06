@@ -197,7 +197,8 @@ uv run aots-report publish \
 Before handing off changes, run:
 
 ```bash
-uv run pytest
+uv run --frozen pre-commit run --all-files
+uv run --frozen pytest
 quarto render docs
 ```
 
@@ -217,6 +218,7 @@ For alert or HTML changes, also load generated HTML in a real browser or Playwri
 - `docs/comparison-cases.qmd`: real comparison case summaries and expected-vs-rendered alert screenshots.
 - `docs/alert-email-design.qmd`: target section order, visual hierarchy, and intentional design differences for portable alert emails.
 - `docs/architecture.qmd`: repository architecture notes.
+- `docs/agents/repository-map.md`: semantic code ownership, test routing, and generated boundaries.
 - `docs/adr/`: accepted architecture decisions.
 - `CONTEXT.md`: glossary for project terminology.
 - `plan.md`: implementation history, current status, and open follow-ups.

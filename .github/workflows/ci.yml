@@ -19,8 +19,11 @@ jobs:
       - name: Install Quarto
         uses: quarto-dev/quarto-actions/setup@v2
 
+      - name: Run Python guardrails
+        run: uv run --frozen pre-commit run --all-files
+
       - name: Run tests
-        run: uv run pytest
+        run: uv run --frozen pytest
 
       - name: Render docs
         run: quarto render docs

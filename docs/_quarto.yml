@@ -8,6 +8,7 @@ project:
     - snowflake-agnostic-report-publication.qmd
     - comparison-cases.qmd
     - alert-email-design.qmd
+    - agents/repository-map.md
 
 website:
   title: "Ahead of the Storm"
