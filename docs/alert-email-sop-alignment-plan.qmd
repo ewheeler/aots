@@ -1,0 +1,350 @@
+---
+title: "Alert Email SOP Alignment Plan"
+---
+
+<style>
+.content code:not(pre code) {
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+</style>
+
+## Status
+
+This page records proposed work to align Ahead of the Storm email products with the LACRO Warning and Alert protocol. It is a plan, not a description of implemented behavior.
+
+The plan has been reviewed against the root repository and the Orchestration alert-adjustment branch. The review confirmed that the primary problem is not naming: the current design combines forecast threat, product classification, and delivery lifecycle inside separate threshold-driven email procedures.
+
+No implementation, internal rename, or email-layout work should begin until the decision gate in this plan is complete.
+
+The selected product policy is:
+
+- Forecast evidence determines whether a Country Office is threatened.
+- A threatened Country Office receives a **Warning** while the authoritative current storm status is below hurricane strength.
+- A threatened Country Office receives an **Alert** once an authoritative source classifies the storm as a hurricane.
+- Warning and Alert are country-level semantic products. A regional digest may bundle deliveries, but it must not replace country-level decisions or lifecycle records.
+- Under this policy, a threatened country with only tropical-storm-force winds forecast locally still receives an Alert when the storm's authoritative global status is hurricane. The product must clearly distinguish global classification from the country's local forecast.
+
+Historical LACRO Warning and Alert examples referenced in stakeholder feedback were not available in this workspace. Their content and visual conventions remain an acceptance dependency, but they do not block policy, contract, or classifier design.
+
+## Feedback To Address
+
+The requested product structure is:
+
+1. **Summary**: PiN, CHiN, and people at risk over the next five to six days.
+2. **Situation**: current storm location, movement, wind speed, estimated population impact, PiN/CHiN, and infrastructure.
+3. **Forecast**: trajectory, wind, rainfall and storm-surge hazards, and people exposed or at risk over the next five to six days.
+
+Warnings are expected to be the more common product and therefore need enough information to support preparedness without waiting for hurricane classification.
+
+The implementation must qualify stakeholder terminology against available evidence. Current artifacts support modeled forecast exposure and forecast-conditioned need estimates. They do not support observed affected-population or damage claims.
+
+## Current Assessment
+
+### Naming And Classification
+
+The remote Orchestration branch `origin/alert-watch-email-adjustments` at commit `a6bd621` updates public procedure, subject, and banner naming to `SEND_WARNING()` / `WARNING` and `SEND_ALERT()` / `ALERT`. Watch terminology remains in the warning log table, monitoring labels, return values, documentation, and fixed prose.
+
+More importantly, the branch still associates Warning with a 34kt signal and Alert with the existing 50kt impact path. The data pipeline describes 50kt as a very strong tropical storm and 64kt as Category 1 hurricane strength. Neither operational procedure consumes authoritative current storm status.
+
+The rename therefore changes public nouns without implementing the LACRO classifier.
+
+### Threat Eligibility
+
+Warning and Alert currently use different country-selection rules:
+
+- Warning uses tile-level 34kt probability and tile-count criteria.
+- Alert begins with forecast-envelope proximity and then requires positive expected 50kt population exposure.
+- Pipeline activation is not an explicit registry of eligible LACRO Country Offices.
+
+One country threat predicate and one Country Office registry are required before Warning and Alert can share lifecycle semantics.
+
+### Lifecycle And Delivery
+
+Current deduplication cannot represent a country-level Warning-to-Alert lifecycle:
+
+- Alert is logged per storm, forecast, and country.
+- Warning is logged as one grouped storm/forecast product covering several countries.
+- Product decision and recipient delivery attempt are not separate records.
+
+This can suppress newly threatened countries or recipient retries. Alert does not inspect the Warning log, so same-forecast escalation can occur, but the two products are not linked as one auditable lifecycle. The current model can also permit an Alert to be followed by a lower-severity Warning unless downgrade behavior is defined explicitly.
+
+### Available Content
+
+The current Warning provides:
+
+- A 34kt ensemble signal and probability by potentially affected country.
+- Expected population and children exposed at 34kt.
+- Expected schools and health facilities exposed at 34kt.
+- A regional 34kt probability and ensemble-track map.
+- Forecast issue time, next update time, and probabilistic-model caveats.
+
+The current Alert provides additional conditional PiN/CHiN, cross-threshold exposure, schools, health centers, shelters, WASH facilities, administrative-area impacts, arrival timing, forecast evolution, and wind-probability maps.
+
+The existing PiN/CHiN values are forecast-conditioned, wind-integrated vulnerability estimates across wind bands. They are not observed current needs totals. The existing use of "affected country" means proximity to a forecast envelope, not observed impact.
+
+### Data Gaps
+
+| Requested information | Current state |
+| --- | --- |
+| Authoritative current storm status | No approved advisory provider or operational artifact. |
+| Current location, movement, and sustained winds | Forecast track facts exist, but no authoritative current-state fact is presented. |
+| PiN/CHiN in Warning | Forecast-conditioned estimates exist upstream but are not presented in Warning. |
+| Warning infrastructure | Schools and health facilities only. |
+| Five-to-six-day outlook | Tracks preserve valid times, but impact calculations union forecast steps and lose period detail. |
+| Wind hazard | Aggregate cumulative wind exposure and probability exist, but 144-hour completeness is not explicitly validated or carried by the root export. |
+| Rainfall hazard | Raw forecast metadata exists on the branch but is not a validated alert fact or impact artifact. |
+| Storm-surge hazard | No authoritative source or alert artifact is available. |
+| Observed affected population or damage | No authoritative source is available. |
+
+A cumulative 144-hour outlook may satisfy the requested five-to-six-day product. Daily or valid-time-indexed impacts should not be required until stakeholders confirm that cumulative horizon impacts are insufficient.
+
+### Portable Flow
+
+The Portable Alert Renderer currently renders a fixed 50kt Storm Alert and follows the existing Snowflake email design. It does not model Warning versus Alert as an operational product decision.
+
+Portable alert generation also stops when expected Snowflake email HTML is absent, and its current alert comparison is primarily a presentation self-check. The alignment work must remove the expected-email rendering dependency while preserving independent expected-output provenance for certifying comparisons.
+
+## Root Cause
+
+The current mismatch developed in three steps:
+
+1. Operational products were created around forecast artifacts already available: an early 34kt signal and a fuller 50kt impact path.
+2. Product urgency, threat eligibility, classification, rendering, deduplication, and delivery were embedded in two separate procedures.
+3. Public terminology changed without introducing official advisory state or a LACRO product-decision contract.
+
+Similarly, five-to-six-day impacts are absent because impact production unions forecast steps into one run-level footprint. The system was optimized for aggregate country/storm/forecast impact reporting, not period-indexed outlooks.
+
+The solution must separate authoritative storm state, country threat, product decision, presentation, and delivery rather than relabeling the existing procedures.
+
+## Target Operating Model
+
+### Evidence Vocabulary
+
+Use these evidence boundaries consistently:
+
+- **Current storm state**: observed or advisory facts from the approved authoritative provider, with source and observation time.
+- **Forecast exposure**: modeled people, children, or infrastructure intersecting a forecast hazard footprint.
+- **At risk**: use only where the producing artifact defines its probability, threshold, horizon, and aggregation method.
+- **Forecast-conditioned PiN/CHiN**: wind-integrated vulnerability estimates produced by the impact pipeline; never label them current observed needs.
+- **Affected or damaged**: reserve for observed-impact sources. Do not use as a synonym for forecast exposure or proximity.
+- **Unavailable**: a deterministic evidence state, not a value to replace with zero or unrestricted prose.
+
+### Versioned Facts And Decisions
+
+Define versioned contracts for:
+
+- `CurrentStormState`: canonical storm identity, basin, authoritative provider, advisory identity, observation time, status, location, movement, sustained wind, averaging convention, units, and freshness.
+- `CountryOfficeRegistry`: eligible Country Office identity, country code, basin coverage, and effective version.
+- `CountryThreatAssessment`: country, forecast run, horizon, predicate version, qualifying evidence, local hazard level, and availability.
+- `ProductDecision`: Warning, Alert, withheld, or manual review; input fact versions; policy and contract versions; decision reason.
+- `MetricFact`: metric name, value or unavailable state, units, source, derivation, geography, forecast/observation time, and horizon.
+- `HazardAvailability`: wind, rainfall, and surge availability plus source and validation state.
+
+Renderers consume these facts and decisions. Rendering is not the architectural center of the contract.
+
+### Decision Engine
+
+Orchestration is the logical owner of the operational decision engine because it owns triggering, lifecycle, and delivery. The root Portable Report Package consumes decisions and artifacts; it does not become operational policy authority.
+
+The preferred implementation is one side-effect-free classifier artifact that:
+
+- Accepts authoritative current state, Country Office eligibility, and country threat evidence.
+- Returns a versioned `ProductDecision` with an explicit reason.
+- Is executed unchanged by Snowflake production adapters and credential-free local tests.
+- Contains no Snowflake reads, writes, email sends, or rendering.
+
+Current Orchestration procedures contain inline Python, use no imported classifier package, and have no Python unit-test harness. A packaging and Snowflake-import spike must therefore prove the deployment shape. The plan must not permit separate inline-production and local-test classifier implementations.
+
+The policy behavior is:
+
+- No qualifying country threat: no product.
+- Fresh official status below hurricane plus qualifying threat: Warning.
+- Fresh official hurricane status plus qualifying threat: Alert.
+- Missing, stale, conflicting, or unsupported official status: withheld or manual review according to the ADR.
+
+Classification must be reevaluated when either advisory state or forecast threat changes because those sources update asynchronously.
+
+### Lifecycle And Delivery
+
+Model lifecycle identities semantically rather than prescribing database primary keys:
+
+- Lifecycle stream: canonical storm episode plus Country Office.
+- Current-state version: authoritative provider plus stable advisory identity, or observation time when no stable identifier exists.
+- Threat version: storm, Country Office, forecast run, horizon, and predicate version.
+- Decision event: lifecycle stream plus current-state version, threat version, policy version, and contract version.
+- Delivery attempt: decision event, recipient identity, channel, attempt identity, status, and idempotency key.
+
+Product type is decision data, not part of the lifecycle stream identity. This preserves one country's Warning-to-Alert history. Reprocessing identical facts yields the same decision event, while delivery retries remain independently traceable.
+
+A regional digest may aggregate country products at the delivery layer. It must not collapse their decision identities, evidence, or retry state.
+
+### Product Content
+
+Both products use the same evidence vocabulary and section order while varying product label, urgency, and bounded explanatory prose.
+
+#### Summary
+
+- Product classification and the authoritative status that caused it.
+- Headline country-level forecast exposure within the agreed horizon.
+- Forecast-conditioned PiN/CHiN where validated, with the basis stated.
+- Most material near-term local forecast change.
+
+#### Situation
+
+- Authoritative current location, movement, sustained winds, status, source, and observation time.
+- Country-specific modeled exposure and infrastructure under current forecast evidence.
+- Explicit distinction between global storm classification and local forecast hazard.
+- No observed affected-population or damage claims without an approved observed source.
+
+#### Forecast
+
+- Forecast trajectory and uncertainty through the agreed horizon.
+- Wind timing, probability, and cumulative exposure.
+- Rainfall and storm-surge facts only when authoritative validated artifacts exist.
+- Deterministic unavailable-data labels where hazard facts do not exist.
+- Period-indexed impacts only if stakeholders decide cumulative horizon impacts do not satisfy the SOP.
+
+All factual values carry the provenance fields applicable to their type. Current-state facts carry source and observation time but no forecast horizon; forecast facts carry valid time or horizon; numeric metrics carry units where meaningful; availability and classification facts need not. LLM output may fill bounded prose slots only; it must not generate classification, metrics, tables, caveats, or hazard availability.
+
+## Decision Gate
+
+Record these decisions in an ADR before implementation:
+
+1. Authoritative current-status provider by basin, sustained-wind averaging conventions, and coverage gaps.
+2. Canonical storm identity and reconciliation between advisory and ECMWF identifiers.
+3. Advisory freshness, source-conflict, missing-status, and unsupported-basin behavior.
+4. Eligible LACRO Country Office registry and ownership.
+5. One country threat predicate, including threshold, probability, population requirements, tile-count criteria, geographic rule, horizon, incomplete-data behavior, and versioning.
+6. Global hurricane classification versus local-hazard wording and stakeholder acceptance.
+7. Fixed outlook horizon; use 144 hours by default and document any approved exception.
+8. Whether cumulative horizon impacts satisfy the five-to-six-day requirement.
+9. Exact definitions and labels for exposure, at risk, PiN, CHiN, affected, and unavailable.
+10. Warning/Alert repeat, downgrade, re-escalation, closure, and all-clear behavior.
+11. Regional digest behavior versus country product delivery.
+12. Operational approval required before any real recipient send.
+
+## Delivery Plan
+
+### 0. Complete The Decision Gate
+
+- Record and approve every decision in the Decision Gate before contract, classifier, rename, renderer, or layout implementation begins.
+- Treat unresolved decisions as explicit blockers rather than implementation defaults.
+
+### 1. Prove A Single Classifier Deployment Path
+
+- Spike a side-effect-free classifier artifact owned by Orchestration.
+- Prove that Snowflake can invoke the same versioned artifact used by local credential-free tests.
+- Record artifact version and hash with each decision.
+- If the preferred Python import is not viable, select another one-implementation design before continuing; do not create mirrored classifiers.
+
+### 2. Establish Contracts And Synthetic Fixtures
+
+- Define the versioned fact and decision contracts.
+- Create synthetic advisory, country registry, threat, metric, and hazard-availability fixtures.
+- Add conformance vectors for tropical storm, hurricane, missing/stale/conflicting status, and unsupported basin cases.
+- Keep real operational data local and excluded.
+
+### 3. Integrate Authoritative State And Country Threat
+
+- Implement one approved basin/provider adapter and storm-identity reconciliation.
+- Create the explicit Country Office registry.
+- Replace differing Warning/Alert eligibility paths with one versioned country threat assessment.
+- Reevaluate decisions on advisory updates and forecast updates.
+- Gate operational coverage for basins without an approved provider policy.
+
+### 4. Implement Country Lifecycle And Delivery Tracking
+
+- Persist decision events separately from recipient delivery attempts.
+- Support same-forecast Warning-to-Alert escalation, newly threatened countries, retries, partial failure, and concurrent invocation.
+- Apply the ADR's downgrade, closure, and all-clear behavior.
+- Preserve historical Alert and Watch logs as legacy evidence. Decompose grouped history only where country/recipient facts are reliable; retain ambiguity explicitly.
+- Keep optional regional digesting downstream of country decisions.
+
+### 5. Dry-Run The Minimum Operational Product
+
+- Render Summary, Situation, and Forecast from structured decisions and facts.
+- Include authoritative current facts, 144-hour trajectory, cumulative wind exposure with explicitly validated horizon completeness, qualified forecast PiN/CHiN, and supported infrastructure.
+- Clearly separate global classification from the local hazard forecast.
+- State rainfall and storm surge as unavailable where no validated artifact exists.
+- Use fake delivery and dry-run capture only until separate operational approval.
+
+### 6. Decide Whether Period Impacts Are Needed
+
+- Review the dry-run cumulative 144-hour product and historical LACRO examples with stakeholders.
+- If cumulative impacts satisfy the SOP, record horizon semantics and completeness.
+- If period detail is required, add valid-time impact artifacts in the owning forecast and impact producers.
+- Do not calculate period impacts in Orchestration email code, the root package, or `report_wrapper.py`.
+
+### 7. Align The Portable Flow
+
+- Add product decision, classification evidence, metric semantics, and hazard availability to Alert Context and Alert Claims.
+- Render Warning and Alert variants without requiring existing Snowflake email HTML.
+- Extend the Baseline Manifest, exporter, DAG, Snapshot Output Bundle, and publication metadata for the new artifacts.
+- Treat renderer self-checks as presentation validation, not certification.
+- Preserve independently produced expected output for certifying comparisons.
+
+### 8. Complete Naming And Independent Hazard Tracks
+
+- After lifecycle migration, complete Watch-to-Warning terminology across procedures, monitoring, tests, documentation, fixed prose, and operational return values.
+- Extract only reviewed alert changes from `origin/alert-watch-email-adjustments`; do not adopt its unrelated changes wholesale.
+- Develop rainfall and storm-surge integrations as independent upstream tracks, each with an authoritative source, validation contract, impact producer, and synthetic fixtures.
+- Add each hazard to products only after its contract is validated.
+
+### 9. Accept And Roll Out
+
+- Review historical Warning and Alert examples.
+- Verify both products in real browsers at desktop and mobile widths and run accessibility scans.
+- Exercise fake-delivery lifecycle, idempotency, retry, and concurrency cases.
+- Compare deterministic facts and section order rather than exact generated prose.
+- Require explicit operational approval before shadow or real recipient sends.
+
+## Minimum Test Matrix
+
+- Tropical-storm official status with local 34kt, 50kt, or 64kt forecast evidence produces Warning.
+- Hurricane official status with qualifying local threat produces Alert.
+- Alert with only local tropical-storm-force exposure states that distinction explicitly.
+- Same forecast changes from Warning to Alert after an advisory upgrade.
+- Advisory upgrade without a new forecast run triggers reevaluation.
+- Newly threatened country is not suppressed by another country's earlier product.
+- Stale, missing, conflicting, and unsupported-basin status follows the ADR.
+- Downgrade, re-escalation, closure, and all-clear follow the ADR.
+- No recipients, partial delivery failure, retry, and concurrent invocation preserve idempotency.
+- Unknown PiN/CHiN or hazard values remain unavailable and never become zero.
+- Cumulative versus period-specific horizon completeness is explicit.
+- Rainfall and storm-surge unavailability is deterministic.
+- Summary, Situation, and Forecast appear in that order.
+- Portable generation does not require credentials or prior expected email HTML.
+- Certifying comparison uses independently produced expected output.
+
+## Acceptance Criteria
+
+- Threat eligibility and product classification are separate, versioned decisions.
+- Both products are country-level and preserve one Warning-to-Alert lifecycle per storm episode and Country Office.
+- One production classifier artifact is also executed by credential-free tests.
+- A qualifying country receives Warning or Alert based on fresh authoritative current status, never solely on 34kt, 50kt, or 64kt forecast thresholds.
+- Product wording distinguishes global storm classification from local forecast severity.
+- No modeled exposure is labeled observed affected population or damage.
+- PiN/CHiN labels state their forecast-conditioned basis.
+- Missing data remains explicitly unavailable rather than zero-filled or generated by prose.
+- Delivery retries and failures are separate from product decisions.
+- Rainfall, surge, and period impacts are not claimed before validated upstream artifacts exist.
+- Portable output can be rendered and audited without Snowflake credentials or prior expected email HTML.
+- Warning/Alert terminology is consistent after lifecycle migration.
+
+## Ownership And Change Locations
+
+Operational classification, lifecycle, and delivery remain owned by `Ahead-of-the-Storm-ORCHESTRATION/`. Exact classifier packaging and Snowflake adapter locations are decided by the deployment spike.
+
+Forecast, rainfall, surge, exposure, and PiN/CHiN calculations remain owned by their upstream forecast and impact producers.
+
+Portable integration work is expected in:
+
+- `src/aots_portable_reports/alert_renderer.py`
+- `src/aots_portable_reports/alert_contract.py`
+- `src/aots_portable_reports/export_snowflake.py`
+- `src/aots_portable_reports/dag.py`
+- `tests/aots_portable_reports/test_alert_renderer.py`
+- Focused exporter, DAG, bundle, comparison, and publication tests
+
+The root Portable Report Package consumes validated artifacts and operational decisions. It does not own operational classification or new forecast/impact calculations.

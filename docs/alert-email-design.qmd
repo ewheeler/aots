@@ -4,6 +4,8 @@ title: "Alert Email Design"
 
 This page records the design target for local `rendered-alert.html` outputs. The goal is stronger visual and layout alignment with the Snowflake alert-agent email while preserving the portable renderer's clearer separation between structured facts, bounded prose, deterministic visual assets, and audit files.
 
+The current design documents implemented Storm Alert parity. Proposed changes to align both Warning and Alert products with the LACRO protocol are tracked separately in the [Alert Email SOP Alignment Plan](alert-email-sop-alignment-plan.qmd).
+
 The target is product-family parity, not pixel parity. A reviewer should be able to place a Snowflake alert-agent email and portable rendered alert side by side and recognize the same information hierarchy, alert affordances, and visual sections.
 
 ## Design Principles

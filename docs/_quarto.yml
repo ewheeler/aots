@@ -8,6 +8,7 @@ project:
     - snowflake-agnostic-report-publication.qmd
     - comparison-cases.qmd
     - alert-email-design.qmd
+    - alert-email-sop-alignment-plan.qmd
     - agents/repository-map.md
 
 website:
@@ -27,6 +28,8 @@ website:
         text: Comparison Cases
       - href: alert-email-design.qmd
         text: Alert Email Design
+      - href: alert-email-sop-alignment-plan.qmd
+        text: Alert SOP Plan
 
 format:
   html:

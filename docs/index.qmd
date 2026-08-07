@@ -12,6 +12,7 @@ This documentation site was generated with `repo-familiar`.
 - Review the [Repository Map](agents/repository-map.md) for semantic ownership, focused tests, and generated boundaries.
 - Review `.repo-familiar/bootstrap.yml` for generation provenance.
 - Review [Snowflake-Agnostic Report Publication](snowflake-agnostic-report-publication.qmd) for the current architecture track and planning questions.
+- Review the [Alert Email SOP Alignment Plan](alert-email-sop-alignment-plan.qmd) for proposed Warning/Alert classification and content changes.
 
 ## Installed Agent Defaults
 
