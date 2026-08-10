@@ -153,7 +153,7 @@ A versioned resolution from a forecast track identifier to an official canonical
 _Avoid_: Name-only join, nearest-time guess, implicit basin conversion.
 
 **Alert Policy Engine**:
-The side-effect-free Orchestration composition of official state, storm identity, Country Office threat, Product Decision, lifecycle transition, delivery attempts, and deterministic product facts.
+The side-effect-free Orchestration composition of classification evidence, storm episode/identity, Country Office threat, Product Decision, lifecycle transition, suppressed delivery attempts, and deterministic product facts.
 _Avoid_: Legacy send procedure, renderer classification, direct email integration.
 
 **Country Threat Assessment**:
@@ -161,8 +161,32 @@ A versioned forecast determination that one eligible Country Office meets the do
 _Avoid_: Product classification, pipeline activation, recipient subscription.
 
 **Product Decision**:
-A versioned Warning, Alert, no-product, or manual-review result derived from a Current Storm State and Country Threat Assessment by the operational classifier.
+A versioned Warning, Alert, no-product, or manual-review result derived from typed Classification Evidence and a Country Threat Assessment by the operational classifier.
 _Avoid_: Email subject, forecast threshold, delivery attempt.
+
+**Storm Episode**:
+An internal tropical-cyclone identity that exists before official genesis and remains stable when provisional forecast evidence is later linked to an official canonical storm.
+_Avoid_: Storm name alone, mutable alias, rewritten historical ID.
+
+**Storm Episode Link**:
+An immutable reviewed event connecting a provisional forecast identity or prior episode reference to an official canonical storm identity.
+_Avoid_: In-place history rewrite, name-only join, renderer alias.
+
+**Classification Evidence**:
+The strict evidence basis used by policy: either Official Advisory Evidence or Forecast-Only Threat Evidence. Forecast-only evidence may support Warning but can never establish Alert.
+_Avoid_: Synthetic current state, optional untyped evidence dictionary, presentation setting.
+
+**Product Fact Set**:
+A versioned, checksummed semantic artifact for one Country Office, Storm Episode, forecast snapshot, and Product Decision. It carries identities, official and modeled facts, metric semantics, typed hazards, availability, and provenance without presentation or delivery concerns.
+_Avoid_: Summary/Situation/Forecast sections, report template, recipient package, unrestricted metadata.
+
+**Presentation Profile**:
+A root-owned versioned contract that selects and orders a closed set of typed renderer components over a Product Fact Set, with explicit required/optional facts and fail-closed missing-data behavior.
+_Avoid_: Classifier policy, arbitrary fact paths, expression language, plugin registry.
+
+**Composition Manifest**:
+A public manifest binding Product Fact Set, Product Decision, Presentation Profile, renderer version, produced artifact roles, omissions, and output checksums.
+_Avoid_: Recipient directory, provider attempt, Product Fact Set itself.
 
 **Alert Decision Artifact**:
 The baseline artifact that carries Current Storm State, Country Threat Assessment, hazard availability, and Product Decision into the portable flow.
@@ -220,9 +244,13 @@ _Avoid_: Pipeline, job, DAG when the user-facing report production concept is me
 - An **Alert HTML Artifact** can be visually reviewed with Playwright, but it is separate from the Dash-rendered **Impact Report** page.
 - The **Expected Alert Email** remains an independent Snowflake artifact while the **Rendered Alert HTML** is produced locally from portable inputs.
 - An **Alert Decision Artifact** supplies a **Product Decision** to the portable renderer; the renderer does not classify from forecast wind thresholds.
-- A **Country Threat Assessment** determines whether a Country Office qualifies, while **Current Storm State** determines Warning versus Alert.
+- A **Product Fact Set** is the planned semantic cross-repository boundary between Orchestration policy/evidence and root presentation/publication.
+- A **Presentation Profile** composes a **Product Fact Set** without changing its **Product Decision** or evidence meaning.
+- A **Composition Manifest** records which profile produced which public artifacts from one fact-set version.
+- A **Storm Episode Link** can connect forecast-only history to later official identity without rewriting prior decisions.
+- A **Country Threat Assessment** determines whether a Country Office qualifies. Official Advisory Evidence may establish Warning or Alert; Forecast-Only Threat Evidence may establish Warning only.
 - The **LACRO Basin Authority Map** selects the proposed dry-run official provider or requires manual review before a **Current Storm State** can drive classification; operational approval remains separate.
-- **Storm Identity Reconciliation** must resolve forecast evidence before the **Alert Policy Engine** can evaluate a country product.
+- **Storm Identity Reconciliation** resolves official identities when available; an internal **Storm Episode** lets forecast-only evidence be evaluated without fabricating official identity.
 - The **Alert Policy Engine** emits recipient attempts as `SUPPRESSED_DRY_RUN`; email delivery remains a separate future boundary.
 - **Hazard Availability** keeps missing rainfall and storm-surge evidence explicit rather than replacing it with zero or generated prose.
 - An **Alert Renderer** is the medium-term replacement path for the current Snowflake alert-agent email.

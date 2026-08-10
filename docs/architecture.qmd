@@ -45,6 +45,8 @@ Trust boundaries:
 - `publish` consumes Snapshot Output Bundles, not raw baselines.
 - A versioned Alert Decision artifact supplies official current state, country threat, hazard availability, and the operational Product Decision to portable alert rendering.
 - Portable rendering consumes the Product Decision and never infers Warning or Alert from wind thresholds.
+- The next-stage cross-repository seam is a checksummed semantic ProductFactSet v2 artifact. Root will consume facts rather than reconstructing policy-shaped content from generic report keys.
+- PresentationProfile and CompositionManifest are root-owned publication contracts; they never participate in Product Decision identity.
 - Expected Alert Email HTML is optional provenance-qualified reference evidence copied into the bundle, not a rendering prerequisite or current alert-comparison input.
 - Orchestration owns the dry-run basin authority map, local exact-feed client/parser, advisory normalization, identity/threat/lifecycle modules, product facts, and classifier. Scheduled Snowflake network retrieval and deployment remain disabled.
 
@@ -58,12 +60,24 @@ configured NHC/CPHC RSS feed
   -> Country Office Registry + 144-hour 34kt Threat Assessment
   -> Warning/Alert Product Decision
   -> country lifecycle transition
-  -> deterministic Summary / Situation / Forecast facts
+  -> deterministic V1 Summary / Situation / Forecast facts
   -> recipient attempts marked SUPPRESSED_DRY_RUN
   -> in-memory dry-run policy result
 ```
 
 The policy engine refuses operational mode. A content-addressed release builder materializes verified source copies and generates a runtime hash-checking Snowflake UDF entrypoint. Policy table schemas exist, but no Snowflake writer is shipped: persistence remains blocked until an owner procedure can recompute every identity and pass isolated-account concurrency/privacy tests. Deployment networking, scheduled ingestion, legacy-procedure cutover, and email delivery are not enabled.
+
+The committee-approved next-stage publication path is:
+
+```text
+Orchestration Product Decision + semantic ProductFactSet v2
+  -> checksummed product_fact_set artifact
+  -> root PresentationProfile v1
+  -> CompositionManifest v1
+  -> rendered/publication artifacts in Snapshot Output Bundle
+```
+
+The first profile reproduces the existing long output for claim parity. Operational-email and technical-report profiles follow a consultation checkpoint. Snowflake persistence, private recipients, delivery providers, attachments, and sends remain outside this path.
 
 Current module map:
 

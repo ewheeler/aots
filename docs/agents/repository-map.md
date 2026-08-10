@@ -37,7 +37,7 @@ The root package owns cross-submodule integration. It should remain artifact-ori
 | Path | Responsibility | Focused test |
 |---|---|---|
 | `src/aots_portable_reports/cli.py` | Public `snapshot`, `export-snowflake`, and `publish` command contracts. | `tests/aots_portable_reports/test_snapshot_cli.py`, `tests/aots_portable_reports/test_export_snowflake_cli.py`, `tests/aots_portable_reports/test_publication.py` |
-| `src/aots_portable_reports/models.py` | Baseline, report snapshot, Alert Decision, comparison, and publication Pydantic contracts. | `tests/aots_portable_reports/test_alert_decision_contract.py`, then the nearest consumer test. |
+| `src/aots_portable_reports/models.py` | Baseline, report snapshot, Alert Decision, comparison, and publication Pydantic contracts; planned home of strict ProductFactSet/Profile consumer contracts. | `tests/aots_portable_reports/test_alert_decision_contract.py`, then the nearest consumer test. |
 | `src/aots_portable_reports/validation.py` | Baseline manifest, checksum, schema-hash, and row-count integrity. | `tests/aots_portable_reports/test_snapshot_cli.py` |
 | `src/aots_portable_reports/export_snowflake.py` | Read-only Snowflake extraction, query filters, artifact layout, and safe output replacement. | `tests/aots_portable_reports/test_export_snowflake_cli.py`, `tests/aots_portable_reports/test_export_snowflake_live_path.py` |
 | `src/aots_portable_reports/report_wrapper.py` | Thin adaptation around existing `do_report(...)` behavior and bounded runtime compatibility patches. | `tests/aots_portable_reports/test_report_wrapper.py` |
@@ -73,10 +73,22 @@ Current Orchestration alert-policy routes:
 | `Ahead-of-the-Storm-ORCHESTRATION/07b_alert_agent/country_threat.py` | Proposed dry-run Country Office eligibility and complete 144-hour 34kt threat predicate. | `Ahead-of-the-Storm-ORCHESTRATION/tests/test_country_threat.py` |
 | `Ahead-of-the-Storm-ORCHESTRATION/07b_alert_agent/policy_engine.py` | Non-sending composition of identity, threat, classifier, lifecycle, delivery attempts, and product facts. | `Ahead-of-the-Storm-ORCHESTRATION/tests/test_policy_engine.py` |
 | `Ahead-of-the-Storm-ORCHESTRATION/07b_alert_agent/alert_lifecycle.py` | Country lifecycle transitions and recipient-aware dry-run attempts. | `Ahead-of-the-Storm-ORCHESTRATION/tests/test_alert_lifecycle.py` |
-| `Ahead-of-the-Storm-ORCHESTRATION/07b_alert_agent/product_facts.py` | Deterministic Summary, Situation, and Forecast fact assembly. | `Ahead-of-the-Storm-ORCHESTRATION/tests/test_product_facts.py` |
+| `Ahead-of-the-Storm-ORCHESTRATION/07b_alert_agent/product_facts.py` | Implemented V1 deterministic Summary/Situation/Forecast assembly; it is not the planned semantic ProductFactSet v2 shape. | `Ahead-of-the-Storm-ORCHESTRATION/tests/test_product_facts.py` |
 | `Ahead-of-the-Storm-ORCHESTRATION/04_data/09_alert_policy_tables.sql` | Registry, identity, official state, threat, decision, lifecycle-head, and recipient-delivery schema contracts; no writer is shipped. | `Ahead-of-the-Storm-ORCHESTRATION/tests/test_alert_policy_sql.py` |
 
 These modules are implemented and credential-free. Content-addressed classifier release SQL and read-only policy table schemas are authored and locally tested. No persistence writer is shipped; Snowflake identity-recomputing persistence, compile/deployment smoke coverage, scheduled ingestion, legacy-procedure cutover, actual delivery, and operational approval remain proposed.
+
+Proposed next-stage seam, governed by `docs/adr/0010-separate-semantic-alert-facts-from-presentation.md`:
+
+```text
+Orchestration semantic ProductFactSet v2 artifact
+  -> root strict artifact validation
+  -> root PresentationProfile v1
+  -> root CompositionManifest v1
+  -> Snapshot Output Bundle publication artifacts
+```
+
+The exact Orchestration producer path remains to be selected during the first tracer. Preserve `product_facts.py` V1 and add V2 alongside it rather than rewriting current dry-run fixtures.
 
 ## Contracts And Test Routing
 
@@ -86,6 +98,7 @@ These modules are implemented and credential-free. Content-addressed classifier 
 - Report behavior mismatches: first decide whether ownership is the upstream calculation or root adaptation; do not add new calculations to `report_wrapper.py`.
 - DAG dependency or bundle-layout changes: update `dag.py`, snapshot tests, architecture docs, and the generated DAG image together.
 - Alert changes: keep structured facts, bounded prose, presentation, visual generation, and persistence as distinct review seams.
+- ProductFactSet/Profile changes: update the Orchestration producer or V1 adapter, root contract/validation, artifact-role fixture manifests, compatibility-profile renderer, claim-parity tests, architecture docs, and this map together.
 - Certification changes: update comparison tests and architecture documentation or an ADR when trust semantics change.
 
 Run focused tests first:
@@ -117,7 +130,7 @@ Real `known-good-baselines/`, `.env`, credentials, keys, and certificates are lo
 
 Implemented behavior includes the three public commands, integrity validation, the Hamilton snapshot DAG, the thin existing-report wrapper, provisional and certifying comparison states, Alert Decision validation, decision-driven Warning/Alert rendering, non-renderable decision auditing, and publication from Snapshot Output Bundles. Orchestration also contains a credential-free local feed/parser, state normalization, storm identity, country threat, classifier, lifecycle, recipient suppression, and Product Facts composition with focused tests.
 
-Proposed or incomplete architecture includes scheduled/monitored authoritative advisory retrieval, source-authentication policy beyond TLS/exact-host controls, Snowflake classifier and persistence compile/deployment, operational lifecycle/delivery, a shared portable Product Facts artifact, explicit repository/store interfaces, a fully typed Report Contract, complete file/blob adapters, extra-field allowlisting, broad public report publication, and removal of Snowflake coupling from the live dashboard or orchestration stack.
+Proposed or incomplete architecture includes semantic ProductFactSet v2 and V1 adapter, PresentationProfile/CompositionManifest contracts, forecast-only episode linkage, typed official warning/rain/surge facts, scheduled/monitored authoritative advisory retrieval, Snowflake classifier and persistence deployment, operational lifecycle/delivery, explicit repository/store interfaces, a fully typed Report Contract, complete file/blob adapters, extra-field allowlisting, broad public report publication, and removal of Snowflake coupling from the live dashboard or orchestration stack.
 
 ## Change Locality
 

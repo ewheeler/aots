@@ -9,8 +9,10 @@ project:
     - comparison-cases.qmd
     - alert-email-design.qmd
     - alert-email-sop-alignment-plan.qmd
+    - alert-product-flexibility-plan.qmd
     - adr/0008-separate-alert-classification-from-country-threat.md
     - adr/0009-dry-run-alert-policy-engine.md
+    - adr/0010-separate-semantic-alert-facts-from-presentation.md
     - agents/repository-map.md
 
 website:
@@ -32,6 +34,8 @@ website:
         text: Alert Email Design
       - href: alert-email-sop-alignment-plan.qmd
         text: Alert SOP Plan
+      - href: alert-product-flexibility-plan.qmd
+        text: Alert Flexibility Plan
       - href: adr/0009-dry-run-alert-policy-engine.md
         text: Alert Policy ADR
 

@@ -6,6 +6,8 @@ This page records the design target for local `rendered-alert.html` outputs. The
 
 The renderer supports Warning and Alert variants supplied by a versioned operational Product Decision. The alignment rationale and remaining operational work are tracked in the [Alert Email SOP Alignment Plan](alert-email-sop-alignment-plan.qmd).
 
+The next-stage architecture is defined in the [Alert Product Flexibility Plan](alert-product-flexibility-plan.qmd) and [ADR 0010](adr/0010-separate-semantic-alert-facts-from-presentation.md). The current layout becomes a compatibility profile, not the canonical structure of Product Facts.
+
 The target is product-family parity, not pixel parity. A reviewer should be able to place a Snowflake alert-agent email and portable rendered alert side by side and recognize the same information hierarchy, alert affordances, and visual sections.
 
 ## Design Principles
@@ -17,9 +19,17 @@ The target is product-family parity, not pixel parity. A reviewer should be able
 - Do not require exact prose, byte-for-byte HTML, or pixel-perfect screenshots.
 - Prefer accessible semantic HTML: headings, regions, tables, captions, image alt text, and readable fallback labels.
 
-## Layout Target
+## Presentation Boundary
 
-The portable alert should follow this section order:
+Future renderers consume semantic ProductFactSet v2 artifacts through strict PresentationProfile contracts. Product Facts contain no sections, headings, prose, visual placement, packaging, recipients, or delivery settings.
+
+Profiles use a closed set of renderer-owned component IDs with typed options, declared fact requirements, and explicit missing-fact behavior. Profiles cannot execute expressions, query arbitrary fact paths, alter Product Decisions, or invent evidence.
+
+The first profile reproduces the current long product to prove claim parity. Concise operational-email and technical-Quarto report/link profiles follow only after a packaging consultation checkpoint. PDF engine and attachment delivery remain later decisions.
+
+## Current Compatibility Layout
+
+The current compatibility profile follows this section order:
 
 1. Branded Warning or Alert header.
 2. Urgency strip for review status and local forecast threshold.
@@ -30,7 +40,7 @@ The portable alert should follow this section order:
 7. Impact composition donut charts.
 8. Primary wind exposure probability map.
 9. Optional secondary probability maps.
-10. Wind exposure probability by threshold plot.
+10. Threshold exposure table.
 11. Admin choropleth for expected children at risk.
 12. Forecast shift prose.
 13. Highest-exposure administrative areas table.
@@ -79,6 +89,8 @@ Portable generation defaults to empty bounded prose slots so expected HTML canno
 - Renderer tests verify bounded prose slots, section order, and visual hierarchy.
 - Playwright can load generated HTML and observe expected headings, tables, images, alt text, and captions.
 - The comparison-case docs show real Snowflake-agent and portable screenshots for cases where both outputs exist.
+- Reordering optional profile components changes presentation/composition hashes without changing Product Facts or Product Decision identity.
+- Historical Jerry, Melissa, and Cristina examples validate claims and scenarios rather than exact prose or layout.
 
 ## Current Implementation Status
 

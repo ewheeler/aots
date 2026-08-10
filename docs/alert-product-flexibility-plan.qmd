@@ -1,0 +1,479 @@
+---
+title: "Alert Product Flexibility Plan"
+---
+
+<style>
+.content code:not(pre code) {
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+</style>
+
+## Status
+
+This is the canonical next-stage implementation plan for the Ahead of the Storm Warning and Alert product family. The plan is committee-reviewed with a specific goal: support further stakeholder feedback through narrow, versioned seams without building a generic workflow or plugin framework.
+
+The plan supersedes the implementation sequence in the earlier [Alert Email SOP Alignment Plan](alert-email-sop-alignment-plan.qmd). That page remains the operational problem statement, repository assessment, and policy rationale.
+
+The next tracer bullet is:
+
+```text
+Orchestration semantic facts
+  -> versioned checksummed artifact
+  -> profile-driven root composition
+  -> publication artifacts
+```
+
+It is not email/PDF expansion, Snowflake persistence, queues, recipients, or delivery.
+
+## Confirmed Semantics
+
+- PiN and CHiN are forecast-conditioned, wind-integrated estimates, not current observed needs.
+- Modeled exposure is not observed affected population, infrastructure damage, displacement, or loss.
+- Complete cumulative 144-hour evidence satisfies the current five-to-six-day outlook requirement.
+- A qualifying Country Office receives Alert when authoritative current status is hurricane, even when its local forecast is only tropical-storm-force. Both facts must be presented.
+- Forecast-only or pre-genesis evidence may support Warning through an explicit evidence class. It can never establish Alert.
+- The qualifying threat threshold is currently exactly 34kt. A presentation profile cannot substitute 50kt or 64kt values when 34kt evidence is missing.
+- Rainfall and storm-surge facts begin as official, source-bound advisory evidence. Modeled hazard impacts remain unavailable until upstream producers and methods are validated.
+
+These are semantic safety rules, not presentation configuration.
+
+## Architectural Boundaries
+
+### Stable Core
+
+- Internal storm episode identity and immutable official/provisional linkage.
+- Typed classification evidence and provenance.
+- Country Threat Assessment.
+- Product Decision and immutable input references.
+- Semantic Product Fact Set.
+- Country lifecycle and decision events.
+- Composition and publication manifests.
+- Privacy and generated/durable artifact boundaries.
+
+### Configurable Edges
+
+- Country/region registry and effective coverage.
+- Source-specific advisory and hazard adapters.
+- Policy release values such as the current 34kt/144-hour rules.
+- Lifecycle/update policy.
+- Actions, references, locale-specific approved content, and public contact references.
+- Presentation profile and packaging.
+- Regional composition.
+- Future recipient set, channel, provider capability, and attachment/link mode.
+
+Configuration must not:
+
+- Turn forecast-only evidence into Alert.
+- Relabel modeled exposure as observed impact.
+- Substitute one wind threshold for another.
+- Generate missing facts or hazard availability from prose.
+- Change Product Decision identity because layout, wording, locale, or packaging changed.
+- Put recipients or private contacts in public Product Facts or Snapshot Output Bundles.
+
+## Ownership
+
+### Orchestration
+
+`Ahead-of-the-Storm-ORCHESTRATION/` owns:
+
+- Evidence normalization.
+- Storm episode identity and official linkage.
+- Country threat and classification policy.
+- Product Decision.
+- Semantic Product Fact Set production.
+- Country lifecycle and future delivery plans.
+- Policy release and product-intent/audience approval.
+
+Orchestration must not validate root rendering details or include presentation profile IDs in Product Decision identity.
+
+### Root Portable Report Package
+
+The root package owns:
+
+- Strict artifact validation.
+- Presentation profile definitions.
+- Controlled component requirements.
+- Composition manifests.
+- Rendering and publication.
+- Snapshot Output Bundle artifacts and public/private boundaries.
+
+Root validates schemas, references, digests, privacy boundaries, and semantic invariants. It does not independently re-run Orchestration classification policy.
+
+### Upstream Producers
+
+Forecast, exposure, rainfall, surge, infrastructure, PiN, and CHiN calculations remain with their current upstream owners. Root and Orchestration consume validated artifacts rather than adding new impact calculations by convenience.
+
+### Cross-Repository Handshake
+
+Repositories communicate through versioned, checksummed artifacts only. Do not import policy code into root or mirror classifier rules in Pydantic validators and renderers.
+
+## ProductFactSet V2
+
+`ProductFactSet v2` is semantic evidence for one Country Office, storm episode, forecast snapshot, and Product Decision. It is not a report layout.
+
+### Envelope
+
+- `schema_version`
+- `fact_set_id`
+- `producer_version`
+- `adapter_version`, when an adapter produced the artifact
+- `created_at`
+
+`created_at` is derived deterministically from referenced input/evaluation evidence, normalized to UTC, and included in the canonical artifact digest. The adapter must not use its runtime wall clock.
+
+### Identity
+
+- Internal `episode_id`
+- Canonical official storm ID, when available
+- Provisional forecast identity, when applicable
+- Country Office ID and country code
+- Basin
+- Forecast-run identity and forecast time
+
+### Decision Reference
+
+- Product Decision ID/version
+- Product type and reason copied from the producer
+- Classification evidence discriminator
+- Policy release version
+- Input evidence references
+
+### Classification Evidence
+
+Use a strict discriminated union:
+
+- `OfficialAdvisoryEvidence`
+- `ForecastOnlyThreatEvidence`
+
+An official advisory and a forecast-only threat are not two partially populated versions of one current-state structure.
+
+### Official Facts
+
+When official advisory evidence exists:
+
+- Provider and issuing authority
+- Advisory ID and source-product references
+- Observation and issue times
+- Freshness/expiry
+- Official classification
+- Location and movement
+- Sustained wind, units, and averaging period
+- Exact source and parser provenance
+
+### Threat Facts
+
+- Threat-assessment version
+- Qualifying threshold, currently 34kt
+- Maximum available modeled threshold as a separate fact
+- Probability and ensemble evidence
+- Non-zero tile count
+- Expected 34kt population exposure
+- Horizon hours, aggregation, and completeness
+- Local hazard summary
+
+### Modeled Metrics
+
+Each metric is a typed record with:
+
+- Controlled metric code
+- Value or availability state
+- Units
+- Geography
+- Hazard and threshold basis
+- Horizon and aggregation
+- Semantic category
+- Derivation/source reference
+- Producer/schema version and digest
+
+Initial metric codes include modeled population/children/infrastructure exposure and forecast-conditioned PiN/CHiN. Threshold-free, wind-integrated PiN/CHiN must not inherit a 50kt label.
+
+### Hazard Facts
+
+Use bounded typed variants. Initial v2 supports:
+
+- Typed wind evidence
+- Rainfall availability
+- Storm-surge availability
+
+Later schema revisions add official warning-zone, rainfall, and surge payloads. Do not use an unrestricted hazard dictionary or extension bag.
+
+### Provenance And Availability
+
+- Source artifact role and digest
+- Producer/parser/schema version
+- Observation, issue, forecast, and valid times
+- Fact-level source references
+- Fact availability: `validated`, `unavailable`, `unvalidated`, `incomplete`, `unsupported`, or `ambiguous`
+- Separate review disposition: no review or manual review required, with a controlled reason and referenced evidence
+
+### Exclusions
+
+ProductFactSet must not contain:
+
+- Summary, Situation, Forecast, or other sections
+- Section order or headings
+- Subject lines or prose
+- Actions, references, contacts, or locale-specific wording
+- Visual placement or filenames
+- Email, PDF, link, or package decisions
+- Recipients, channels, delivery providers, or retries
+- Mutable lifecycle state
+- Arbitrary metadata dictionaries or executable extensions
+
+## PresentationProfile V1
+
+The first profile schema remains deliberately small.
+
+### Implement Now
+
+- Immutable `profile_id`
+- Schema version and content digest
+- Locale
+- Audience
+- Output kind
+- Ordered selection from a closed set of renderer-owned component IDs
+- Typed component options
+- Required and optional components
+- Explicit missing-fact behavior
+- Claim checks against rendered output
+- Fail-closed unknown profile/component handling
+
+Profiles cannot contain expressions, arbitrary fact paths, executable hooks, generic plugins, or unrestricted metadata.
+
+### Initial Controlled Components
+
+The compatibility tracer may register components such as:
+
+- Product header
+- Headline facts
+- Current storm state
+- Local threat
+- Modeled exposure summary
+- Forecast-conditioned need
+- Arrival timing
+- Threshold table
+- Maps
+- Administrative table
+- Forecast evolution
+- Provenance
+- Caveats
+
+Each component declares its fact requirements in reviewed code.
+
+### Defer To Later Schema Versions
+
+- Multiple-language fallback or machine translation
+- Channel/provider capabilities
+- Attachment/link behavior
+- Regional composition
+- Private contacts/recipients
+- PDF engine selection
+- Conditional logic beyond explicit availability handling
+- Custom stakeholder components or plugin systems
+- Undemonstrated branding variants
+
+## CompositionManifest V1
+
+The composition manifest binds:
+
+- ProductFactSet version/hash
+- Product Decision reference
+- Presentation profile version/hash
+- Ordered produced artifact roles
+- Renderer/composer version
+- Composition timestamp
+- Output checksums and media types
+- Omitted optional components and audit reasons
+
+It contains no recipient data. Packaging selects already produced artifacts; it does not alter facts, classification, or presentation semantics.
+
+## V1-To-V2 Adapter
+
+The adapter is pure, deterministic, idempotent, one-way, and content-addressed.
+
+It must:
+
+- Preserve the supplied V1 Product Decision and never reclassify.
+- Preserve exact 34kt qualifying evidence.
+- Preserve complete cumulative 144-hour semantics.
+- Separate official classification from local modeled hazard.
+- Preserve forecast-conditioned PiN/CHiN language and basis.
+- Never substitute 50kt values for missing 34kt facts.
+- Mark missing warning-zone, rainfall, and surge facts `unavailable` rather than zero; ambiguous or unsupported evidence carries its own availability state plus a separate manual-review disposition when review is required.
+- Derive a deterministic initial episode ID from supported official identity evidence.
+- Record adapter version and input/output digests.
+- Fail closed on contradictory identity, threshold, provenance, metric, or availability facts.
+- Produce a complete valid v2 artifact or a review failure, never a partial permissive artifact.
+- Preserve claim equivalence for accepted V1 fixtures.
+
+No v2-to-v1 downgrade contract is required.
+
+## Implementation Sequence
+
+### 1. Freeze V1 Conformance Vectors
+
+- Freeze Product Decision, evidence-boundary, Alert Decision, claims, and rendering vectors.
+- Document root checks that currently duplicate Orchestration policy.
+- Preserve V1 fixtures and ledgers unchanged.
+- Record Jerry, Melissa, and Cristina as scenario/claim fixtures, not prose or layout goldens.
+
+### 2. Record Boundary ADRs
+
+Record only durable decisions:
+
+- Semantic facts versus presentation
+- Discriminated classification evidence
+- Internal episode identity and immutable link events
+- Cross-repository artifact ownership
+- Public/private boundaries
+- Non-sending activation gates
+
+Packaging defaults, wording, profile order, and provider choices belong in versioned configuration rather than ADRs unless they establish a durable safety boundary.
+
+### 3. Define V2 Contracts
+
+- Add ProductFactSet v2.
+- Add classification-evidence union.
+- Add `episode_id` semantics needed by ProductFactSet v2; defer `StormEpisodeLink` contracts to forecast-only work.
+- Define deterministic version and digest rules.
+- Add strict fixtures for official, forecast-only, unavailable, ambiguous, and manual-review evidence.
+
+### 4. Build The V1 Adapter
+
+- Adapt accepted V1 cases into strict V2.
+- Assert no reclassification or invented facts.
+- Assert exact 34kt/144-hour and terminology semantics.
+- Fail closed on unsupported V1 cases.
+
+### 5. Emit V2 From Orchestration
+
+- Emit v2 in dry-run memory alongside current results.
+- Bind original source-product digests into official evidence.
+- Keep V1 behavior unchanged during migration.
+
+### 6. Add Root Artifact Validation
+
+- Add a checksummed `product_fact_set` artifact role.
+- Validate strict schemas, references, digests, paths, privacy, and semantic invariants.
+- Do not re-run classifier policy.
+- Reject unknown versions.
+
+### 7. Add The Compatibility Profile
+
+- Add one closed profile reproducing the current long technical product from V2.
+- Render exclusively from ProductFactSet rather than generic report-key reconstruction.
+- Compare deterministic claims with current output.
+- Keep the old renderer during migration.
+- Remove reconstruction only after claim parity passes.
+
+### 8. Consultation Checkpoint: Packaging
+
+Using the same V2 facts, show:
+
+- Existing combined long product
+- Concise operational email
+- Operational email plus technical Quarto report/link
+- Email-only variant
+
+Confirm density, section order, technical format, secure link versus attachment, and regional versus country presentation.
+
+### 9. Add Approved Presentation Profiles
+
+After consultation, add concise operational-email and technical-Quarto report/link profiles. Do not commit to Typst, another PDF engine, or true attachment delivery until a focused reproducibility/provider spike justifies it.
+
+### 10. Add Official Hazard Facts
+
+- Preserve digest-bound official advisory products.
+- Add typed warning-zone, rainfall, and storm-surge evidence.
+- Support only reviewed deterministic patterns.
+- Retain exact official wording and source spans.
+- Route unsupported or ambiguous forms to manual review.
+- Keep modeled rainfall/surge impacts unavailable until upstream methods are approved.
+
+### 11. Add Forecast-Only Warning And Episode Linkage
+
+- Add forecast-only evidence without creating synthetic official current state.
+- Permit Warning only.
+- Add provisional episode identity.
+- Link later official identity through immutable events.
+- Preserve one country lifecycle without rewriting prior history.
+
+### 12. Add Content And Lifecycle Releases
+
+- Add versioned actions and references.
+- Keep public contacts separate from private contact/recipient stores.
+- Add lifecycle policy release for material updates, escalation, downgrade, closure, re-escalation, and human all-clear.
+- Later evaluate read-only regional composition over immutable country decisions.
+
+## Consultation Gates
+
+### Gate A: Packaging
+
+After compatibility parity and before new profiles, approve information density, section order, email/report relationship, and initial output formats.
+
+### Gate B: Official Hazards
+
+After warning-zone/rain/surge prototypes, approve supported source products, geography treatment, numeric versus exact-text presentation, and manual-review behavior.
+
+### Gate C: Lifecycle And Regional Composition
+
+Approve material-change thresholds, update cadence, closure, all-clear, regional grouping, and country/regional audiences.
+
+Changes after a gate create new independent profile/content/policy versions rather than rewriting historical artifacts.
+
+## Flexibility Tests
+
+- Reordering/removing optional components changes presentation/composition hashes only.
+- Combined, email-only, and email-plus-report profiles consume identical Product Facts.
+- Locale/action/reference changes do not alter Product Decision identity.
+- A policy-threshold release requires no renderer changes.
+- Forecast-only qualifying 34kt evidence produces Warning; every Alert attempt fails closed.
+- Provisional and official identities link to one episode and country lifecycle without history rewrite.
+- Official hurricane status and local tropical-storm-force evidence coexist without contradiction.
+- Adding official rainfall/surge facts does not affect classification.
+- Changed advisory bytes change source and downstream fact versions; identical bytes are idempotent.
+- Missing official facts become `unavailable`; ambiguous or unsupported facts carry an explicit availability state and, independently, a manual-review disposition when required. They never become zero or generated prose.
+- Lifecycle-profile changes do not require template changes.
+- Regional composition preserves every country Product Decision ID.
+- Public bundles contain no recipients or private contacts.
+- V1 fixtures remain readable through the deterministic adapter.
+- Unknown schema/evidence/profile/component versions fail closed.
+- Historical examples compare deterministic facts and scenarios, not exact prose or pixels.
+- Independent expected evidence remains separate from wrapper-generated and seed outputs.
+
+## Explicit Deferrals
+
+Defer until V2 contracts and consultation gates stabilize:
+
+- Snowflake writer and persistence
+- Scheduled queues and tasks
+- Private recipient directory and outbox
+- Provider-specific attachment implementation
+- Real or shadow sends
+- Generic multilingual workflow
+- Generic channel/plugin framework
+- Automated downgrade or all-clear without an approved lifecycle release
+- Modeled rainfall/surge impacts
+- Period-indexed impacts unless cumulative 144-hour semantics are rejected
+- Regional recipient fan-out
+- Legacy cutover and historical-ledger reinterpretation
+
+## First Tracer Definition Of Done
+
+The first implementation tracer is complete when:
+
+- V1 conformance vectors are frozen.
+- ProductFactSet v2 and the evidence union validate strict synthetic fixtures.
+- The one-way V1 adapter produces deterministic checksummed v2 artifacts.
+- Orchestration emits v2 alongside V1 without behavior changes.
+- Root validates and consumes the v2 artifact.
+- One compatibility profile renders the existing long product from v2.
+- CompositionManifest v1 binds fact-set, decision, profile, renderer, and output hashes.
+- The publication manifest records the composition/publication artifacts without private delivery state.
+- Claims match the current deterministic output.
+- Changing profile order does not change Product Facts or Product Decision identity.
+- Unknown versions and missing required facts fail closed.
+- Full tests, Quarto rendering, browser review, and repository guardrails pass.
+
+Snowflake persistence, PDF attachment delivery, recipients, queues, tasks, real sends, and legacy cutover are not part of this definition of done.
