@@ -10,6 +10,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          token: ${{ secrets.SUBMODULES_TOKEN }}
           submodules: recursive
 
       - name: Install uv
