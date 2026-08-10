@@ -1,6 +1,6 @@
 # Separate Semantic Alert Facts From Presentation
 
-Status: Accepted as the next-stage architecture boundary. V2 contracts are not yet implemented.
+Status: Accepted as the next-stage architecture boundary. V2 contracts are not yet implemented, and the readiness gate in the governing plan is not yet complete.
 
 ## Context
 
@@ -13,7 +13,7 @@ Adding more templates directly would reproduce the existing coupling across mult
 Introduce one semantic artifact and one controlled presentation boundary:
 
 ```text
-Orchestration Product Decision + semantic ProductFactSet v2
+Orchestration ProductDecision v2 + semantic ProductFactSet v2
   -> checksummed artifact boundary
   -> root PresentationProfile v1
   -> CompositionManifest v1
@@ -35,9 +35,13 @@ Classification evidence is a strict discriminated union:
 
 Forecast-only evidence may support Warning but can never establish Alert. It must not be represented as a partially populated or synthetic official Current Storm State.
 
+The first tracer implements both evidence variants at runtime. Official-advisory V2 output is emitted alongside unchanged V1 output; forecast-only output is native V2 because V1 has no valid representation for it.
+
 ### Storm Episode Identity
 
 An internal episode ID exists before official genesis. Immutable link events associate a provisional forecast identity with a later official canonical storm ID. Existing history is linked rather than rewritten.
+
+The initial provisional identity uses a namespaced existing forecast track ID only after the governing readiness audit proves that identifier stable across Forecast Runs, unique across basin and season, normalized consistently, and not reused. Storm name and forecast time are not episode-identity inputs. A failed audit requires an upstream producer-issued provisional identifier before implementation.
 
 ### Presentation Profiles
 
@@ -55,7 +59,7 @@ The cross-repository handshake is versioned, checksummed artifacts only. Root do
 
 ### Versioning
 
-Policy, Product Facts, presentation, composition, content, lifecycle, publication, and delivery versions remain independent. The first tracer introduces only ProductFactSet v2, existing decision/policy references, PresentationProfile v1, CompositionManifest v1, and a publication-manifest extension.
+Policy, Product Facts, presentation, composition, content, lifecycle, publication, and delivery versions remain independent. The first tracer introduces ProductDecision v2, ProductFactSet v2, official and provisional Storm Episode identity, immutable Storm Episode Link events, episode-based lifecycle continuity, PresentationProfile v1, CompositionManifest v1, and a publication-manifest extension.
 
 Content releases, lifecycle policy releases, regional composition, private recipient stores, and delivery contracts are added only with their corresponding consultation-approved tracers.
 
@@ -63,10 +67,13 @@ Content releases, lifecycle policy releases, regional composition, private recip
 
 - Freeze V1 conformance and claims vectors.
 - Keep V1 fixtures and ledgers unchanged.
-- Add a pure, one-way, fail-closed V1-to-V2 adapter.
-- Emit V2 alongside V1 in dry-run memory.
+- Complete the canonical-contract, digest, track-identity, artifact-handshake, parity, and privacy readiness gates in the governing plan.
+- Add a pure, one-way, fail-closed V1-to-V2 adapter for supported official-advisory cases.
+- Emit official-advisory V2 alongside V1 in dry-run memory without changing V1 identities or behavior.
+- Emit native forecast-only V2 Warning, no-product, or manual-review outcomes without fabricating a Current Storm State; every forecast-only Alert attempt fails closed.
+- Link provisional and official identities through immutable events and preserve one episode-based country lifecycle without rewriting prior history.
 - Make root consume checksummed V2 artifacts.
-- Reproduce the current long product through one compatibility profile and prove claim parity.
+- Reproduce the current long product through one compatibility profile and prove claim parity; semantic claims come only from ProductFactSet, while visual components may use only explicitly referenced checksummed artifacts.
 - Remove root report-key reconstruction only after parity passes.
 
 Historical Jerry, Melissa, and Cristina examples become scenario and claim fixtures. Their exact prose, layout, colors, and page structure are not contract authority.

@@ -26,6 +26,8 @@ Orchestration semantic facts
 
 It is not email/PDF expansion, Snowflake persistence, queues, recipients, or delivery.
 
+The first tracer includes both official-advisory and forecast-only runtime evidence. Forecast-only support therefore includes provisional episode identity, immutable official-link events, and episode-based lifecycle continuity. It remains Warning-only and non-sending.
+
 ## Confirmed Semantics
 
 - PiN and CHiN are forecast-conditioned, wind-integrated estimates, not current observed needs.
@@ -292,6 +294,8 @@ It contains no recipient data. Packaging selects already produced artifacts; it 
 
 The adapter is pure, deterministic, idempotent, one-way, and content-addressed.
 
+Its input is a named, versioned V1 policy-result aggregate containing the Product Decision, identity, Current Storm State, Country Threat Assessment, hazard availability, impact facts, policy evaluation evidence, and referenced source attestations. The existing Summary/Situation/Forecast Product Facts alone are not a sufficient adapter input. The adapter supports accepted official-advisory V1 Warning and Alert cases; forecast-only evidence is produced natively as V2 because it has no valid V1 representation.
+
 It must:
 
 - Preserve the supplied V1 Product Decision and never reclassify.
@@ -308,6 +312,98 @@ It must:
 - Preserve claim equivalence for accepted V1 fixtures.
 
 No v2-to-v1 downgrade contract is required.
+
+## Implementation Readiness Work
+
+Runtime implementation does not begin until the following readiness work is complete. Readiness changes may add reviewed specifications, synthetic conformance vectors, and test scaffolding, but they must not change existing V1 behavior.
+
+### 1. Lock Tracer Scope And Governance
+
+- Move forecast-only Warning, provisional episode identity, immutable link events, and lifecycle continuity into the first tracer.
+- Keep persistence, recipients, sending, additional profiles, regional composition, and detailed official rainfall/surge payloads deferred.
+- Link each durable boundary to an accepted ADR and distinguish decision status from implementation status.
+- Preserve the non-sending activation gate.
+
+### 2. Qualify The Existing Forecast Track ID
+
+- Audit the existing `forecast_track_id` for stability across Forecast Runs, uniqueness across basin and season, normalization behavior, and non-reuse.
+- Define provisional episode identity from a namespaced tuple containing forecast producer, basin, season, and normalized track ID.
+- Do not include storm name or forecast time in episode identity.
+- Treat a failed audit as a blocker requiring an upstream producer-issued provisional storm identifier before implementation.
+
+### 3. Freeze V1 Conformance
+
+- Preserve current Product Decision hashes, Product Facts, decision events, lifecycle behavior, root fixtures, and deterministic Alert Claims.
+- Add machine-readable vectors for Warning, Alert, no-product, manual review, identity ambiguity, exact threshold boundaries, incomplete evidence, sparse facts, and invalid provenance.
+- Add a complete end-to-end Alert vector alongside the existing Warning and review paths.
+- Record fixture provenance and immutable checksums; keep Jerry, Melissa, and Cristina as scenario and claim vectors rather than prose or layout goldens.
+
+### 4. Complete The Normative Contracts
+
+- Specify exact ProductFactSet v2 fields, controlled metric codes, units, geography types, hazard variants, evidence-reference types, review reasons, and cardinality rules.
+- Define ProductDecision v2, Storm Episode, Storm Episode Link, and the strict official-advisory/forecast-only evidence union.
+- Define a strict producer result such as `ProducedProductFactSet | ProductFactSetReviewFailure`; never emit a partial ProductFactSet.
+- Decide explicitly which Product Decision states produce a ProductFactSet. The initial recommendation is Warning and Alert only, with typed non-product or review outcomes for other states.
+- Reconcile `unsupported` and `ambiguous` availability with the canonical Hazard Availability vocabulary in `CONTEXT.md`.
+
+### 5. Specify Identity, Time, Version, And Digest Rules
+
+- Define canonical JSON bytes, UTF-8 and Unicode handling, numeric and null representation, ordered versus sorted collections, and UTC timestamp formatting.
+- Distinguish schema version, producer release, adapter release, semantic content digest, stable artifact ID, manifest file checksum, and schema identifier.
+- Define every digest prefix and input field; exclude self-referential IDs from their own digest inputs.
+- Derive ProductFactSet `created_at` and composition time from immutable referenced evidence rather than runtime wall clock.
+- Publish producer/consumer conformance bytes that both repositories validate identically.
+
+### 6. Select Additive Orchestration Seams
+
+- Preserve the existing V1 classifier and its source hash unchanged.
+- Select explicit sibling modules for V2 evidence, Product Decision, episode/link identity, lifecycle, ProductFactSet production, and the V1 adapter.
+- Reuse the existing official policy path for V1 compatibility while adding a separate forecast-only branch that can produce Warning, no-product, or manual review, but never Alert.
+- Key V2 lifecycle streams by `episode_id`, not canonical storm ID, so a linked official Alert continues the provisional country lifecycle without rewriting history.
+- Define the complete producer-input aggregate and retain advisory and forecast source digests before implementation begins.
+
+### 7. Define The Artifact Handshake
+
+- Add `product_fact_set` as a checksummed baseline artifact role and define its exact relative-path, media-type, schema-identifier, and row-count conventions.
+- Standardize Snapshot Output Bundle artifacts as `product-fact-set.json`, `presentation-profile.json`, and `composition-manifest.json` unless the contract review records a different name.
+- Specify the Orchestration materialization point, exporter or fixture path, root loader, bundle copy behavior, and publication-manifest references.
+- Add a byte-identical producer/consumer vector across the pinned submodule boundary.
+- Reject unknown schema, evidence, profile, component, and link-event versions.
+
+### 8. Complete The Presentation Contract
+
+- Freeze the compatibility profile's component IDs, order, typed options, fact requirements, omission rules, and fail-closed missing-fact behavior.
+- Require all semantic claims to come from ProductFactSet.
+- Permit visual components to consume only explicitly referenced and checksummed geometry, timing, track, tile, or evolution artifacts; they must not reconstruct semantic claims from generic report keys.
+- Define profile registration, profile canonicalization and digesting, and exact handling of required versus optional components.
+
+### 9. Specify Composition, Publication, And Privacy
+
+- Define every CompositionManifest field, canonical digest relationship, omission reason, output media type, and relative-path rule.
+- Extend publication entries with the composition-manifest path/digest and produced public artifact roles while preserving backward compatibility.
+- Keep ProductFactSet bundle-internal by default; publication may expose approved outputs and a non-sensitive composition reference without exposing the complete fact artifact.
+- Assign a publication classification to every new artifact role and define aggregation, field allowlisting, and redaction checks for geographic and infrastructure facts.
+- Keep recipient, private-contact, provider-attempt, and delivery state outside all public artifacts.
+
+### 10. Make Parity And Failure Behavior Testable
+
+- Name the authoritative conformance vectors, expected-output provenance classes, required claims, permitted prose/layout differences, comparison command, and blocking result.
+- Cover official Warning, official hurricane Alert with local 34kt evidence, forecast-only Warning without Current Storm State, and rejection of every forecast-only Alert attempt.
+- Cover stable provisional episodes across Forecast Runs, distinct same-name episodes, idempotent links, conflicting-link failure, and forecast-only Warning to linked official Alert lifecycle continuity.
+- Cover changed advisory bytes, unavailable versus review-required evidence, profile-only changes, public-bundle privacy, and unknown-version rejection.
+- Map every readiness requirement to an owning module and focused test before opening implementation work.
+
+### Readiness Exit Gate
+
+Implementation may begin only when:
+
+- The forecast-track-ID audit passes or an upstream provisional identifier is available.
+- No contract field, controlled vocabulary, digest input, artifact path, decision-state behavior, or profile requirement remains unspecified.
+- V1 and V2 conformance vectors are committed, synthetic, provenance-labelled, and checksummed.
+- Orchestration and root validate identical canonical ProductFactSet bytes.
+- Existing root checks are classified as structural, reference-integrity, semantic-safety, or duplicated-policy checks, with an explicit migration disposition for each.
+- Claim-parity authority, privacy classification, ownership, focused tests, and required documentation updates are approved.
+- The first tracer is decomposed into independently testable producer, artifact-handshake, consumer, composition, and publication slices.
 
 ## Implementation Sequence
 
@@ -335,20 +431,24 @@ Packaging defaults, wording, profile order, and provider choices belong in versi
 
 - Add ProductFactSet v2.
 - Add classification-evidence union.
-- Add `episode_id` semantics needed by ProductFactSet v2; defer `StormEpisodeLink` contracts to forecast-only work.
+- Add ProductDecision v2, provisional and official `episode_id` semantics, and immutable `StormEpisodeLink` contracts.
 - Define deterministic version and digest rules.
 - Add strict fixtures for official, forecast-only, unavailable, ambiguous, and manual-review evidence.
 
 ### 4. Build The V1 Adapter
 
-- Adapt accepted V1 cases into strict V2.
+- Adapt accepted official-advisory V1 cases from the versioned policy-result aggregate into strict V2.
 - Assert no reclassification or invented facts.
 - Assert exact 34kt/144-hour and terminology semantics.
 - Fail closed on unsupported V1 cases.
+- Produce forecast-only evidence through the native V2 path rather than the adapter.
 
-### 5. Emit V2 From Orchestration
+### 5. Add The V2 Policy Path And Emit V2 From Orchestration
 
-- Emit v2 in dry-run memory alongside current results.
+- Emit official-evidence v2 in dry-run memory alongside unchanged V1 results.
+- Emit native forecast-only V2 Warning, no-product, or manual-review results without constructing a synthetic Current Storm State; Alert must fail closed.
+- Derive provisional episodes from the qualified, namespaced forecast track identity and link later official identity through immutable events.
+- Key V2 country lifecycle continuity by episode ID so linkage never rewrites prior events.
 - Bind original source-product digests into official evidence.
 - Keep V1 behavior unchanged during migration.
 
@@ -362,7 +462,7 @@ Packaging defaults, wording, profile order, and provider choices belong in versi
 ### 7. Add The Compatibility Profile
 
 - Add one closed profile reproducing the current long technical product from V2.
-- Render exclusively from ProductFactSet rather than generic report-key reconstruction.
+- Derive semantic claims exclusively from ProductFactSet; visual components may consume only its explicitly referenced checksummed artifacts rather than generic report-key reconstruction.
 - Compare deterministic claims with current output.
 - Keep the old renderer during migration.
 - Remove reconstruction only after claim parity passes.
@@ -391,15 +491,7 @@ After consultation, add concise operational-email and technical-Quarto report/li
 - Route unsupported or ambiguous forms to manual review.
 - Keep modeled rainfall/surge impacts unavailable until upstream methods are approved.
 
-### 11. Add Forecast-Only Warning And Episode Linkage
-
-- Add forecast-only evidence without creating synthetic official current state.
-- Permit Warning only.
-- Add provisional episode identity.
-- Link later official identity through immutable events.
-- Preserve one country lifecycle without rewriting prior history.
-
-### 12. Add Content And Lifecycle Releases
+### 11. Add Content And Lifecycle Releases
 
 - Add versioned actions and references.
 - Keep public contacts separate from private contact/recipient stores.
@@ -466,7 +558,11 @@ The first implementation tracer is complete when:
 - V1 conformance vectors are frozen.
 - ProductFactSet v2 and the evidence union validate strict synthetic fixtures.
 - The one-way V1 adapter produces deterministic checksummed v2 artifacts.
-- Orchestration emits v2 alongside V1 without behavior changes.
+- Orchestration emits official v2 alongside V1 without changing V1 identities or behavior.
+- Orchestration emits forecast-only Warning natively without a synthetic Current Storm State, and every forecast-only Alert attempt fails closed.
+- Stable namespaced forecast track identity produces one provisional episode across Forecast Runs; distinct lineages do not collide.
+- Immutable link events connect provisional and official identities idempotently, reject conflicts, and preserve prior history.
+- A forecast-only Warning can escalate to an official Alert in one episode-based country lifecycle.
 - Root validates and consumes the v2 artifact.
 - One compatibility profile renders the existing long product from v2.
 - CompositionManifest v1 binds fact-set, decision, profile, renderer, and output hashes.
@@ -474,6 +570,8 @@ The first implementation tracer is complete when:
 - Claims match the current deterministic output.
 - Changing profile order does not change Product Facts or Product Decision identity.
 - Unknown versions and missing required facts fail closed.
+- Producer and consumer validate identical canonical artifact bytes.
+- New artifact roles pass publication privacy and public/private-boundary checks.
 - Full tests, Quarto rendering, browser review, and repository guardrails pass.
 
 Snowflake persistence, PDF attachment delivery, recipients, queues, tasks, real sends, and legacy cutover are not part of this definition of done.

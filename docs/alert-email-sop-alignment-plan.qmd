@@ -240,13 +240,14 @@ The committee-approved implementation sequence is maintained in the [Alert Produ
 The first tracer is intentionally limited to:
 
 1. Freeze V1 conformance vectors.
-2. Define semantic ProductFactSet v2, classification-evidence union, and initial episode-ID semantics; defer link events to forecast-only work.
-3. Build a deterministic one-way V1-to-V2 adapter.
-4. Emit checksummed V2 artifacts alongside V1 from Orchestration dry-run memory.
-5. Add strict root artifact validation without reclassifying.
-6. Render the current long product through one closed compatibility profile and prove claim parity.
+2. Complete the canonical-contract, digest, forecast-track-identity, artifact-handshake, parity, privacy, and ownership readiness gates.
+3. Define ProductDecision v2, semantic ProductFactSet v2, the classification-evidence union, official and provisional episode identity, immutable link events, and episode-based lifecycle continuity.
+4. Build a deterministic one-way V1-to-V2 adapter for supported official-advisory cases.
+5. Emit official V2 alongside unchanged V1 and emit forecast-only Warning natively as V2; forecast-only Alert fails closed.
+6. Add strict root artifact validation without reclassifying.
+7. Render the current long product through one closed compatibility profile and prove claim parity.
 
-Concise operational-email and technical-report profiles follow only after a packaging consultation checkpoint. Official warning/rain/surge facts, forecast-only Warning, content releases, lifecycle policy releases, and regional composition each have later consultation gates.
+Concise operational-email and technical-report profiles follow only after a packaging consultation checkpoint. Official warning/rain/surge facts, content releases, broader lifecycle policy releases, and regional composition each have later consultation gates.
 
 ## Remaining Activation Gates
 
@@ -254,7 +255,6 @@ The following remain deliberately unimplemented or undeployed:
 
 - Shared ProductFactSet v2 artifact consumption
 - Official warning-zone/rain/surge typed facts
-- Forecast-only Warning and provisional-to-official episode linkage
 - Versioned action/reference content and lifecycle policy releases
 - Identity-recomputing Snowflake persistence
 - Scheduled ingestion and work queues
