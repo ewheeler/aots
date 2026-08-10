@@ -1,6 +1,6 @@
 # Separate Semantic Alert Facts From Presentation
 
-Status: Accepted as the next-stage architecture boundary. V2 contracts are not yet implemented, and the readiness gate in the governing plan is not yet complete.
+Status: Accepted as the next-stage architecture boundary. Schemas, vectors, V1 freezes, raw-identity retention, and independent readiness verification are implemented; V2 runtime and operational activation remain unimplemented and blocked.
 
 ## Context
 
@@ -35,13 +35,13 @@ Classification evidence is a strict discriminated union:
 
 Forecast-only evidence may support Warning but can never establish Alert. It must not be represented as a partially populated or synthetic official Current Storm State.
 
-The first tracer implements both evidence variants at runtime. Official-advisory V2 output is emitted alongside unchanged V1 output; forecast-only output is native V2 because V1 has no valid representation for it.
+The readiness schemas and vectors cover both evidence variants. Future runtime work will emit official-advisory V2 alongside unchanged V1 output; forecast-only output will be native V2 because V1 has no valid representation for it. No V2 producer runtime exists yet.
 
 ### Storm Episode Identity
 
 An internal episode ID exists before official genesis. Immutable link events associate a provisional forecast identity with a later official canonical storm ID. Existing history is linked rather than rewritten.
 
-The initial provisional identity uses a namespaced existing forecast track ID only after the governing readiness audit proves that identifier stable across Forecast Runs, unique across basin and season, normalized consistently, and not reused. Storm name and forecast time are not episode-identity inputs. A failed audit requires an upstream producer-issued provisional identifier before implementation.
+The current `TRACK_ID` audit failed: the field prefers `longStormName` and only falls back to raw ECMWF BUFR `stormIdentifier`. The forecast submodule now retains raw `stormIdentifier` and implements the candidate tuple/normalization specified by [ADR 0011](0011-use-provisional-storm-episode-identity.md) and the machine-readable readiness contracts. It does not generate or persist an episode ID. Storm name, `TRACK_ID`, and forecast time are not candidate-key inputs. Structural retention does not satisfy the historical/provider stability evidence required for operational activation.
 
 ### Presentation Profiles
 
@@ -59,7 +59,7 @@ The cross-repository handshake is versioned, checksummed artifacts only. Root do
 
 ### Versioning
 
-Policy, Product Facts, presentation, composition, content, lifecycle, publication, and delivery versions remain independent. The first tracer introduces ProductDecision v2, ProductFactSet v2, official and provisional Storm Episode identity, immutable Storm Episode Link events, episode-based lifecycle continuity, PresentationProfile v1, CompositionManifest v1, and a publication-manifest extension.
+Policy, Product Facts, presentation, composition, content, lifecycle, publication, and delivery versions remain independent. The first tracer introduces ProductDecision v2, ProductFactSet v2, official and provisional Storm Episode identity, immutable Storm Episode Link events, episode-based lifecycle continuity, PresentationProfile v1, CompositionManifest v1, and PublicationManifest v2. Their machine-readable contract/test readiness exists; runtime production and root publication integration do not.
 
 Content releases, lifecycle policy releases, regional composition, private recipient stores, and delivery contracts are added only with their corresponding consultation-approved tracers.
 
@@ -67,7 +67,7 @@ Content releases, lifecycle policy releases, regional composition, private recip
 
 - Freeze V1 conformance and claims vectors.
 - Keep V1 fixtures and ledgers unchanged.
-- Complete the canonical-contract, digest, track-identity, artifact-handshake, parity, and privacy readiness gates in the governing plan.
+- Follow the exact canonical-contract, digest, identity, artifact-handshake, parity, and privacy rules in the [Alert Product V2 Readiness Reference](../alert-product-v2-readiness.qmd), [ADR 0011](0011-use-provisional-storm-episode-identity.md), [ADR 0012](0012-use-canonical-content-addressed-alert-artifacts.md), and [ADR 0013](0013-keep-alert-publication-data-minimal.md).
 - Add a pure, one-way, fail-closed V1-to-V2 adapter for supported official-advisory cases.
 - Emit official-advisory V2 alongside V1 in dry-run memory without changing V1 identities or behavior.
 - Emit native forecast-only V2 Warning, no-product, or manual-review outcomes without fabricating a Current Storm State; every forecast-only Alert attempt fails closed.

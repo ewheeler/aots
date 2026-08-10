@@ -10,9 +10,13 @@ project:
     - alert-email-design.qmd
     - alert-email-sop-alignment-plan.qmd
     - alert-product-flexibility-plan.qmd
+    - alert-product-v2-readiness.qmd
     - adr/0008-separate-alert-classification-from-country-threat.md
     - adr/0009-dry-run-alert-policy-engine.md
     - adr/0010-separate-semantic-alert-facts-from-presentation.md
+    - adr/0011-use-provisional-storm-episode-identity.md
+    - adr/0012-use-canonical-content-addressed-alert-artifacts.md
+    - adr/0013-keep-alert-publication-data-minimal.md
     - agents/repository-map.md
 
 website:
@@ -36,6 +40,8 @@ website:
         text: Alert SOP Plan
       - href: alert-product-flexibility-plan.qmd
         text: Alert Flexibility Plan
+      - href: alert-product-v2-readiness.qmd
+        text: Alert V2 Readiness
       - href: adr/0009-dry-run-alert-policy-engine.md
         text: Alert Policy ADR
 

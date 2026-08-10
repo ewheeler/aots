@@ -11,7 +11,7 @@ title: "Alert Product Flexibility Plan"
 
 ## Status
 
-This is the canonical next-stage implementation plan for the Ahead of the Storm Warning and Alert product family. The plan is committee-reviewed with a specific goal: support further stakeholder feedback through narrow, versioned seams without building a generic workflow or plugin framework.
+This is the canonical next-stage implementation sequence for the Ahead of the Storm Warning and Alert product family. The exact readiness contracts are now frozen in the [Alert Product V2 Readiness Reference](alert-product-v2-readiness.qmd). This plan orders future work; neither page claims V2 runtime implementation or operational activation.
 
 The plan supersedes the implementation sequence in the earlier [Alert Email SOP Alignment Plan](alert-email-sop-alignment-plan.qmd). That page remains the operational problem statement, repository assessment, and policy rationale.
 
@@ -116,13 +116,10 @@ Repositories communicate through versioned, checksummed artifacts only. Do not i
 
 ### Envelope
 
-- `schema_version`
-- `fact_set_id`
-- `producer_version`
-- `adapter_version`, when an adapter produced the artifact
-- `created_at`
-
-`created_at` is derived deterministically from referenced input/evaluation evidence, normalized to UTC, and included in the canonical artifact digest. The adapter must not use its runtime wall clock.
+- Required top-level fields are `schema_id`, `schema_version`, `fact_set_id`, `content_digest`, `producer`, `created_at`, `identity`, `decision`, `classification_evidence`, `threat`, `metrics`, `hazards`, `source_references`, `visual_source_references`, and `review_disposition`.
+- Optional `adapter` contains `adapter_id`, `adapter_release`, and `input_content_digest`.
+- Exact nested fields, enums, conditions, ordering, and identities are owned by `contracts/alert_product_v2/schemas/product-fact-set-v2.schema.json` and `canonicalization.md`, summarized in the [readiness reference](alert-product-v2-readiness.qmd).
+- Runtime clocks, storage metadata, and export time do not enter semantic identities.
 
 ### Identity
 
@@ -245,7 +242,7 @@ Profiles cannot contain expressions, arbitrary fact paths, executable hooks, gen
 
 ### Initial Controlled Components
 
-The compatibility tracer may register components such as:
+The compatibility profile is frozen by `presentation-profile-v1.schema.json` and `vectors/compatibility-profile.json`, in this exact order:
 
 - Product header
 - Headline facts
@@ -261,7 +258,7 @@ The compatibility tracer may register components such as:
 - Provenance
 - Caveats
 
-Each component declares its fact requirements in reviewed code.
+The exact component IDs, typed options, required flags, and missing behavior are in the machine-readable schema and readiness reference. No profile runtime exists yet.
 
 ### Defer To Later Schema Versions
 
@@ -277,18 +274,22 @@ Each component declares its fact requirements in reviewed code.
 
 ## CompositionManifest V1
 
-The composition manifest binds:
+The frozen schema binds:
 
 - ProductFactSet version/hash
 - Product Decision reference
 - Presentation profile version/hash
 - Ordered produced artifact roles
-- Renderer/composer version
+- Renderer ID and release
 - Composition timestamp
 - Output checksums and media types
 - Omitted optional components and audit reasons
 
 It contains no recipient data. Packaging selects already produced artifacts; it does not alter facts, classification, or presentation semantics.
+
+Exact fields, allowed status/reason pairs, omission correspondence, HTML-first/path-sorted output order, role/media/path coupling, controlled renderer ID, identity prefix, and privacy constants are owned by `composition-manifest-v1.schema.json` and its vectors. Public component/output records carry no `source_reference_ids`; omission records have no arbitrary detail.
+
+PublicationManifest v2 is separately frozen by `publication-manifest-v2.schema.json` and its vectors. It exposes opaque `case_id`, country/time, one of five allowed comparison/certification/certifying tuples, a checksummed CompositionManifest reference, and ordered checksummed public HTML/PNG metadata under paths derived from that `case_id`; it has no storm display name. Contract/test readiness exists. Schema tests inspect structure/controlled metadata, not HTML/PNG content; root integration, content privacy inspection, licensing/approval, and enforcement do not exist.
 
 ## V1-To-V2 Adapter
 
@@ -315,7 +316,7 @@ No v2-to-v1 downgrade contract is required.
 
 ## Implementation Readiness Work
 
-Runtime implementation does not begin until the following readiness work is complete. Readiness changes may add reviewed specifications, synthetic conformance vectors, and test scaffolding, but they must not change existing V1 behavior.
+The decisions requested by this section are resolved normatively by the machine-readable Orchestration contract set, the [Alert Product V2 Readiness Reference](alert-product-v2-readiness.qmd), and ADRs 0011-0013. Eight V1 bundles, 32 V2 vectors, 11 schemas, four exact canonical byte fixtures, manifest checks, forecast identity-retention tests, and independent root verification now exist. ProductDecision/ProductFactSet/profile/composition/publication runtime remains proposed, and existing V1 behavior remains unchanged.
 
 ### 1. Lock Tracer Scope And Governance
 
@@ -326,10 +327,10 @@ Runtime implementation does not begin until the following readiness work is comp
 
 ### 2. Qualify The Existing Forecast Track ID
 
-- Audit the existing `forecast_track_id` for stability across Forecast Runs, uniqueness across basin and season, normalization behavior, and non-reuse.
-- Define provisional episode identity from a namespaced tuple containing forecast producer, basin, season, and normalized track ID.
-- Do not include storm name or forecast time in episode identity.
-- Treat a failed audit as a blocker requiring an upstream producer-issued provisional storm identifier before implementation.
+- The current `TRACK_ID` audit failed. The extractor persists `longStormName` when present and uses raw ECMWF BUFR `stormIdentifier` only as a fallback, so `TRACK_ID` is not qualified episode lineage.
+- Raw ECMWF `stormIdentifier` is now retained additively. The implemented helper constructs, but does not persist or hash, `(ecmwf-ifs-tc-track, basin, season, normalized_track_id)` exactly as specified in the contract canonicalization rules and [ADR 0011](adr/0011-use-provisional-storm-episode-identity.md).
+- Do not include storm name, `TRACK_ID`, forecast time, ensemble member, or official ID in provisional episode identity.
+- Structural-retention code/tests may proceed, but historical samples and provider evidence of stability, uniqueness, normalization, and non-reuse remain an operational activation blocker. A stronger producer-issued lineage identifier supersedes the fallback only through a reviewed contract change.
 
 ### 3. Freeze V1 Conformance
 
@@ -342,17 +343,20 @@ Runtime implementation does not begin until the following readiness work is comp
 
 - Specify exact ProductFactSet v2 fields, controlled metric codes, units, geography types, hazard variants, evidence-reference types, review reasons, and cardinality rules.
 - Define ProductDecision v2, Storm Episode, Storm Episode Link, and the strict official-advisory/forecast-only evidence union.
+- Permit only the schema's complete ProductDecision decision-kind/product-type/reason/evidence combinations, not independent enum mixing.
 - Define a strict producer result such as `ProducedProductFactSet | ProductFactSetReviewFailure`; never emit a partial ProductFactSet.
 - Decide explicitly which Product Decision states produce a ProductFactSet. The initial recommendation is Warning and Alert only, with typed non-product or review outcomes for other states.
-- Reconcile `unsupported` and `ambiguous` availability with the canonical Hazard Availability vocabulary in `CONTEXT.md`.
+- ProductFactSet permits only official Warning, official Alert, and forecast-only Warning with their exact reason/evidence projections.
+- Use the six-state availability vocabulary in the common schema and `CONTEXT.md`; keep review disposition independent.
+- Require forecast-only classification evidence and `identity.provisional_identity` to agree exactly.
 
 ### 5. Specify Identity, Time, Version, And Digest Rules
 
-- Define canonical JSON bytes, UTF-8 and Unicode handling, numeric and null representation, ordered versus sorted collections, and UTC timestamp formatting.
+- Use the restricted canonical JSON rules, including V2 `null` rejection, UTF-8/Unicode handling, integer-only numeric representation, collection ordering, and UTC timestamp formatting.
 - Distinguish schema version, producer release, adapter release, semantic content digest, stable artifact ID, manifest file checksum, and schema identifier.
 - Define every digest prefix and input field; exclude self-referential IDs from their own digest inputs.
 - Derive ProductFactSet `created_at` and composition time from immutable referenced evidence rather than runtime wall clock.
-- Publish producer/consumer conformance bytes that both repositories validate identically.
+- Keep the four manifest-bound full-document canonical files that both repositories compare byte-for-byte.
 
 ### 6. Select Additive Orchestration Seams
 
@@ -365,6 +369,7 @@ Runtime implementation does not begin until the following readiness work is comp
 ### 7. Define The Artifact Handshake
 
 - Add `product_fact_set` as a checksummed baseline artifact role and define its exact relative-path, media-type, schema-identifier, and row-count conventions.
+- Use only the controlled ArtifactReference producer IDs in the schema; arbitrary producer labels fail closed.
 - Standardize Snapshot Output Bundle artifacts as `product-fact-set.json`, `presentation-profile.json`, and `composition-manifest.json` unless the contract review records a different name.
 - Specify the Orchestration materialization point, exporter or fixture path, root loader, bundle copy behavior, and publication-manifest references.
 - Add a byte-identical producer/consumer vector across the pinned submodule boundary.
@@ -379,11 +384,12 @@ Runtime implementation does not begin until the following readiness work is comp
 
 ### 9. Specify Composition, Publication, And Privacy
 
-- Define every CompositionManifest field, canonical digest relationship, omission reason, output media type, and relative-path rule.
-- Extend publication entries with the composition-manifest path/digest and produced public artifact roles while preserving backward compatibility.
-- Keep ProductFactSet bundle-internal by default; publication may expose approved outputs and a non-sensitive composition reference without exposing the complete fact artifact.
-- Assign a publication classification to every new artifact role and define aggregation, field allowlisting, and redaction checks for geographic and infrastructure facts.
-- Keep recipient, private-contact, provider-attempt, and delivery state outside all public artifacts.
+- CompositionManifest v1 and PublicationManifest v2 schemas now define exact identities, controlled renderer/producer IDs, fields, status/reason pairs, omission correspondence, role/media/path coupling, safe case-derived paths, classifications, comparison semantics, and public output ordering.
+- Four publication vectors prove the public-safe shape and rejection of forbidden fields, invalid classifications, and unsafe paths.
+- ProductFactSet remains bundle-internal; PublicationManifest exposes only opaque `case_id`, its strict metadata allowlist, and an opaque CompositionManifest reference, with no storm display name; every snapshot path is rooted at `snapshots/<case_id>/`.
+- Public CompositionManifest and PublicationManifest carry no source-reference IDs or source-evidence paths; PublicationManifest carries only schema-allowlisted composition/output paths.
+- Recipient, private-contact, provider-attempt, and delivery state remain outside all public artifacts.
+- Root runtime publication generation, migration/backward compatibility, HTML/PNG content inspection, source licensing/approval, and privacy enforcement remain blocking implementation work.
 
 ### 10. Make Parity And Failure Behavior Testable
 
@@ -395,15 +401,17 @@ Runtime implementation does not begin until the following readiness work is comp
 
 ### Readiness Exit Gate
 
-Implementation may begin only when:
+Runtime slices may begin only when their prerequisite synthetic vectors and focused tests are in place. Operational activation has a separate gate:
 
-- The forecast-track-ID audit passes or an upstream provisional identifier is available.
-- No contract field, controlled vocabulary, digest input, artifact path, decision-state behavior, or profile requirement remains unspecified.
-- V1 and V2 conformance vectors are committed, synthetic, provenance-labelled, and checksummed.
-- Orchestration and root validate identical canonical ProductFactSet bytes.
+- Raw ECMWF `stormIdentifier` is retained without changing current `TRACK_ID`, and tests claim structural retention only. Episode-dependent execution remains non-operational until historical/provider stability evidence passes review.
+- No contract field, controlled vocabulary, digest input, artifact path, decision-state behavior, or profile requirement differs from the readiness reference without a new reviewed version.
+- V1 and V2 conformance vectors are present, synthetic, provenance-labelled, and covered by the checksummed contract manifest.
+- Orchestration validates schemas, 32 vectors, canonical identities, null rejection, and four exact byte files; root independently verifies the manifest and matches all four frozen byte files.
 - Existing root checks are classified as structural, reference-integrity, semantic-safety, or duplicated-policy checks, with an explicit migration disposition for each.
 - Claim-parity authority, privacy classification, ownership, focused tests, and required documentation updates are approved.
 - The first tracer is decomposed into independently testable producer, artifact-handshake, consumer, composition, and publication slices.
+
+Documentation acceptance does not satisfy the vector, test, runtime, privacy enforcement, source licensing, country-office approval, deployment, persistence, delivery, or operational activation gates.
 
 ## Implementation Sequence
 

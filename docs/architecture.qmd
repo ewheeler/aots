@@ -6,7 +6,7 @@ title: "Architecture"
 
 Ahead of the Storm currently spans four submodules: forecast ingestion, impact analysis, Snowflake orchestration, and the Dash/FastAPI presentation layer. The production path is Snowflake-native, but parts of the data and report flow already support local or blob-backed artifacts.
 
-The current architectural planning focus is a Snowflake-agnostic report publication path. See [Snowflake-Agnostic Report Publication](snowflake-agnostic-report-publication.qmd) for the recommended first slice, target interfaces, risks, and validation criteria.
+The current architectural planning focus is a Snowflake-agnostic report publication path. See [Snowflake-Agnostic Report Publication](snowflake-agnostic-report-publication.qmd) for the recommended first slice, target interfaces, risks, and validation criteria. The [Alert Product V2 Readiness Reference](alert-product-v2-readiness.qmd) routes to implemented schemas, vectors, V1 freezes, and independent readiness verification; those artifacts are not V2 runtime implementation.
 
 ## System Boundaries
 
@@ -77,7 +77,25 @@ Orchestration Product Decision + semantic ProductFactSet v2
   -> rendered/publication artifacts in Snapshot Output Bundle
 ```
 
-The first profile reproduces the existing long output for claim parity. Operational-email and technical-report profiles follow a consultation checkpoint. Snowflake persistence, private recipients, delivery providers, attachments, and sends remain outside this path.
+The machine-readable compatibility profile freezes the existing long-output component contract for future claim parity. Its schema/vector exists; no profile renderer or composer consumes it at runtime. Operational-email and technical-report profiles follow a consultation checkpoint. Snowflake persistence, private recipients, delivery providers, attachments, and sends remain outside this path.
+
+The current forecast `TRACK_ID` cannot activate provisional episode identity. Its audit failed because the forecast extractor persists `longStormName` when present and falls back to raw ECMWF BUFR `stormIdentifier`; stability and non-reuse were not established. The forecast submodule now retains raw `stormIdentifier` separately and tests the candidate tuple `(ecmwf-ifs-tc-track, basin, season, normalized_track_id)` using NFKC-to-strict-ASCII normalization. It does not persist or hash an episode ID. Structural retention is not operational identity evidence; historical/provider evidence remains an activation caveat.
+
+The readiness contract/scaffolding architecture is implemented; the runtime arrows remain future work:
+
+```text
+retained raw ECMWF stormIdentifier
+  -> provisional Storm Episode + immutable official link
+  -> ProductDecision v2 + ProductFactSet v2
+  -> canonical checksummed artifact
+  -> root validation + compatibility PresentationProfile
+  -> deterministic CompositionManifest
+  -> privacy-allowlisted publication projection
+```
+
+Root currently validates V1 Alert Decision structure, references, paths, checksums, and several policy-shaped invariants, and renders from Alert Decision plus generic report/source keys. V2 migration retains structural, integrity, reference, semantic-safety, and presentation-conformance checks, but removes duplicated classification policy from root after producer conformance passes. Independent frozen V1 Alert Claims, not expected HTML or V2-generated claims, are parity authority.
+
+Orchestration now owns the normative `contracts/alert_product_v2/` set: 11 schemas, restricted canonicalization with V2 null rejection, 32 V2 vectors, four exact canonical full-document files, eight V1 conformance bundles, and a checksummed manifest. Hardened vectors constrain ProductDecision and ProductFactSet decision projections, forecast/provisional identity equality, CompositionManifest status/reason, omission correspondence, HTML-first/path-sorted outputs, role/media/path coupling, controlled renderer ID, and source-reference exclusion. PublicationManifest v2 constrains five comparison/certification tuples and opaque case-ID-derived paths with no storm display name; ArtifactReference has no `source_uri` and has a controlled producer-ID allowlist. Root `canonical_artifact.py` and `test_alert_product_v2_readiness.py` independently verify the manifest and match all four frozen byte files. These are structure/controlled-metadata readiness verifiers, not ProductFactSet loaders, composers, PublicationManifest runtime integration, HTML/PNG content privacy inspection, source-license approval, or publication enforcement.
 
 Current module map:
 
@@ -90,6 +108,7 @@ Current module map:
 - `src/aots_portable_reports/comparison.py`: comparison and certification-state logic.
 - `src/aots_portable_reports/local_adapter.py`: local Snapshot Output Bundle discovery.
 - `src/aots_portable_reports/publication.py`: publication manifest and Quarto index generation.
+- `src/aots_portable_reports/canonical_artifact.py`: implemented V2 readiness-only canonical/manifest verifier; it is not a runtime ProductFactSet consumer.
 
 ## Hamilton DAG
 

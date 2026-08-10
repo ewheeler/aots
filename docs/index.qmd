@@ -14,7 +14,8 @@ This documentation site was generated with `repo-familiar`.
 - Review [Snowflake-Agnostic Report Publication](snowflake-agnostic-report-publication.qmd) for the current architecture track and planning questions.
 - Review the [Alert Email SOP Alignment Plan](alert-email-sop-alignment-plan.qmd) for proposed Warning/Alert classification and content changes.
 - Review the [Alert Product Flexibility Plan](alert-product-flexibility-plan.qmd) for the committee-approved next-stage ProductFactSet/Profile implementation sequence.
-- Review [ADR 0008](adr/0008-separate-alert-classification-from-country-threat.md), [ADR 0009](adr/0009-dry-run-alert-policy-engine.md), and [ADR 0010](adr/0010-separate-semantic-alert-facts-from-presentation.md) for classification, dry-run policy, and semantic-facts/presentation boundaries.
+- Use the [Alert Product V2 Readiness Reference](alert-product-v2-readiness.qmd) to route into the normative 11 schemas, 32 V2 vectors, four exact canonical byte fixtures, eight V1 freezes, checksummed manifest, forecast identity-retention evidence, and independent root verification. Structure/controlled-metadata readiness exists; V2 runtime, content privacy inspection, publication enforcement, and operational activation do not.
+- Review [ADR 0008](adr/0008-separate-alert-classification-from-country-threat.md), [ADR 0009](adr/0009-dry-run-alert-policy-engine.md), [ADR 0010](adr/0010-separate-semantic-alert-facts-from-presentation.md), [ADR 0011](adr/0011-use-provisional-storm-episode-identity.md), [ADR 0012](adr/0012-use-canonical-content-addressed-alert-artifacts.md), and [ADR 0013](adr/0013-keep-alert-publication-data-minimal.md) for the accepted alert policy, identity, artifact, and publication boundaries.
 
 ## Installed Agent Defaults
 

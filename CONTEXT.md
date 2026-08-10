@@ -193,8 +193,8 @@ The baseline artifact that carries Current Storm State, Country Threat Assessmen
 _Avoid_: Expected Alert Email, inferred renderer setting, Alert Claims.
 
 **Hazard Availability**:
-A deterministic statement that wind, rainfall, or storm-surge evidence is validated, unavailable, unvalidated, or incomplete for a product.
-_Avoid_: Zero impact, unrestricted prose caveat, inferred hazard estimate.
+A deterministic statement that wind, rainfall, or storm-surge evidence is `validated`, `unavailable`, `unvalidated`, `incomplete`, `unsupported`, or `ambiguous` for a product. Availability describes the evidence condition; an independent review disposition states `no_review` or `manual_review_required` with controlled reasons.
+_Avoid_: Zero impact, unrestricted prose caveat, inferred hazard estimate, treating unsupported or ambiguous evidence as the review decision itself.
 
 **Alert Audit Bundle**:
 The alert-specific JSON files inside a Snapshot Output Bundle that make local alert generation auditable: alert context, alert claims, and alert comparison results.
