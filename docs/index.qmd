@@ -13,6 +13,7 @@ This documentation site was generated with `repo-familiar`.
 - Review `.repo-familiar/bootstrap.yml` for generation provenance.
 - Review [Snowflake-Agnostic Report Publication](snowflake-agnostic-report-publication.qmd) for the current architecture track and planning questions.
 - Review the [Alert Email SOP Alignment Plan](alert-email-sop-alignment-plan.qmd) for proposed Warning/Alert classification and content changes.
+- Review [ADR 0008](adr/0008-separate-alert-classification-from-country-threat.md) and [ADR 0009](adr/0009-dry-run-alert-policy-engine.md) for the classification contract and non-sending operational policy engine.
 
 ## Installed Agent Defaults
 

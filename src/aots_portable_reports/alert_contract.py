@@ -22,7 +22,7 @@ ALERT_ASSETS_DIRNAME = "alert-assets"
 class AlertAuditBundlePaths:
     alert_context_path: str
     alert_claims_path: str
-    alert_comparison_json_path: str
+    alert_comparison_json_path: str | None
 
 
 @dataclass(frozen=True)
@@ -50,26 +50,37 @@ def write_alert_audit_bundle(
     out_dir: Path,
     alert_context: dict[str, Any],
     alert_claims: dict[str, Any],
-    alert_comparison: ComparisonReport,
+    alert_comparison: ComparisonReport | None,
 ) -> AlertAuditBundlePaths:
     alert_context_path = out_dir / ALERT_CONTEXT_FILENAME
     alert_claims_path = out_dir / ALERT_CLAIMS_FILENAME
-    alert_comparison_json_path = out_dir / ALERT_COMPARISON_FILENAME
+    alert_comparison_json_path = (
+        out_dir / ALERT_COMPARISON_FILENAME if alert_comparison is not None else None
+    )
     alert_context_path.write_text(json.dumps(alert_context, indent=2, default=str) + "\n")
     alert_claims_path.write_text(json.dumps(alert_claims, indent=2, default=str) + "\n")
-    alert_comparison_json_path.write_text(alert_comparison.model_dump_json(indent=2) + "\n")
+    if alert_comparison_json_path is not None and alert_comparison is not None:
+        alert_comparison_json_path.write_text(alert_comparison.model_dump_json(indent=2) + "\n")
     return AlertAuditBundlePaths(
         alert_context_path=str(alert_context_path),
         alert_claims_path=str(alert_claims_path),
-        alert_comparison_json_path=str(alert_comparison_json_path),
+        alert_comparison_json_path=(
+            str(alert_comparison_json_path) if alert_comparison_json_path is not None else None
+        ),
     )
 
 
-def write_alert_visual_assets(out_dir: Path, visual_assets: list[dict[str, Any]]) -> list[AlertVisualAssetPath]:
+def write_alert_visual_assets(
+    out_dir: Path, visual_assets: list[dict[str, Any]]
+) -> list[AlertVisualAssetPath]:
     assets_dir = out_dir / ALERT_ASSETS_DIRNAME
     written: list[AlertVisualAssetPath] = []
     for asset in visual_assets:
-        if asset.get("status") != "rendered" or not asset.get("png_base64") or not asset.get("filename"):
+        if (
+            asset.get("status") != "rendered"
+            or not asset.get("png_base64")
+            or not asset.get("filename")
+        ):
             continue
         assets_dir.mkdir(parents=True, exist_ok=True)
         path = assets_dir / str(asset["filename"])

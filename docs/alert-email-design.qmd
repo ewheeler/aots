@@ -4,7 +4,7 @@ title: "Alert Email Design"
 
 This page records the design target for local `rendered-alert.html` outputs. The goal is stronger visual and layout alignment with the Snowflake alert-agent email while preserving the portable renderer's clearer separation between structured facts, bounded prose, deterministic visual assets, and audit files.
 
-The current design documents implemented Storm Alert parity. Proposed changes to align both Warning and Alert products with the LACRO protocol are tracked separately in the [Alert Email SOP Alignment Plan](alert-email-sop-alignment-plan.qmd).
+The renderer supports Warning and Alert variants supplied by a versioned operational Product Decision. The alignment rationale and remaining operational work are tracked in the [Alert Email SOP Alignment Plan](alert-email-sop-alignment-plan.qmd).
 
 The target is product-family parity, not pixel parity. A reviewer should be able to place a Snowflake alert-agent email and portable rendered alert side by side and recognize the same information hierarchy, alert affordances, and visual sections.
 
@@ -13,7 +13,7 @@ The target is product-family parity, not pixel parity. A reviewer should be able
 - Match the Snowflake alert-agent email's section order and visual hierarchy where practical.
 - Keep deterministic facts, tables, visual assets, provenance labels, and caveats outside unrestricted LLM output.
 - Use bounded prose slots that mirror Snowflake's current prompt sections: summary, narrative, shift, and oscillation.
-- Keep `expected-alert.html` as an independent reference; do not use it as the source of factual claims.
+- Keep `expected-alert.html` as provenance-qualified reference evidence; do not use it as a generation input or source of factual claims.
 - Do not require exact prose, byte-for-byte HTML, or pixel-perfect screenshots.
 - Prefer accessible semantic HTML: headings, regions, tables, captions, image alt text, and readable fallback labels.
 
@@ -21,19 +21,19 @@ The target is product-family parity, not pixel parity. A reviewer should be able
 
 The portable alert should follow this section order:
 
-1. Branded header.
-2. Urgency strip for review status and forecast threshold.
-3. Situation summary.
-4. Timing and forecast details.
-5. Situation overview / narrative.
-6. Expected impact totals.
+1. Branded Warning or Alert header.
+2. Urgency strip for review status and local forecast threshold.
+3. Summary.
+4. Situation, including official current status and the separate local forecast.
+5. Situation overview and modeled exposure totals.
+6. Forecast and deterministic wind, rainfall, and storm-surge availability.
 7. Impact composition donut charts.
-8. Primary 50kt wind exposure probability map.
-9. Optional 34kt and 64kt secondary probability maps.
+8. Primary wind exposure probability map.
+9. Optional secondary probability maps.
 10. Wind exposure probability by threshold plot.
 11. Admin choropleth for expected children at risk.
 12. Forecast shift prose.
-13. Most affected administrative areas table.
+13. Highest-exposure administrative areas table.
 14. Forecast evolution chart.
 15. Oscillation notice prose.
 16. Required caveats, provenance labels, and footer.
@@ -57,16 +57,16 @@ Generated PNG files remain under `alert-assets/` for audit/debug and are embedde
 
 | Visual asset | Placement |
 | --- | --- |
-| `ensemble-probability-50kt.png` | Full-width primary visual in Expected Impact. |
+| `ensemble-probability-50kt.png` | Full-width primary visual in Forecast Exposure. |
 | `ensemble-probability-34kt.png` and `ensemble-probability-64kt.png` | Optional side-by-side secondary visuals when available. |
-| `population-composition-50kt.png` | Donut chart beside Expected Impact totals, showing children/adult composition. |
-| `people-in-need-composition-50kt.png` | Donut chart beside people-in-need values, showing child/other composition. |
-| `admin-choropleth-50kt.png` | Admin impact section before the admin table. |
+| `population-composition-50kt.png` | Donut chart beside Forecast Exposure totals, showing children/adult composition. |
+| `people-in-need-composition.png` | Unthresholded donut chart beside forecast-conditioned, wind-integrated PiN values, showing child/other composition. |
+| `admin-choropleth-50kt.png` | Admin exposure section before the admin table. |
 | `impact-evolution-50kt.png` | Forecast evolution section near the bottom before caveats. |
 
 ## Prose Formatting
 
-Baseline Replay prose is useful for parity scaffolding, but it must not turn copied table/list text into verbose paragraphs. The portable renderer should:
+Portable generation defaults to empty bounded prose slots so expected HTML cannot influence generated output. Baseline Replay may be selected only for an explicit non-certifying parity experiment, where it must not turn copied table/list text into verbose paragraphs. The portable renderer should:
 
 - Extract bounded prose paragraphs only, not table contents.
 - Cap long replayed prose and remove repeated whitespace.
@@ -83,6 +83,13 @@ Baseline Replay prose is useful for parity scaffolding, but it must not turn cop
 ## Current Implementation Status
 
 - `rendered-alert.html` now uses a Snowflake-aligned section order and internal style tokens.
+- A supplied Product Decision controls Warning versus Alert; the renderer does not classify from 34kt, 50kt, or 64kt values.
+- Summary, Situation, and Forecast are the primary product sections.
+- Official global storm status and local forecast hazard are presented separately.
+- Summary contains deterministic product, horizon, threshold, exposure, and forecast-conditioned PiN/CHiN facts before any bounded prose.
+- Situation includes current location, movement, maximum sustained wind, averaging convention, official status, and local forecast evidence.
+- Rainfall and storm-surge unavailability is rendered deterministically from Hazard Availability facts.
+- Local rendering no longer requires `expected-alert.html`; expected HTML is copied as optional provenance-qualified reference evidence, while expected-output comparison remains future work.
 - The visual palette now mirrors the Snowflake email more closely: UNICEF-blue header/table headers, blue urgency strip, neutral text, light-gray borders, and pale-blue summary callout.
 - The renderer supports bounded `summary`, `narrative`, `shift`, and `oscillation` prose slots, with `situation_summary` kept as a compatibility alias.
 - The 50kt ensemble probability map is presented as the primary visual; 34kt and 64kt maps are secondary views when available.
@@ -90,7 +97,7 @@ Baseline Replay prose is useful for parity scaffolding, but it must not turn cop
 - Donut charts are implemented when source data is available.
 - Admin choropleth and forecast evolution chart placement now match the target information hierarchy.
 - Exported `alert_timing` artifacts let portable alerts render Snowflake-style threshold-arrival timing tables without live Snowflake access during snapshot generation.
-- Threshold Exposure and Most Affected Administrative Areas tables now include facility columns where report data provides them.
+- Threshold Exposure and Highest-Exposure Administrative Areas tables now include facility columns where report data provides them.
 - Existing comparison gates remain claim-based and continue to avoid exact prose or pixel matching.
 
 ## Intentional Differences

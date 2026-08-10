@@ -37,7 +37,7 @@ The root package owns cross-submodule integration. It should remain artifact-ori
 | Path | Responsibility | Focused test |
 |---|---|---|
 | `src/aots_portable_reports/cli.py` | Public `snapshot`, `export-snowflake`, and `publish` command contracts. | `tests/aots_portable_reports/test_snapshot_cli.py`, `tests/aots_portable_reports/test_export_snowflake_cli.py`, `tests/aots_portable_reports/test_publication.py` |
-| `src/aots_portable_reports/models.py` | Baseline, report snapshot, comparison, and publication Pydantic contracts. | Nearest consumer test; start with `tests/aots_portable_reports/test_snapshot_cli.py`. |
+| `src/aots_portable_reports/models.py` | Baseline, report snapshot, Alert Decision, comparison, and publication Pydantic contracts. | `tests/aots_portable_reports/test_alert_decision_contract.py`, then the nearest consumer test. |
 | `src/aots_portable_reports/validation.py` | Baseline manifest, checksum, schema-hash, and row-count integrity. | `tests/aots_portable_reports/test_snapshot_cli.py` |
 | `src/aots_portable_reports/export_snowflake.py` | Read-only Snowflake extraction, query filters, artifact layout, and safe output replacement. | `tests/aots_portable_reports/test_export_snowflake_cli.py`, `tests/aots_portable_reports/test_export_snowflake_live_path.py` |
 | `src/aots_portable_reports/report_wrapper.py` | Thin adaptation around existing `do_report(...)` behavior and bounded runtime compatibility patches. | `tests/aots_portable_reports/test_report_wrapper.py` |
@@ -61,6 +61,22 @@ The root package owns cross-submodule integration. It should remain artifact-ori
 | `Ahead-of-the-Storm-ORCHESTRATION/` | Snowflake-native operational orchestration. |
 
 These directories are pinned gitlinks declared in `.gitmodules`. Changes inside them belong to their upstream repositories and require an intentional submodule revision update here. Do not assign the Portable Report Flow to any single submodule.
+
+Current Orchestration alert-policy routes:
+
+| Path | Responsibility | Focused test |
+|---|---|---|
+| `Ahead-of-the-Storm-ORCHESTRATION/07b_alert_agent/warning_alert_classifier.py` | Side-effect-free country-level Warning/Alert/no-product/manual-review decision core. | `Ahead-of-the-Storm-ORCHESTRATION/tests/test_warning_alert_classifier.py` |
+| `Ahead-of-the-Storm-ORCHESTRATION/07b_alert_agent/authoritative_storm_state.py` | Proposed dry-run LACRO basin authority configuration and strict NHC/CPHC advisory normalization. | `Ahead-of-the-Storm-ORCHESTRATION/tests/test_authoritative_storm_state.py` |
+| `Ahead-of-the-Storm-ORCHESTRATION/07b_alert_agent/advisory_feed.py` | No-redirect, bounded exact-URL NHC/CPHC RSS retrieval; digest-bound paired advisory parsing; review-event production. | `Ahead-of-the-Storm-ORCHESTRATION/tests/test_advisory_feed.py` |
+| `Ahead-of-the-Storm-ORCHESTRATION/07b_alert_agent/storm_identity.py` | Exact or explicitly approved forecast-to-official storm identity reconciliation. | `Ahead-of-the-Storm-ORCHESTRATION/tests/test_storm_identity.py` |
+| `Ahead-of-the-Storm-ORCHESTRATION/07b_alert_agent/country_threat.py` | Proposed dry-run Country Office eligibility and complete 144-hour 34kt threat predicate. | `Ahead-of-the-Storm-ORCHESTRATION/tests/test_country_threat.py` |
+| `Ahead-of-the-Storm-ORCHESTRATION/07b_alert_agent/policy_engine.py` | Non-sending composition of identity, threat, classifier, lifecycle, delivery attempts, and product facts. | `Ahead-of-the-Storm-ORCHESTRATION/tests/test_policy_engine.py` |
+| `Ahead-of-the-Storm-ORCHESTRATION/07b_alert_agent/alert_lifecycle.py` | Country lifecycle transitions and recipient-aware dry-run attempts. | `Ahead-of-the-Storm-ORCHESTRATION/tests/test_alert_lifecycle.py` |
+| `Ahead-of-the-Storm-ORCHESTRATION/07b_alert_agent/product_facts.py` | Deterministic Summary, Situation, and Forecast fact assembly. | `Ahead-of-the-Storm-ORCHESTRATION/tests/test_product_facts.py` |
+| `Ahead-of-the-Storm-ORCHESTRATION/04_data/09_alert_policy_tables.sql` | Registry, identity, official state, threat, decision, lifecycle-head, and recipient-delivery schema contracts; no writer is shipped. | `Ahead-of-the-Storm-ORCHESTRATION/tests/test_alert_policy_sql.py` |
+
+These modules are implemented and credential-free. Content-addressed classifier release SQL and read-only policy table schemas are authored and locally tested. No persistence writer is shipped; Snowflake identity-recomputing persistence, compile/deployment smoke coverage, scheduled ingestion, legacy-procedure cutover, actual delivery, and operational approval remain proposed.
 
 ## Contracts And Test Routing
 
@@ -99,9 +115,9 @@ Real `known-good-baselines/`, `.env`, credentials, keys, and certificates are lo
 
 ## Implemented Versus Proposed
 
-Implemented behavior includes the three public commands, integrity validation, the Hamilton snapshot DAG, the thin existing-report wrapper, provisional and certifying comparison states, alert claims and rendering, and publication from Snapshot Output Bundles.
+Implemented behavior includes the three public commands, integrity validation, the Hamilton snapshot DAG, the thin existing-report wrapper, provisional and certifying comparison states, Alert Decision validation, decision-driven Warning/Alert rendering, non-renderable decision auditing, and publication from Snapshot Output Bundles. Orchestration also contains a credential-free local feed/parser, state normalization, storm identity, country threat, classifier, lifecycle, recipient suppression, and Product Facts composition with focused tests.
 
-Proposed or incomplete architecture includes explicit repository/store interfaces, a fully typed Report Contract, complete file/blob adapters, extra-field allowlisting, broad public report publication, and removal of Snowflake coupling from the live dashboard or orchestration stack.
+Proposed or incomplete architecture includes scheduled/monitored authoritative advisory retrieval, source-authentication policy beyond TLS/exact-host controls, Snowflake classifier and persistence compile/deployment, operational lifecycle/delivery, a shared portable Product Facts artifact, explicit repository/store interfaces, a fully typed Report Contract, complete file/blob adapters, extra-field allowlisting, broad public report publication, and removal of Snowflake coupling from the live dashboard or orchestration stack.
 
 ## Change Locality
 

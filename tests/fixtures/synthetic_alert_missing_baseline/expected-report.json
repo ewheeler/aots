@@ -3,6 +3,12 @@
   "country": "TST",
   "storm": "ALPHA",
   "forecast_time": "2026-01-01T00:00:00Z",
+  "expected_pop_34": 456,
+  "expected_children_34": 123,
+  "expected_schools_34": 8,
+  "expected_hcs_34": 3,
+  "E_people_in_need": 110,
+  "E_children_in_need": 48,
   "summary": {
     "admin_areas_at_risk": 1,
     "maximum_probability": 0.25

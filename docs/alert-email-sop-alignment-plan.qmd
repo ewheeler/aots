@@ -11,11 +11,11 @@ title: "Alert Email SOP Alignment Plan"
 
 ## Status
 
-This page records proposed work to align Ahead of the Storm email products with the LACRO Warning and Alert protocol. It is a plan, not a description of implemented behavior.
+This page records the plan and implementation status for aligning Ahead of the Storm email products with the LACRO Warning and Alert protocol.
 
 The plan has been reviewed against the root repository and the Orchestration alert-adjustment branch. The review confirmed that the primary problem is not naming: the current design combines forecast threat, product classification, and delivery lifecycle inside separate threshold-driven email procedures.
 
-No implementation, internal rename, or email-layout work should begin until the decision gate in this plan is complete.
+ADRs 0008 and 0009 record the safe defaults used for a synthetic, non-sending dry-run engine. Local official-feed retrieval/parsing, storm identity, threat assessment, lifecycle transitions, recipient suppression, product facts, and release generation are implemented and tested without credentials. Read-only policy schemas exist, but no Snowflake writer is shipped. Persistence, network/UDF deployment, regional and stakeholder approvals, legacy cutover, and sending remain blocked by activation gates.
 
 The selected product policy is:
 
@@ -26,6 +26,21 @@ The selected product policy is:
 - Under this policy, a threatened country with only tropical-storm-force winds forecast locally still receives an Alert when the storm's authoritative global status is hurricane. The product must clearly distinguish global classification from the country's local forecast.
 
 Historical LACRO Warning and Alert examples referenced in stakeholder feedback were not available in this workspace. Their content and visual conventions remain an acceptance dependency, but they do not block policy, contract, or classifier design.
+
+## Implemented Tracer Slice
+
+The current implementation establishes a safe, non-sending tracer slice:
+
+- ADR 0008 records the initial policy, evidence boundaries, and operational activation gates.
+- Orchestration contains a side-effect-free, credential-free classifier with synthetic tests for Warning, Alert, no-product, and manual-review decisions.
+- Orchestration contains a proposed dry-run LACRO basin authority map and strict advisory normalizer. Atlantic/Eastern Pacific map to RSMC Miami, Central Pacific maps to RSMC Honolulu, and South Atlantic, the LACRO-adjacent Southeast Pacific area with an unvalidated regional boundary, and unmapped basins fail closed to manual review.
+- The dry-run operational chain now includes bounded NHC/CPHC RSS retrieval and paired advisory parsing, explicit storm-identity reconciliation, a versioned Country Office registry and threat predicate, country lifecycle transitions, recipient-aware suppressed delivery attempts, and deterministic Summary/Situation/Forecast fact assembly.
+- A content-addressed release builder copies and verifies the classifier, generates a runtime hash-checking Snowflake entrypoint, and renders the proposed UDF SQL. Separate Snowflake table schemas preserve the intended boundaries, but persistence is deliberately omitted until an owner writer can recompute every identity and pass isolated-account tests.
+- Known-Good Baselines can carry a checksummed Alert Decision artifact with current storm state, country threat, hazard availability, and product decision.
+- Portable rendering consumes the supplied decision, produces Warning or Alert variants, distinguishes official status from local hazard, and renders explicit rainfall and storm-surge unavailability.
+- Local alert context and claims are produced for every supplied decision. Warning and Alert decisions additionally produce HTML and a presentation self-check without using expected Snowflake email HTML as a generation input. Independent expected HTML remains optional evidence with explicit provenance.
+
+The tracer slice does not activate operational sending. Snowflake external-network deployment and monitoring, stakeholder approval of the Country Office registry and threat predicate, operational cutover from legacy procedures, historical example review, and explicit delivery approval remain required. Rainfall, storm surge, period-indexed impacts, automated downgrade, closure, and all-clear remain independent future tracks.
 
 ## Feedback To Address
 
@@ -39,7 +54,7 @@ Warnings are expected to be the more common product and therefore need enough in
 
 The implementation must qualify stakeholder terminology against available evidence. Current artifacts support modeled forecast exposure and forecast-conditioned need estimates. They do not support observed affected-population or damage claims.
 
-## Current Assessment
+## Operational Baseline Assessment
 
 ### Naming And Classification
 
@@ -101,9 +116,9 @@ A cumulative 144-hour outlook may satisfy the requested five-to-six-day product.
 
 ### Portable Flow
 
-The Portable Alert Renderer currently renders a fixed 50kt Storm Alert and follows the existing Snowflake email design. It does not model Warning versus Alert as an operational product decision.
+The Portable Alert Renderer now consumes a versioned operational Product Decision and renders Warning or Alert without inferring product type from wind thresholds. Legacy report totals and visuals remain explicitly 50kt evidence unless a threshold-specific upstream artifact says otherwise.
 
-Portable alert generation also stops when expected Snowflake email HTML is absent, and its current alert comparison is primarily a presentation self-check. The alignment work must remove the expected-email rendering dependency while preserving independent expected-output provenance for certifying comparisons.
+Expected Snowflake email HTML is optional and is not passed into portable generation. The current alert comparison remains a presentation self-check; certifying parity still requires a separate comparison against independently produced expected facts or output with trusted provenance.
 
 ## Root Cause
 
@@ -154,7 +169,7 @@ The preferred implementation is one side-effect-free classifier artifact that:
 - Is executed unchanged by Snowflake production adapters and credential-free local tests.
 - Contains no Snowflake reads, writes, email sends, or rendering.
 
-Current Orchestration procedures contain inline Python, use no imported classifier package, and have no Python unit-test harness. A packaging and Snowflake-import spike must therefore prove the deployment shape. The plan must not permit separate inline-production and local-test classifier implementations.
+Legacy Orchestration procedures still contain inline Python, but the new policy engine is split into imported, credential-free modules with a local unit-test harness and content-addressed release builder. The generated Snowflake UDF calls the same classifier file through a runtime hash-checking entrypoint. Snowflake compile/deployment smoke tests must still prove the generated deployment shape before use.
 
 The policy behavior is:
 
@@ -211,7 +226,7 @@ All factual values carry the provenance fields applicable to their type. Current
 
 Record these decisions in an ADR before implementation:
 
-1. Authoritative current-status provider by basin, sustained-wind averaging conventions, and coverage gaps.
+1. Validate and approve the dry-run authority configuration: RSMC Miami for Atlantic/Eastern Pacific, RSMC Honolulu for Central Pacific, and manual review for South Atlantic, the LACRO-adjacent Southeast Pacific area pending exact boundary validation, and unmapped basins; preserve one-minute sustained-wind averaging for NHC/CPHC advisories.
 2. Canonical storm identity and reconciliation between advisory and ECMWF identifiers.
 3. Advisory freshness, source-conflict, missing-status, and unsupported-basin behavior.
 4. Eligible LACRO Country Office registry and ownership.
@@ -251,7 +266,7 @@ Record these decisions in an ADR before implementation:
 - Create the explicit Country Office registry.
 - Replace differing Warning/Alert eligibility paths with one versioned country threat assessment.
 - Reevaluate decisions on advisory updates and forecast updates.
-- Gate operational coverage for basins without an approved provider policy.
+- Gate operational coverage for basins without a validated and approved provider policy.
 
 ### 4. Implement Country Lifecycle And Delivery Tracking
 

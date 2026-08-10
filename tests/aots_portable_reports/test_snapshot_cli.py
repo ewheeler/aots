@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import shutil
 from pathlib import Path
 
@@ -64,36 +65,9 @@ def test_snapshot_command_copies_expected_alert_html_when_present(tmp_path: Path
     assert "Storm ALPHA" in (out_dir / EXPECTED_ALERT_EMAIL_FILENAME).read_text()
 
 
-def test_snapshot_command_creates_alert_audit_bundle_when_expected_alert_is_present(tmp_path: Path) -> None:
-    baseline = copy_fixture(tmp_path)
-    (baseline / EXPECTED_ALERT_EMAIL_FILENAME).write_text(
-        "<html><body><h1>Storm ALPHA — TST</h1>"
-        "<section><h2>Situation Summary</h2><p>Synthetic expected prose.</p></section>"
-        "<p>AI system based on probabilistic model outputs</p><code>data</code><code>inferred</code>"
-        "</body></html>"
-    )
-    manifest_path = baseline / "manifest.json"
-    manifest = json.loads(manifest_path.read_text())
-    manifest["expected_alert_path"] = EXPECTED_ALERT_EMAIL_FILENAME
-    manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")
-    out_dir = tmp_path / "out"
-
-    exit_code = main(["snapshot", "--baseline", str(baseline), "--out", str(out_dir)])
-
-    assert exit_code == 0
-    context = json.loads((out_dir / ALERT_CONTEXT_FILENAME).read_text())
-    claims = json.loads((out_dir / ALERT_CLAIMS_FILENAME).read_text())
-    comparison = json.loads((out_dir / ALERT_COMPARISON_FILENAME).read_text())
-    rendered = (out_dir / RENDERED_ALERT_HTML_FILENAME).read_text()
-    assert context["storm"] == "ALPHA"
-    assert claims["identity"]["storm"] == "ALPHA"
-    assert comparison["status"] == "passed"
-    assert comparison["failures"] == []
-    assert "Synthetic expected prose" in rendered
-    assert "AI system based on probabilistic model outputs" in rendered
-
-
-def test_snapshot_command_keeps_expected_email_rendered_alert_and_audit_files_separate(tmp_path: Path) -> None:
+def test_expected_html_without_decision_does_not_create_local_alert_audit(
+    tmp_path: Path,
+) -> None:
     baseline = copy_fixture(tmp_path)
     (baseline / EXPECTED_ALERT_EMAIL_FILENAME).write_text(
         "<html><body><h1>Storm ALPHA — TST</h1>"
@@ -111,19 +85,40 @@ def test_snapshot_command_keeps_expected_email_rendered_alert_and_audit_files_se
 
     assert exit_code == 0
     assert (out_dir / EXPECTED_ALERT_EMAIL_FILENAME).is_file()
-    assert (out_dir / RENDERED_ALERT_HTML_FILENAME).is_file()
-    assert (out_dir / ALERT_CONTEXT_FILENAME).is_file()
-    assert (out_dir / ALERT_CLAIMS_FILENAME).is_file()
-    assert (out_dir / ALERT_COMPARISON_FILENAME).is_file()
-    assert sorted(path.name for path in out_dir.glob("alert-*.json")) == [
-        ALERT_CLAIMS_FILENAME,
-        ALERT_COMPARISON_FILENAME,
-        ALERT_CONTEXT_FILENAME,
-    ]
+    assert not (out_dir / ALERT_CONTEXT_FILENAME).exists()
+    assert not (out_dir / ALERT_CLAIMS_FILENAME).exists()
+    assert not (out_dir / ALERT_COMPARISON_FILENAME).exists()
+    assert not (out_dir / RENDERED_ALERT_HTML_FILENAME).exists()
 
 
-def test_snapshot_command_uses_structured_alert_inputs_for_claims_and_rendering(tmp_path: Path) -> None:
+def test_snapshot_command_keeps_expected_email_rendered_alert_and_audit_files_separate(
+    tmp_path: Path,
+) -> None:
     baseline = copy_fixture(tmp_path)
+    (baseline / EXPECTED_ALERT_EMAIL_FILENAME).write_text(
+        "<html><body><h1>Storm ALPHA — TST</h1>"
+        "<section><h2>Situation Summary</h2><p>Synthetic expected prose.</p></section>"
+        "<p>AI system based on probabilistic model outputs</p><code>data</code><code>inferred</code>"
+        "</body></html>"
+    )
+    manifest_path = baseline / "manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    manifest["expected_alert_path"] = EXPECTED_ALERT_EMAIL_FILENAME
+    manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")
+    out_dir = tmp_path / "out"
+
+    exit_code = main(["snapshot", "--baseline", str(baseline), "--out", str(out_dir)])
+
+    assert exit_code == 0
+    assert (out_dir / EXPECTED_ALERT_EMAIL_FILENAME).is_file()
+    assert not (out_dir / RENDERED_ALERT_HTML_FILENAME).exists()
+    assert not list(out_dir.glob("alert-*.json"))
+
+
+def test_snapshot_command_uses_structured_alert_inputs_for_claims_and_rendering(
+    tmp_path: Path,
+) -> None:
+    baseline = copy_fixture(tmp_path, "synthetic_alert_present_baseline")
     expected_report_path = baseline / "expected-report.json"
     expected_report_path.write_text(
         json.dumps(
@@ -174,7 +169,9 @@ def test_snapshot_command_uses_structured_alert_inputs_for_claims_and_rendering(
     assert context["impact_totals"]["population"] == 123
     assert context["people_in_need"] == {"population": 90, "children": 30}
     assert context["top_admin_areas"] == [{"name": "North District", "population": 70}]
-    assert context["cross_threshold_rows"] == [{"wind_threshold": 34, "population": 200, "children": 80}]
+    assert context["cross_threshold_rows"] == [
+        {"wind_threshold": 34, "population": 200, "children": 80}
+    ]
     assert context["required_caveats"] == [
         {
             "id": "ai_probabilistic_model_outputs",
@@ -205,7 +202,8 @@ def test_snapshot_command_uses_structured_alert_inputs_for_claims_and_rendering(
         {"wind_threshold": 34, "population": 200, "children": 80, "provenance_labels": ["data"]}
     ]
     assert "Storm ALPHA - TST" in rendered
-    assert "Replay only prose." in rendered
+    assert "Replay only prose." not in rendered
+    assert "No bounded summary prose was available." in rendered
     assert "North District" in rendered
     assert "123" in rendered
     assert "HTML-ONLY" not in rendered
@@ -237,10 +235,12 @@ def test_snapshot_command_writes_reviewable_rendered_alert_html(tmp_path: Path) 
     assert exit_code == 0
     rendered = (out_dir / RENDERED_ALERT_HTML_FILENAME).read_text()
     assert "Active Forecast" in rendered
-    assert "Timing &amp; Forecast Details" in rendered
-    assert "Expected Impact" in rendered
+    assert ">Summary<" in rendered
+    assert ">Situation<" in rendered
+    assert ">Forecast<" in rendered
+    assert "Forecast Exposure" in rendered
     assert "Wind Exposure Probability - 50kt" in rendered
-    assert "Most Affected Administrative Areas" in rendered
+    assert "Highest-Exposure Administrative Areas" in rendered
     assert "Threshold Exposure" in rendered
     assert "Required Caveats" in rendered
     assert '<th scope="col">Fact</th>' in rendered
@@ -256,10 +256,11 @@ def test_snapshot_command_uses_committed_alert_missing_fixture(tmp_path: Path) -
 
     assert exit_code == 0
     assert not (out_dir / EXPECTED_ALERT_EMAIL_FILENAME).exists()
-    assert not (out_dir / RENDERED_ALERT_HTML_FILENAME).exists()
-    assert not (out_dir / ALERT_CONTEXT_FILENAME).exists()
-    assert not (out_dir / ALERT_CLAIMS_FILENAME).exists()
-    assert not (out_dir / ALERT_COMPARISON_FILENAME).exists()
+    assert (out_dir / RENDERED_ALERT_HTML_FILENAME).exists()
+    assert (out_dir / ALERT_CONTEXT_FILENAME).exists()
+    assert (out_dir / ALERT_CLAIMS_FILENAME).exists()
+    assert (out_dir / ALERT_COMPARISON_FILENAME).exists()
+    assert "Storm Warning" in (out_dir / RENDERED_ALERT_HTML_FILENAME).read_text()
 
 
 def test_snapshot_bundle_manifest_records_alert_artifact_paths_when_emitted(tmp_path: Path) -> None:
@@ -270,6 +271,7 @@ def test_snapshot_bundle_manifest_records_alert_artifact_paths_when_emitted(tmp_
 
     manifest = json.loads((out_dir / "manifest.json").read_text())
     assert manifest["expected_alert_html_path"] == EXPECTED_ALERT_EMAIL_FILENAME
+    assert manifest["expected_alert_provenance"] == "seed_placeholder"
     assert manifest["rendered_alert_html_path"] == RENDERED_ALERT_HTML_FILENAME
     assert manifest["alert_context_path"] == ALERT_CONTEXT_FILENAME
     assert manifest["alert_claims_path"] == ALERT_CLAIMS_FILENAME
@@ -283,7 +285,9 @@ def test_snapshot_bundle_manifest_records_alert_artifact_paths_when_emitted(tmp_
     assert bundle.alert_visual_asset_paths
 
 
-def test_snapshot_bundle_writes_visual_png_assets_and_inline_images_when_source_data_exists(tmp_path: Path) -> None:
+def test_snapshot_bundle_writes_visual_png_assets_and_inline_images_when_source_data_exists(
+    tmp_path: Path,
+) -> None:
     baseline = copy_fixture(tmp_path, "synthetic_alert_present_baseline")
     out_dir = tmp_path / "out"
 
@@ -300,31 +304,72 @@ def test_snapshot_bundle_writes_visual_png_assets_and_inline_images_when_source_
         assert path.read_bytes().startswith(b"\x89PNG")
     assert bundle.alert_visual_asset_paths
     assert "data:image/png;base64," in rendered
-    assert "Forecast Evolution" in rendered or "Wind Exposure Probability by Wind Threshold" in rendered
+    assert (
+        "Forecast Evolution" in rendered
+        or "Wind Exposure Probability by Wind Threshold" in rendered
+    )
 
 
-def test_snapshot_bundle_manifest_omits_alert_paths_when_expected_alert_is_missing(tmp_path: Path) -> None:
+def test_snapshot_bundle_manifest_records_local_alert_paths_without_expected_alert(
+    tmp_path: Path,
+) -> None:
     baseline = copy_fixture(tmp_path, "synthetic_alert_missing_baseline")
     out_dir = tmp_path / "out"
 
     bundle = run_snapshot(baseline, out_dir)
 
     manifest = json.loads((out_dir / "manifest.json").read_text())
-    for key in [
-        "expected_alert_html_path",
-        "rendered_alert_html_path",
-        "alert_context_path",
-        "alert_claims_path",
-        "alert_comparison_json_path",
-        "alert_visual_asset_paths",
-    ]:
-        assert key not in manifest
+    assert "expected_alert_html_path" not in manifest
+    assert manifest["rendered_alert_html_path"] == RENDERED_ALERT_HTML_FILENAME
+    assert manifest["alert_context_path"] == ALERT_CONTEXT_FILENAME
+    assert manifest["alert_claims_path"] == ALERT_CLAIMS_FILENAME
+    assert manifest["alert_comparison_json_path"] == ALERT_COMPARISON_FILENAME
     assert bundle.expected_alert_html_path is None
+    assert bundle.rendered_alert_html_path == str(out_dir / RENDERED_ALERT_HTML_FILENAME)
+    assert bundle.alert_context_path == str(out_dir / ALERT_CONTEXT_FILENAME)
+    assert bundle.alert_claims_path == str(out_dir / ALERT_CLAIMS_FILENAME)
+    assert bundle.alert_comparison_json_path == str(out_dir / ALERT_COMPARISON_FILENAME)
+    assert [Path(path).name for path in bundle.alert_visual_asset_paths] == [
+        "people-in-need-composition.png"
+    ]
+
+
+def test_manual_review_decision_persists_audit_without_product_html(tmp_path: Path) -> None:
+    baseline = copy_fixture(tmp_path, "synthetic_alert_missing_baseline")
+    decision_path = baseline / "artifacts" / "alert" / "alert-decision.json"
+    decision = json.loads(decision_path.read_text())
+    decision["current_storm_state"]["supported"] = False
+    decision["product_decision"]["product_type"] = "manual_review"
+    decision["product_decision"]["reason"] = "official_status_unsupported"
+    decision_identity = {
+        key: value for key, value in decision["product_decision"].items() if key != "version"
+    }
+    decision["product_decision"]["version"] = (
+        "product-decision-"
+        + hashlib.sha256(
+            json.dumps(decision_identity, sort_keys=True, separators=(",", ":")).encode()
+        ).hexdigest()
+    )
+    decision_path.write_text(json.dumps(decision, indent=2) + "\n")
+    manifest_path = baseline / "manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    decision_artifact = next(
+        artifact for artifact in manifest["artifacts"] if artifact["role"] == "alert_decision"
+    )
+    decision_artifact["checksum_sha256"] = hashlib.sha256(decision_path.read_bytes()).hexdigest()
+    manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")
+    out_dir = tmp_path / "out"
+
+    bundle = run_snapshot(baseline, out_dir)
+
+    assert not (out_dir / RENDERED_ALERT_HTML_FILENAME).exists()
+    assert not (out_dir / ALERT_COMPARISON_FILENAME).exists()
+    assert (out_dir / ALERT_CONTEXT_FILENAME).exists()
+    assert (out_dir / ALERT_CLAIMS_FILENAME).exists()
+    claims = json.loads((out_dir / ALERT_CLAIMS_FILENAME).read_text())
+    assert claims["product_decision"]["product_type"] == "manual_review"
     assert bundle.rendered_alert_html_path is None
-    assert bundle.alert_context_path is None
-    assert bundle.alert_claims_path is None
     assert bundle.alert_comparison_json_path is None
-    assert bundle.alert_visual_asset_paths == []
 
 
 def test_snapshot_command_uses_committed_sparse_alert_fixture(tmp_path: Path) -> None:
@@ -338,14 +383,9 @@ def test_snapshot_command_uses_committed_sparse_alert_fixture(tmp_path: Path) ->
     rendered = (out_dir / RENDERED_ALERT_HTML_FILENAME).read_text()
     assert comparison["status"] == "passed"
     assert comparison["failures"] == []
-    assert comparison["warnings"] == [
-        {
-            "severity": "warning",
-            "code": "missing_threshold_claims",
-            "message": "no cross-threshold alert claims were available",
-        }
-    ]
-    assert "Sparse fixture summary." in rendered
+    assert comparison["warnings"] == []
+    assert "Sparse fixture summary." not in rendered
+    assert "No bounded summary prose was available." in rendered
     assert "AI system based on probabilistic model outputs" in rendered
 
 

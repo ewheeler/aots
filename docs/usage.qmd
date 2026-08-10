@@ -107,15 +107,17 @@ uv run aots-report export-snowflake \
   --overwrite
 ```
 
-This writes `expected-alert.html` and records `expected_alert_path` in `manifest.json`. The snapshot command copies that independent Snowflake alert-agent email artifact into the Snapshot Output Bundle so Playwright or another browser tool can visually inspect it directly.
+This writes `expected-alert.html` and records `expected_alert_path` plus its provenance in `manifest.json`. The snapshot command copies it into the Snapshot Output Bundle as provenance-qualified reference evidence so Playwright or another browser tool can inspect it directly. Expected HTML alone does not trigger local product generation.
 
-When `expected-alert.html` is present, `snapshot` also writes a separate local alert artifact plus an alert audit bundle:
+When a validated Alert Decision artifact is present, `snapshot` writes `alert-context.json` and `alert-claims.json` for every decision. Warning and Alert decisions additionally emit:
 
-- `rendered-alert.html`: locally generated alert HTML using baseline-replayed prose for the first slice.
+- `rendered-alert.html`: locally generated Warning or Alert HTML using structured facts and the configured bounded prose provider; expected HTML is not a generation input.
 - `alert-context.json`: structured inputs used to render the local alert.
 - `alert-claims.json`: normalized factual claims used for alert parity.
-- `alert-comparison.json`: claim and DOM-presence comparison results.
+- `alert-comparison.json`: claim and DOM-presence presentation self-check results.
 - `alert-assets/*.png`: generated alert visuals for audit/debug when the baseline has enough source data. The same PNG bytes are embedded inline in `rendered-alert.html` as base64 data URIs for email portability.
+
+`none`, `withheld`, and `manual_review` decisions retain context and claims for audit but do not emit product HTML or a presentation comparison.
 
 The generated snapshot `manifest.json` records relative paths for these alert files only when they are emitted, so alert-missing bundles stay portable without dangling alert entries.
 

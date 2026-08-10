@@ -5,6 +5,7 @@
   "forecast_time": "2026-01-01T00:00:00Z",
   "expected_report_path": "expected-report.json",
   "expected_alert_path": "expected-alert.html",
+  "expected_alert_provenance": "seed_placeholder",
   "artifacts": [
     {
       "name": "admin_34",
@@ -59,6 +60,15 @@
       "checksum_sha256": "c60bc22939a50b0d99ef21d6a210de905a8a804f91489382f8b87a33c8036380",
       "schema_hash": "f994dae3d336d816a4ce5706057b3f865f8d05aba5c60ee8ae517df95a9c8dba",
       "row_count": 2
+    },
+    {
+      "name": "alert_decision",
+      "role": "alert_decision",
+      "path": "artifacts/alert/alert-decision.json",
+      "required": true,
+      "checksum_sha256": "703dbc3be52d2c8eaa62a5df70cf87eb1039705d0792a4975ab297c51ac63e6b",
+      "schema_hash": "alert-decision-contract-v1",
+      "row_count": 1
     }
   ]
 }

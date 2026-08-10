@@ -13,6 +13,15 @@
       "checksum_sha256": "48cf9c9323049dddfd126113a9f098e2cca18df14d977ebe7d79ae468100e9bd",
       "schema_hash": "33adfa03952bc0bee6046cec9f23c0af78a58e5af2929b74007ebf75e2a0c9eb",
       "row_count": 1
+    },
+    {
+      "name": "alert_decision",
+      "role": "alert_decision",
+      "path": "artifacts/alert/alert-decision.json",
+      "required": true,
+      "checksum_sha256": "22d2c031738f4acf413137f1152698d00207636903ffd9345177201fd3d3a48d",
+      "schema_hash": "alert-decision-contract-v1",
+      "row_count": 1
     }
   ]
 }

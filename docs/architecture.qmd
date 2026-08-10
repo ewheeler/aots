@@ -39,15 +39,38 @@ Trust boundaries:
 
 - `export-snowflake` creates local baseline source artifacts and records expected-report provenance.
 - Baseline validation checks manifest shape, required artifacts, checksums, schema hashes, and row counts.
+- Every manifest path is resolved beneath the baseline root; absolute and parent-traversal paths are rejected before any read or publication.
 - `snapshot` regenerates a report and compares it to `expected-report.json`.
 - A passing comparison is certifying only when `expected-report.json` has independent trusted-current-output provenance.
 - `publish` consumes Snapshot Output Bundles, not raw baselines.
+- A versioned Alert Decision artifact supplies official current state, country threat, hazard availability, and the operational Product Decision to portable alert rendering.
+- Portable rendering consumes the Product Decision and never infers Warning or Alert from wind thresholds.
+- Expected Alert Email HTML is optional provenance-qualified reference evidence copied into the bundle, not a rendering prerequisite or current alert-comparison input.
+- Orchestration owns the dry-run basin authority map, local exact-feed client/parser, advisory normalization, identity/threat/lifecycle modules, product facts, and classifier. Scheduled Snowflake network retrieval and deployment remain disabled.
+
+The implemented local composition and proposed Snowflake persistence path is:
+
+```text
+configured NHC/CPHC RSS feed
+  -> paired Public + Forecast Advisory parser
+  -> Current Storm State
+  -> explicit Storm Identity Reconciliation
+  -> Country Office Registry + 144-hour 34kt Threat Assessment
+  -> Warning/Alert Product Decision
+  -> country lifecycle transition
+  -> deterministic Summary / Situation / Forecast facts
+  -> recipient attempts marked SUPPRESSED_DRY_RUN
+  -> in-memory dry-run policy result
+```
+
+The policy engine refuses operational mode. A content-addressed release builder materializes verified source copies and generates a runtime hash-checking Snowflake UDF entrypoint. Policy table schemas exist, but no Snowflake writer is shipped: persistence remains blocked until an owner procedure can recompute every identity and pass isolated-account concurrency/privacy tests. Deployment networking, scheduled ingestion, legacy-procedure cutover, and email delivery are not enabled.
 
 Current module map:
 
 - `src/aots_portable_reports/cli.py`: command entry points.
 - `src/aots_portable_reports/export_snowflake.py`: read-only Snowflake baseline export.
 - `src/aots_portable_reports/validation.py`: baseline integrity checks.
+- `src/aots_portable_reports/models.py`: versioned alert decision and baseline contracts.
 - `src/aots_portable_reports/dag.py`: Hamilton snapshot materialization flow.
 - `src/aots_portable_reports/report_wrapper.py`: thin wrapper around current `do_report(...)` behavior.
 - `src/aots_portable_reports/comparison.py`: comparison and certification-state logic.
@@ -56,7 +79,7 @@ Current module map:
 
 ## Hamilton DAG
 
-The snapshot materialization flow is implemented as a Hamilton DAG in `src/aots_portable_reports/dag.py`. The graph below is generated from the current Python module with Hamilton's `display_all_functions(...)`, so it reflects the actual node dependencies used by `aots-report snapshot`.
+The snapshot materialization flow is implemented as a Hamilton DAG in `src/aots_portable_reports/dag.py`. Alert context now depends on the validated Alert Decision artifact, while expected alert HTML is copied only as optional provenance-qualified reference evidence. The graph below is generated from the current Python module with Hamilton's `display_all_functions(...)`, so it reflects the actual node dependencies used by `aots-report snapshot`.
 
 ![Hamilton DAG for portable report and alert snapshot generation.](assets/architecture/portable-report-hamilton-dag.png){fig-alt="Hamilton DAG showing baseline validation, report generation, alert context and visual asset generation, comparisons, Quarto source creation, and Snapshot Output Bundle materialization."}
 

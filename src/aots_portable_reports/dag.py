@@ -39,7 +39,9 @@ def baseline_manifest(baseline_dir: Path) -> BaselineManifest:
     return load_manifest(baseline_dir)
 
 
-def validated_baseline(baseline_dir: Path, baseline_manifest: BaselineManifest) -> ValidatedBaseline:
+def validated_baseline(
+    baseline_dir: Path, baseline_manifest: BaselineManifest
+) -> ValidatedBaseline:
     return validate_baseline(baseline_dir, baseline_manifest)
 
 
@@ -53,7 +55,9 @@ def report_wrapper_output(
     return generate_report_from_baseline(validated_baseline)
 
 
-def report_snapshot(validated_baseline: ValidatedBaseline, report_wrapper_output: dict[str, Any]) -> ReportSnapshot:
+def report_snapshot(
+    validated_baseline: ValidatedBaseline, report_wrapper_output: dict[str, Any]
+) -> ReportSnapshot:
     manifest = validated_baseline.manifest
     return ReportSnapshot(
         country=manifest.country,
@@ -63,7 +67,9 @@ def report_snapshot(validated_baseline: ValidatedBaseline, report_wrapper_output
     )
 
 
-def comparison_report(validated_baseline: ValidatedBaseline, report_snapshot: ReportSnapshot) -> ComparisonReport:
+def comparison_report(
+    validated_baseline: ValidatedBaseline, report_snapshot: ReportSnapshot
+) -> ComparisonReport:
     return compare_report_payloads(
         validated_baseline.expected_report,
         report_snapshot.report,
@@ -75,16 +81,23 @@ def alert_source_artifacts(validated_baseline: ValidatedBaseline) -> dict[str, A
     return {
         artifact.name: load_artifact(validated_baseline.root, artifact)
         for artifact in validated_baseline.manifest.artifacts
-        if artifact.name in _ALERT_VISUAL_ARTIFACT_NAMES or _is_threshold_visual_artifact(artifact.name)
+        if artifact.name in _ALERT_VISUAL_ARTIFACT_NAMES
+        or _is_threshold_visual_artifact(artifact.name)
     }
 
 
-def alert_visual_context(report_snapshot: ReportSnapshot, alert_source_artifacts: dict[str, Any]) -> dict[str, Any]:
+def alert_visual_context(
+    report_snapshot: ReportSnapshot, alert_source_artifacts: dict[str, Any]
+) -> dict[str, Any]:
     return build_alert_visual_context(report_snapshot, source_artifacts=alert_source_artifacts)
 
 
-def alert_context(report_snapshot: ReportSnapshot, alert_visual_context: dict[str, Any]) -> dict[str, Any]:
-    context = build_alert_context(report_snapshot)
+def alert_context(
+    validated_baseline: ValidatedBaseline,
+    report_snapshot: ReportSnapshot,
+    alert_visual_context: dict[str, Any],
+) -> dict[str, Any]:
+    context = build_alert_context(report_snapshot, alert_decision=validated_baseline.alert_decision)
     context["visual_context"] = alert_visual_context
     if alert_visual_context.get("timing_rows"):
         context["timing_rows"] = alert_visual_context["timing_rows"]
@@ -104,19 +117,14 @@ def alert_prose_provider() -> AlertProseProvider:
 
 
 def alert_prose_slots(
-    validated_baseline: ValidatedBaseline,
     alert_context: dict[str, Any],
     alert_prose_provider: AlertProseProvider,
 ) -> AlertProseSlots:
     return build_alert_prose_slots(
         alert_context,
-        expected_alert_html=validated_baseline.expected_alert_html,
+        expected_alert_html=None,
         provider=alert_prose_provider,
     )
-
-
-def alert_summary_prose(alert_prose_slots: AlertProseSlots) -> str:
-    return alert_prose_slots.get("situation_summary", "")
 
 
 def rendered_alert_html(
@@ -125,12 +133,19 @@ def rendered_alert_html(
     alert_prose_slots: AlertProseSlots,
     alert_visual_assets: list[dict[str, Any]],
 ) -> str | None:
-    if validated_baseline.expected_alert_html is None:
+    decision = validated_baseline.alert_decision
+    if decision is None:
         return None
-    return render_alert_html(alert_context, prose_slots=alert_prose_slots, visual_assets=alert_visual_assets)
+    if decision is not None and decision.product_decision.product_type not in {"warning", "alert"}:
+        return None
+    return render_alert_html(
+        alert_context, prose_slots=alert_prose_slots, visual_assets=alert_visual_assets
+    )
 
 
-def alert_comparison(alert_claims: dict[str, Any], rendered_alert_html: str | None) -> ComparisonReport | None:
+def alert_comparison(
+    alert_claims: dict[str, Any], rendered_alert_html: str | None
+) -> ComparisonReport | None:
     if rendered_alert_html is None:
         return None
     return compare_alert_output(alert_claims, rendered_alert_html)
@@ -138,7 +153,7 @@ def alert_comparison(alert_claims: dict[str, Any], rendered_alert_html: str | No
 
 def quarto_source(report_snapshot: ReportSnapshot) -> dict[str, str]:
     title = f"{report_snapshot.country} {report_snapshot.storm} Report Snapshot"
-    index = f"---\ntitle: \"{title}\"\n---\n\n```json\n{json.dumps(report_snapshot.report, indent=2)}\n```\n"
+    index = f'---\ntitle: "{title}"\n---\n\n```json\n{json.dumps(report_snapshot.report, indent=2)}\n```\n'
     config = "project:\n  type: website\n  output-dir: ../site\n  render:\n    - index.qmd\n"
     return {"index.qmd": index, "_quarto.yml": config}
 
@@ -176,16 +191,24 @@ def snapshot_output_bundle(
     copied_alert_comparison_path = None
     copied_visual_asset_paths: list[str] = []
     if validated_baseline.expected_alert_html is not None:
-        copied_alert_path = write_expected_alert_email_html(out_dir, validated_baseline.expected_alert_html)
+        copied_alert_path = write_expected_alert_email_html(
+            out_dir, validated_baseline.expected_alert_html
+        )
     if rendered_alert_html is not None:
-        copied_rendered_alert_path = write_rendered_alert_html_artifact(out_dir, rendered_alert_html)
-    if alert_comparison is not None:
-        alert_audit_bundle = write_alert_audit_bundle(out_dir, alert_context, alert_claims, alert_comparison)
+        copied_rendered_alert_path = write_rendered_alert_html_artifact(
+            out_dir, rendered_alert_html
+        )
+    if validated_baseline.alert_decision is not None or alert_comparison is not None:
+        alert_audit_bundle = write_alert_audit_bundle(
+            out_dir, alert_context, alert_claims, alert_comparison
+        )
         copied_alert_context_path = alert_audit_bundle.alert_context_path
         copied_alert_claims_path = alert_audit_bundle.alert_claims_path
         copied_alert_comparison_path = alert_audit_bundle.alert_comparison_json_path
     if alert_visual_assets:
-        copied_visual_asset_paths = [asset.path for asset in write_alert_visual_assets(out_dir, alert_visual_assets)]
+        copied_visual_asset_paths = [
+            asset.path for asset in write_alert_visual_assets(out_dir, alert_visual_assets)
+        ]
     for name, content in quarto_source.items():
         (quarto_dir / name).write_text(content)
     subprocess.run(
@@ -209,15 +232,28 @@ def snapshot_output_bundle(
         "site_dir": _bundle_relative_path(site_dir, out_dir),
     }
     if copied_alert_path is not None:
-        output_manifest["expected_alert_html_path"] = _bundle_relative_path(Path(copied_alert_path), out_dir)
+        output_manifest["expected_alert_html_path"] = _bundle_relative_path(
+            Path(copied_alert_path), out_dir
+        )
+        output_manifest["expected_alert_provenance"] = (
+            validated_baseline.manifest.expected_alert_provenance
+        )
     if copied_rendered_alert_path is not None:
-        output_manifest["rendered_alert_html_path"] = _bundle_relative_path(Path(copied_rendered_alert_path), out_dir)
+        output_manifest["rendered_alert_html_path"] = _bundle_relative_path(
+            Path(copied_rendered_alert_path), out_dir
+        )
     if copied_alert_context_path is not None:
-        output_manifest["alert_context_path"] = _bundle_relative_path(Path(copied_alert_context_path), out_dir)
+        output_manifest["alert_context_path"] = _bundle_relative_path(
+            Path(copied_alert_context_path), out_dir
+        )
     if copied_alert_claims_path is not None:
-        output_manifest["alert_claims_path"] = _bundle_relative_path(Path(copied_alert_claims_path), out_dir)
+        output_manifest["alert_claims_path"] = _bundle_relative_path(
+            Path(copied_alert_claims_path), out_dir
+        )
     if copied_alert_comparison_path is not None:
-        output_manifest["alert_comparison_json_path"] = _bundle_relative_path(Path(copied_alert_comparison_path), out_dir)
+        output_manifest["alert_comparison_json_path"] = _bundle_relative_path(
+            Path(copied_alert_comparison_path), out_dir
+        )
     if copied_visual_asset_paths:
         output_manifest["alert_visual_asset_paths"] = [
             _bundle_relative_path(Path(path), out_dir) for path in copied_visual_asset_paths
@@ -257,8 +293,17 @@ def _bundle_relative_path(path: Path, out_dir: Path) -> str:
     return str(path.relative_to(out_dir))
 
 
-_ALERT_VISUAL_ARTIFACT_NAMES = {"admin_geometry", "raw_tracks", "impact_evolution_50", "alert_timing"}
+_ALERT_VISUAL_ARTIFACT_NAMES = {
+    "admin_geometry",
+    "raw_tracks",
+    "impact_evolution_50",
+    "alert_timing",
+}
 
 
 def _is_threshold_visual_artifact(name: str) -> bool:
-    return any(name == f"{prefix}_{threshold}" for prefix in ("admin", "tiles") for threshold in (34, 50, 64))
+    return any(
+        name == f"{prefix}_{threshold}"
+        for prefix in ("admin", "tiles")
+        for threshold in (34, 50, 64)
+    )

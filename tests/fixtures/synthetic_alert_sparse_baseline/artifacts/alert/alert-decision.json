@@ -1,0 +1,87 @@
+{
+  "current_storm_state": {
+    "version": "state-alert-sparse-1",
+    "canonical_storm_id": "AL012026",
+    "storm_name": "ALPHA",
+    "basin": "AL",
+    "provider": "synthetic-authority",
+    "source_authority_id": "synthetic-authority",
+    "source_feed_url": "https://example.invalid/synthetic-feed.xml",
+    "advisory_id": "advisory-7",
+    "observed_at": "2026-01-01T00:00:00Z",
+    "evaluated_at": "2026-01-01T00:00:00Z",
+    "fresh_until": "2026-01-01T09:00:00Z",
+    "status": "hurricane",
+    "supported": true,
+    "basin_supported": true,
+    "is_hurricane": true,
+    "fresh": true,
+    "conflicted": false,
+    "sustained_wind_kt": 70,
+    "sustained_wind_averaging_minutes": 1,
+    "latitude": 18.5,
+    "longitude": -64.2,
+    "movement_direction": "WEST_NORTHWEST",
+    "movement_speed_kt": 12
+  },
+  "country_threat_assessment": {
+    "version": "threat-alert-sparse-1",
+    "canonical_storm_id": "AL012026",
+    "forecast_track_id": "ALPHA",
+    "forecast_source_version": "ecmwf-run-20260101T0000Z",
+    "basin": "AL",
+    "country_office_id": "TST",
+    "country_code": "TST",
+    "country_office_eligible": true,
+    "forecast_time": "2026-01-01T00:00:00Z",
+    "horizon_hours": 144,
+    "predicate_version": "threat-v1",
+    "qualifies": true,
+    "local_hazard_summary": "Tropical-storm-force winds are forecast locally.",
+    "maximum_local_wind_threshold_kt": 34,
+    "complete": true,
+    "available": true,
+    "reason": "qualifying_34kt_country_threat",
+    "registry_version": "lacro-country-offices-v1-dry-run",
+    "evaluation_mode": "dry_run",
+    "dry_run_active": true,
+    "operational_approved": false,
+    "configured_basin_codes": ["AL"],
+    "horizon_complete": true,
+    "maximum_probability_34": 0.02,
+    "nonzero_probability_tiles_34": 4,
+    "expected_population_34": 12
+  },
+  "hazard_availability": {
+    "version": "hazards-alert-sparse-1",
+    "wind": {
+      "status": "validated",
+      "source": "synthetic-wind-artifact",
+      "detail": "Cumulative wind exposure is available through 144 hours."
+    },
+    "rainfall": {
+      "status": "unavailable",
+      "source": null,
+      "detail": "No validated rainfall impact artifact is available."
+    },
+    "storm_surge": {
+      "status": "unavailable",
+      "source": null,
+      "detail": "No validated storm-surge impact artifact is available."
+    }
+  },
+  "product_decision": {
+    "version": "product-decision-259e97ccf1088e47e305f61bb272100a75d29486de84131246ab5bc03935e919",
+    "decision_kind": "classifier",
+    "product_type": "alert",
+    "reason": "qualifying_threat_with_hurricane_status",
+    "storm_identity_version": "storm-identity-synthetic-1",
+    "current_storm_state_version": "state-alert-sparse-1",
+    "country_threat_assessment_version": "threat-alert-sparse-1",
+    "hazard_availability_version": "hazards-alert-sparse-1",
+    "policy_version": "alert-sop-v1",
+    "contract_version": "1.0.0",
+    "classifier_version": "1.0.0",
+    "classifier_sha256": "3177c6fdc93ce845b2e68aff65a37847ed855936702771d4a7c686456ad75744"
+  }
+}

@@ -121,7 +121,7 @@ The bounded source of narrative prose blocks for an Alert Renderer, separate fro
 _Avoid_: Alert renderer, full email generator, unrestricted agent.
 
 **Baseline Replay Prose Provider**:
-An Alert Prose Provider that reuses bounded prose slots extracted from an independent expected alert artifact while the Alert Renderer regenerates deterministic layout, tables, and caveats.
+A non-default Alert Prose Provider retained for explicit parity experiments that reuse bounded prose slots from an expected alert artifact.
 _Avoid_: LLM provider, exact HTML replay, screenshot fixture.
 
 **Alert Parity**:
@@ -139,6 +139,38 @@ _Avoid_: Baseline provenance, audit file, certification state.
 **Alert Context**:
 The structured input used to derive Alert Claims and render an Alert HTML Artifact before any prose provider or HTML template is applied.
 _Avoid_: Rendered alert HTML, expected alert artifact, prompt text.
+
+**Current Storm State**:
+A versioned set of official advisory facts for one storm episode, including provider, advisory identity, observation time, status, sustained wind, averaging convention, and freshness.
+_Avoid_: ECMWF lead-zero forecast, inferred category, local wind threshold.
+
+**LACRO Basin Authority Map**:
+The versioned operational mapping from a tropical-cyclone basin to its approved WMO RSMC/TCWC, transport, advisory cadence, wind convention, and fail-closed behavior.
+_Avoid_: ECMWF-derived authority, country recipient list, implicit global fallback.
+
+**Storm Identity Reconciliation**:
+A versioned resolution from a forecast track identifier to an official canonical storm ID through an exact canonical ID or effective approved mapping.
+_Avoid_: Name-only join, nearest-time guess, implicit basin conversion.
+
+**Alert Policy Engine**:
+The side-effect-free Orchestration composition of official state, storm identity, Country Office threat, Product Decision, lifecycle transition, delivery attempts, and deterministic product facts.
+_Avoid_: Legacy send procedure, renderer classification, direct email integration.
+
+**Country Threat Assessment**:
+A versioned forecast determination that one eligible Country Office meets the documented threat predicate for a forecast run and horizon.
+_Avoid_: Product classification, pipeline activation, recipient subscription.
+
+**Product Decision**:
+A versioned Warning, Alert, no-product, or manual-review result derived from a Current Storm State and Country Threat Assessment by the operational classifier.
+_Avoid_: Email subject, forecast threshold, delivery attempt.
+
+**Alert Decision Artifact**:
+The baseline artifact that carries Current Storm State, Country Threat Assessment, hazard availability, and Product Decision into the portable flow.
+_Avoid_: Expected Alert Email, inferred renderer setting, Alert Claims.
+
+**Hazard Availability**:
+A deterministic statement that wind, rainfall, or storm-surge evidence is validated, unavailable, unvalidated, or incomplete for a product.
+_Avoid_: Zero impact, unrestricted prose caveat, inferred hazard estimate.
 
 **Alert Audit Bundle**:
 The alert-specific JSON files inside a Snapshot Output Bundle that make local alert generation auditable: alert context, alert claims, and alert comparison results.
@@ -187,9 +219,15 @@ _Avoid_: Pipeline, job, DAG when the user-facing report production concept is me
 - A **Tie-Order Warning** preserves certification when equal-probability top-facility descriptor order is unstable but compared probabilities match.
 - An **Alert HTML Artifact** can be visually reviewed with Playwright, but it is separate from the Dash-rendered **Impact Report** page.
 - The **Expected Alert Email** remains an independent Snowflake artifact while the **Rendered Alert HTML** is produced locally from portable inputs.
+- An **Alert Decision Artifact** supplies a **Product Decision** to the portable renderer; the renderer does not classify from forecast wind thresholds.
+- A **Country Threat Assessment** determines whether a Country Office qualifies, while **Current Storm State** determines Warning versus Alert.
+- The **LACRO Basin Authority Map** selects the proposed dry-run official provider or requires manual review before a **Current Storm State** can drive classification; operational approval remains separate.
+- **Storm Identity Reconciliation** must resolve forecast evidence before the **Alert Policy Engine** can evaluate a country product.
+- The **Alert Policy Engine** emits recipient attempts as `SUPPRESSED_DRY_RUN`; email delivery remains a separate future boundary.
+- **Hazard Availability** keeps missing rainfall and storm-surge evidence explicit rather than replacing it with zero or generated prose.
 - An **Alert Renderer** is the medium-term replacement path for the current Snowflake alert-agent email.
 - An **Alert Prose Provider** may use an LLM, but only for bounded prose slots; deterministic facts, tables, caveats, and layout remain owned by the **Alert Renderer**.
-- A **Baseline Replay Prose Provider** is the first implementation mode for the **Alert Renderer** so alert layout and table generation can be tested before LLM integration.
+- Portable generation defaults to empty bounded prose slots; a **Baseline Replay Prose Provider** may be selected only for an explicit non-certifying parity experiment.
 - **Alert Parity** blocks on significant factual differences or omissions, while exact prose wording and pixel-level rendering remain advisory.
 - **Alert Parity** is evaluated through **Alert Claims** rather than prose string equality.
 - **Alert Provenance Labels** travel with **Alert Context**, **Alert Claims**, and **Rendered Alert HTML**, not with baseline-path metadata.

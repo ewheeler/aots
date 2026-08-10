@@ -23,19 +23,43 @@ from matplotlib.patches import Rectangle
 from shapely.geometry import shape
 
 from aots_portable_reports.alert_contract import ALERT_PROVENANCE_LABELS
-from aots_portable_reports.models import ComparisonIssue, ComparisonReport, ReportSnapshot
+from aots_portable_reports.models import (
+    AlertDecisionEnvelope,
+    ComparisonIssue,
+    ComparisonReport,
+    ReportSnapshot,
+)
 
 
 MAIN_ALERT_THRESHOLD = 50
 SITUATION_SUMMARY_HEADING = "Situation Summary"
+SUMMARY_HEADING = "Summary"
 SITUATION_SUMMARY_SLOT = "situation_summary"
 SUMMARY_SLOT = "summary"
 NARRATIVE_SLOT = "narrative"
 SHIFT_SLOT = "shift"
 OSCILLATION_SLOT = "oscillation"
-BOUNDED_PROSE_SLOTS = (SUMMARY_SLOT, SITUATION_SUMMARY_SLOT, NARRATIVE_SLOT, SHIFT_SLOT, OSCILLATION_SLOT)
+BOUNDED_PROSE_SLOTS = (
+    SUMMARY_SLOT,
+    SITUATION_SUMMARY_SLOT,
+    NARRATIVE_SLOT,
+    SHIFT_SLOT,
+    OSCILLATION_SLOT,
+)
 AI_PROBABILISTIC_CAVEAT = "AI system based on probabilistic model outputs"
 VISUAL_THRESHOLDS = (50, 34, 64)
+_PRODUCT_DECISION_LABELS = (
+    ("version", "Decision Version"),
+    ("reason", "Decision Reason"),
+    ("storm_identity_version", "Storm Identity Version"),
+    ("current_storm_state_version", "Current Storm State Version"),
+    ("country_threat_assessment_version", "Country Threat Assessment Version"),
+    ("hazard_availability_version", "Hazard Availability Version"),
+    ("policy_version", "Policy Version"),
+    ("contract_version", "Contract Version"),
+    ("classifier_version", "Classifier Version"),
+    ("classifier_sha256", "Classifier SHA-256"),
+)
 
 
 class AlertProseSlots(TypedDict, total=False):
@@ -54,6 +78,11 @@ class AlertProseRequest:
 
 class AlertProseProvider(Protocol):
     def provide_prose_slots(self, request: AlertProseRequest) -> dict[str, str]: ...
+
+
+class EmptyAlertProseProvider:
+    def provide_prose_slots(self, request: AlertProseRequest) -> dict[str, str]:
+        return {}
 
 
 class BaselineReplayAlertProseProvider:
@@ -78,7 +107,7 @@ class BaselineReplayAlertProseProvider:
         return {key: value for key, value in slots.items() if value}
 
 
-DEFAULT_ALERT_PROSE_PROVIDER: AlertProseProvider = BaselineReplayAlertProseProvider()
+DEFAULT_ALERT_PROSE_PROVIDER: AlertProseProvider = EmptyAlertProseProvider()
 
 
 @dataclass(frozen=True)
@@ -102,12 +131,16 @@ class _AlertPresentationEvidence:
     list_items: tuple[str, ...]
 
 
-def build_alert_context(report_snapshot: ReportSnapshot) -> dict[str, Any]:
+def build_alert_context(
+    report_snapshot: ReportSnapshot,
+    *,
+    alert_decision: AlertDecisionEnvelope | None = None,
+) -> dict[str, Any]:
     report = report_snapshot.report
     identity = {
-        "country": report.get("country", report_snapshot.country),
-        "storm": report.get("storm", report_snapshot.storm),
-        "forecast_time": report.get("forecast_time", report_snapshot.forecast_time),
+        "country": report_snapshot.country,
+        "storm": report_snapshot.storm,
+        "forecast_time": report_snapshot.forecast_time,
     }
     main_threshold = {"wind_threshold": MAIN_ALERT_THRESHOLD, "label": f"{MAIN_ALERT_THRESHOLD}kt"}
     impact_totals = _compact_dict(
@@ -141,7 +174,7 @@ def build_alert_context(report_snapshot: ReportSnapshot) -> dict[str, Any]:
         totals["people_in_need"] = people_in_need["population"]
     if "children" in people_in_need:
         totals["children_in_need"] = people_in_need["children"]
-    return {
+    context = {
         "identity": identity,
         "main_threshold": main_threshold,
         "impact_totals": impact_totals,
@@ -158,6 +191,36 @@ def build_alert_context(report_snapshot: ReportSnapshot) -> dict[str, Any]:
         "threshold_rows": cross_threshold_rows,
         "required_caveat": AI_PROBABILISTIC_CAVEAT,
     }
+    if alert_decision is not None:
+        context.update(alert_decision.model_dump())
+        local_threshold = alert_decision.country_threat_assessment.maximum_local_wind_threshold_kt
+        context["local_forecast_threshold"] = (
+            {"wind_threshold": local_threshold, "label": f"{local_threshold}kt"}
+            if local_threshold is not None
+            else None
+        )
+        local_impact = next(
+            (row for row in cross_threshold_rows if row.get("wind_threshold") == local_threshold),
+            None,
+        )
+        if local_impact is not None:
+            expected_population_34 = alert_decision.country_threat_assessment.expected_population_34
+            if local_impact.get("population") != expected_population_34:
+                raise ValueError("local 34kt exposure does not match qualifying threat evidence")
+            context["local_impact_totals"] = {
+                key: value for key, value in local_impact.items() if key != "wind_threshold"
+            }
+            context["local_impact_evidence_label"] = (
+                f"validated {local_threshold}kt forecast evidence"
+            )
+        else:
+            context["local_impact_totals"] = {
+                "population": (alert_decision.country_threat_assessment.expected_population_34)
+            }
+            context["local_impact_evidence_label"] = (
+                "country threat assessment 34kt population evidence"
+            )
+    return context
 
 
 def build_alert_claims(alert_context: dict[str, Any]) -> dict[str, Any]:
@@ -173,11 +236,12 @@ def build_alert_claims(alert_context: dict[str, Any]) -> dict[str, Any]:
     )
     top_admin_areas = [
         {**row, "provenance_labels": ["data", "inferred"]}
-        for row in _top_admin_claims(alert_context.get("top_admin_areas") or alert_context.get("admin_rows", []))
+        for row in _top_admin_claims(
+            alert_context.get("top_admin_areas") or alert_context.get("admin_rows", [])
+        )
     ]
     cross_threshold_rows = [
-        {**row, "provenance_labels": ["data"]}
-        for row in _cross_threshold_claims(alert_context)
+        {**row, "provenance_labels": ["data"]} for row in _cross_threshold_claims(alert_context)
     ]
     required_caveats = _required_caveat_claims(alert_context)
     totals = _legacy_totals(alert_context)
@@ -192,10 +256,20 @@ def build_alert_claims(alert_context: dict[str, Any]) -> dict[str, Any]:
         "provenance_labels": alert_context.get("provenance_labels", []),
         "totals": totals,
         "threshold_rows": [
-            {key: value for key, value in row.items() if key != "provenance_labels"} for row in cross_threshold_rows
+            {key: value for key, value in row.items() if key != "provenance_labels"}
+            for row in cross_threshold_rows
         ],
         "visual_assets": _visual_asset_claims(alert_context.get("visual_context")),
         "required_caveat": required_caveats[0]["text"] if required_caveats else None,
+        "current_storm_state": alert_context.get("current_storm_state"),
+        "country_threat_assessment": alert_context.get("country_threat_assessment"),
+        "hazard_availability": alert_context.get("hazard_availability"),
+        "product_decision": alert_context.get("product_decision"),
+        "local_forecast_threshold": alert_context.get("local_forecast_threshold"),
+        "local_impact_totals": _metric_claims(
+            alert_context.get("local_impact_totals", {}), provenance_labels=["data"]
+        ),
+        "local_impact_evidence_label": alert_context.get("local_impact_evidence_label"),
     }
 
 
@@ -208,7 +282,9 @@ def build_alert_visual_context(
     artifacts = source_artifacts or {}
     admin_rows = _records(artifacts.get("admin_50"))
     admin_geometry_rows = _records(artifacts.get("admin_geometry"))
-    children_by_name = {_norm_key(row.get("name")): _children_at_risk(row) for row in admin_rows if row.get("name")}
+    children_by_name = {
+        _norm_key(row.get("name")): _children_at_risk(row) for row in admin_rows if row.get("name")
+    }
     admin_visual_rows = []
     for row in admin_geometry_rows:
         name = row.get("name") or row.get("NAME")
@@ -217,7 +293,9 @@ def build_alert_visual_context(
         admin_visual_rows.append(
             {
                 "name": str(name),
-                "geojson": row.get("geojson") or row.get("GEOGEOJSON") or row.get("geometry_geojson"),
+                "geojson": row.get("geojson")
+                or row.get("GEOGEOJSON")
+                or row.get("geometry_geojson"),
                 "clon": _float_or_none(row.get("clon") or row.get("centroid_lon")),
                 "clat": _float_or_none(row.get("clat") or row.get("centroid_lat")),
                 "children": children_by_name.get(_norm_key(name), 0),
@@ -234,15 +312,25 @@ def build_alert_visual_context(
             "admin": admin_visual_rows,
             "tracks": [_track_visual_row(row) for row in _records(artifacts.get("raw_tracks"))],
         }
-    evolution_rows = [_evolution_visual_row(row) for row in _records(artifacts.get("impact_evolution_50"))]
+    evolution_rows = [
+        _evolution_visual_row(row) for row in _records(artifacts.get("impact_evolution_50"))
+    ]
     evolution_rows = [row for row in evolution_rows if row is not None]
     timing_rows = [_timing_context_row(row) for row in _records(artifacts.get("alert_timing"))]
     timing_rows = [row for row in timing_rows if row is not None]
     return {
         "impact_composition": _impact_composition_context(report),
-        "admin_choropleth": {"available": bool(admin_visual_rows), "threshold": 50, "rows": admin_visual_rows},
+        "admin_choropleth": {
+            "available": bool(admin_visual_rows),
+            "threshold": 50,
+            "rows": admin_visual_rows,
+        },
         "ensemble_probability": ensemble,
-        "impact_evolution": {"available": bool(evolution_rows), "threshold": 50, "rows": evolution_rows},
+        "impact_evolution": {
+            "available": bool(evolution_rows),
+            "threshold": 50,
+            "rows": evolution_rows,
+        },
         "timing_rows": timing_rows,
     }
 
@@ -260,7 +348,10 @@ def render_alert_visual_assets(alert_visual_context: dict[str, Any]) -> list[dic
                     filename="population-composition-50kt.png",
                     png_base64=_render_donut_chart(
                         population.get("values", {}),
-                        labels={"children": "Children 0-19", "other_population": "Other population"},
+                        labels={
+                            "children": "Children 0-19",
+                            "other_population": "Other population",
+                        },
                         title="Population at risk",
                         colors=["#1CABE2", "#d8d8d8"],
                     ),
@@ -273,16 +364,19 @@ def render_alert_visual_assets(alert_visual_context: dict[str, Any]) -> list[dic
             assets.append(
                 _asset(
                     kind="people_in_need_composition",
-                    threshold=50,
-                    filename="people-in-need-composition-50kt.png",
+                    threshold=None,
+                    filename="people-in-need-composition.png",
                     png_base64=_render_donut_chart(
                         people_in_need.get("values", {}),
-                        labels={"children_in_need": "Children in need", "other_people_in_need": "Other people in need"},
-                        title="People in need",
+                        labels={
+                            "children_in_need": "Forecast-conditioned CHiN",
+                            "other_people_in_need": "Other forecast-conditioned PiN",
+                        },
+                        title="Forecast-conditioned PiN",
                         colors=["#f28c28", "#f7d7b5"],
                     ),
-                    alt_text="People in need composition donut chart",
-                    caption="Composition of people in need at the 50 kt threshold.",
+                    alt_text="Forecast-conditioned people-in-need composition donut chart",
+                    caption="Composition of forecast-conditioned PiN integrated across available wind bands.",
                 )
             )
     evolution = alert_visual_context.get("impact_evolution", {})
@@ -360,26 +454,69 @@ def render_alert_html(
     oscillation = _slot_value(bounded_prose, OSCILLATION_SLOT)
     identity = _context_identity(alert_context)
     main_threshold = _context_main_threshold(alert_context)
+    product_decision = alert_context.get("product_decision") or {}
+    product_type = str(product_decision.get("product_type", ""))
+    if product_type not in {"warning", "alert"}:
+        raise ValueError("render_alert_html requires a Warning or Alert Product Decision")
+    product_label = {"warning": "Warning", "alert": "Alert"}[product_type]
+    country_threat = alert_context.get("country_threat_assessment") or {}
+    storm_state = alert_context.get("current_storm_state") or {}
+    summary_rows = _summary_fact_rows(alert_context)
     title = f"Storm {identity.get('storm', 'Unknown')} - {identity.get('country', 'Unknown')}"
-    threshold_label = escape(str(main_threshold.get("label", f"{MAIN_ALERT_THRESHOLD}kt")))
+    impact_threshold_label = escape(str(main_threshold.get("label", f"{MAIN_ALERT_THRESHOLD}kt")))
+    local_threshold = alert_context.get("local_forecast_threshold")
+    if not isinstance(local_threshold, dict):
+        raise ValueError("render_alert_html requires a validated local forecast threshold")
+    local_threshold_label = escape(str(local_threshold.get("label", "Unavailable")))
     summary_html = escape(summary) if summary else "No bounded summary prose was available."
-    narrative_html = escape(narrative) if narrative else "Structured forecast facts and generated visuals summarize expected exposure for review."
-    shift_html = escape(shift) if shift else "No bounded forecast-shift prose was available for this snapshot."
-    oscillation_html = escape(oscillation) if oscillation else "No bounded oscillation notice was available for this snapshot."
+    narrative_html = (
+        escape(narrative)
+        if narrative
+        else "Structured forecast facts and generated visuals summarize expected exposure for review."
+    )
+    shift_html = (
+        escape(shift)
+        if shift
+        else "No bounded forecast-shift prose was available for this snapshot."
+    )
+    oscillation_html = (
+        escape(oscillation)
+        if oscillation
+        else "No bounded oscillation notice was available for this snapshot."
+    )
     timing_rows = _timing_rows(alert_context.get("timing_rows", []))
     facts_rows = "".join(
         [
             _fact_row("Storm", identity.get("storm")),
             _fact_row("Country", identity.get("country")),
-            _fact_row("Forecast Issued", _time_html(identity.get("forecast_time"))),
-            _fact_row("Alert Threshold", threshold_label),
+            _fact_row(
+                "Forecast Issued", _time_html(identity.get("forecast_time")), trusted_html=True
+            ),
+            _fact_row("Official Storm Status", storm_state.get("status")),
+            _fact_row("Status Source", storm_state.get("provider")),
+            _fact_row(
+                "Status Observed", _time_html(storm_state.get("observed_at")), trusted_html=True
+            ),
+            _fact_row("Current Location", _format_location(storm_state)),
+            _fact_row("Movement", _format_movement(storm_state)),
+            _fact_row("Maximum Sustained Wind", _format_sustained_wind(storm_state)),
+            _fact_row("Local Wind Threshold", local_threshold_label),
+            _fact_row("Local Forecast", country_threat.get("local_hazard_summary")),
         ]
     )
-    impact_rows = _metric_rows(alert_context.get("impact_totals") or _impact_totals_from_legacy(alert_context), ["data"])
-    people_in_need_rows = _metric_rows(
-        alert_context.get("people_in_need") or _people_in_need_from_legacy(alert_context), ["inferred"]
+    impact_rows = _metric_rows(
+        alert_context.get("impact_totals") or _impact_totals_from_legacy(alert_context), ["data"]
     )
-    admin_rows = _admin_area_rows(_top_admin_claims(alert_context.get("top_admin_areas") or alert_context.get("admin_rows", [])))
+    local_impact_rows = _metric_rows(alert_context.get("local_impact_totals", {}), ["data"])
+    people_in_need_rows = _metric_rows(
+        alert_context.get("people_in_need") or _people_in_need_from_legacy(alert_context),
+        ["inferred"],
+    )
+    admin_rows = _admin_area_rows(
+        _top_admin_claims(
+            alert_context.get("top_admin_areas") or alert_context.get("admin_rows", [])
+        )
+    )
     threshold_rows = _threshold_exposure_rows(_cross_threshold_claims(alert_context))
     caveat_items = _required_caveat_items(_required_caveat_claims(alert_context))
     provenance_items = _provenance_list_items(alert_context.get("provenance_labels", []))
@@ -389,6 +526,8 @@ def render_alert_html(
     secondary_visuals = _secondary_visual_section(visual_assets or [])
     admin_visual = _admin_visual_section(visual_assets or [])
     evolution_visual = _evolution_visual_section(visual_assets or [])
+    hazard_rows = _hazard_availability_rows(alert_context.get("hazard_availability"))
+    decision_rows = _product_decision_rows(product_decision)
     return f"""<!doctype html>
 <html lang="en">
 <head>
@@ -403,7 +542,7 @@ def render_alert_html(
     .header-rule {{ border-top:1px solid rgba(255,255,255,0.3); margin:12px 0 10px; }}
     .alert-urgency-strip {{ background:var(--aots-blue-dark); color:#ffffff; padding:10px 24px; margin:0; font-weight:700; font-size:0.85em; letter-spacing:0.5px; text-transform:uppercase; }}
     main {{ padding:24px 28px; }}
-    .alert-card {{ border-top:1px solid var(--aots-line); padding:22px 0 0; margin:24px 0 0; }}
+    .alert-card {{ border-top:1px solid var(--aots-line); padding:22px 0 0; margin:24px 0 0; max-width:100%; min-width:0; overflow-x:auto; }}
     .alert-card:first-child {{ border-top:0; padding-top:0; margin-top:0; }}
     .alert-card h2 {{ margin:0 0 14px; font-size:1em; color:var(--aots-blue); border-left:4px solid var(--aots-blue); padding-left:10px; text-transform:uppercase; letter-spacing:0.5px; }}
     .accent-card {{ background:#f0f9ff; border-left:5px solid var(--aots-blue); border-top:0; padding:14px 18px; margin:0 0 20px; border-radius:0 3px 3px 0; }}
@@ -421,25 +560,34 @@ def render_alert_html(
     img {{ max-width:100%; height:auto; border:0; }}
     figcaption {{ font-size:0.83em; color:var(--aots-muted); margin-top:4px; }}
     footer {{ background:#f8f8f8; padding:16px 28px 20px; border-top:1px solid var(--aots-line); color:#666; font-size:0.88em; }}
+    @media (max-width:600px) {{
+      main {{ padding:18px 14px; }}
+      .alert-header, .alert-urgency-strip {{ padding-left:16px; padding-right:16px; }}
+      .alert-card table {{ width:max-content; min-width:100%; }}
+      tbody th, tbody td, thead th {{ padding:5px 7px; }}
+      code {{ white-space:normal; overflow-wrap:anywhere; }}
+    }}
   </style>
 </head>
 <body>
   <div class="email-shell">
     <header class="alert-header">
-      <p class="eyebrow">Ahead of the Storm &mdash; Storm Alert</p>
+      <p class="eyebrow">Ahead of the Storm &mdash; Storm {product_label}</p>
       <div class="header-rule"></div>
       <h1 style="margin:10px 0 6px; font-size:30px; line-height:1.2;">{escape(title)}</h1>
-      <p style="margin:0; color:rgba(255,255,255,0.85); font-size:0.9em;">Forecast issued: {escape(str(identity.get('forecast_time', 'Unknown')))}</p>
+      <p style="margin:0; color:rgba(255,255,255,0.85); font-size:0.9em;">Forecast issued: {escape(str(identity.get("forecast_time", "Unknown")))}</p>
     </header>
-    <p class="alert-urgency-strip" id="alert-urgency-strip">Active Forecast — Review expected {threshold_label} exposure and validate local preparedness decisions.</p>
+    <p class="alert-urgency-strip" id="alert-urgency-strip">Active Forecast &mdash; Storm {product_label}: review expected {local_threshold_label} exposure and validate local preparedness decisions.</p>
     <main>
       <section aria-labelledby="summary-heading" class="alert-card accent-card">
-        <h2 id="summary-heading">{SITUATION_SUMMARY_HEADING}</h2>
+        <h2 id="summary-heading">{SUMMARY_HEADING}</h2>
+        {_table_html("summary-facts-caption", "Deterministic product summary for the validated forecast horizon.", ["Fact", "Value"], summary_rows)}
         <p style="margin:0;">{summary_html}</p>
       </section>
       <section aria-labelledby="timing-heading" class="alert-card">
-        <h2 id="timing-heading">Timing &amp; Forecast Details</h2>
+        <h2 id="timing-heading">Situation</h2>
         {_table_html("alert-facts-caption", "Key alert facts derived from structured report inputs.", ["Fact", "Value"], facts_rows)}
+        {_table_html("local-exposure-caption", f"Modeled local exposure at the {local_threshold_label} threshold.", ["Metric", "Value", "Provenance"], local_impact_rows)}
         {timing_rows}
       </section>
       <section aria-labelledby="overview-heading" class="alert-card">
@@ -447,10 +595,14 @@ def render_alert_html(
         <p style="margin:0;">{narrative_html}</p>
       </section>
       <section aria-labelledby="impact-heading" class="alert-card accent-card">
-        <h2 id="impact-heading">Expected Impact</h2>
-        {_table_html("impact-totals-caption", f"Expected impact totals for the {threshold_label} threshold.", ["Metric", "Value", "Provenance"], impact_rows)}
+        <h2 id="impact-heading">Forecast Exposure</h2>
+        {_table_html("impact-totals-caption", f"Modeled exposure totals for the {impact_threshold_label} threshold.", ["Metric", "Value", "Provenance"], impact_rows)}
         <div style="height:12px;"></div>
-        {_table_html("people-in-need-caption", "Inferred people-in-need values used for review.", ["Metric", "Value", "Provenance"], people_in_need_rows)}
+        {_table_html("people-in-need-caption", "Forecast-conditioned people-in-need values used for review.", ["Metric", "Value", "Provenance"], people_in_need_rows)}
+      </section>
+      <section aria-labelledby="forecast-heading" class="alert-card">
+        <h2 id="forecast-heading">Forecast</h2>
+        {_table_html("hazard-availability-caption", "Availability of validated hazard evidence.", ["Hazard", "Status", "Source", "Detail"], hazard_rows)}
       </section>
       {composition_visuals}
       {primary_visual}
@@ -465,8 +617,8 @@ def render_alert_html(
         <p style="margin:0;">{shift_html}</p>
       </section>
       <section aria-labelledby="admin-heading" class="alert-card">
-        <h2 id="admin-heading">Most Affected Administrative Areas</h2>
-        {_table_html("admin-areas-caption", "Administrative areas with the highest 50kt population exposure.", ["Area", "Population", "People in Need", "Schools", "Health Centers", "Shelters", "WASH", "Provenance"], admin_rows)}
+        <h2 id="admin-heading">Highest-Exposure Administrative Areas</h2>
+        {_table_html("admin-areas-caption", f"Administrative areas with the highest {impact_threshold_label} population exposure.", ["Area", "Population", "Forecast-Conditioned People in Need", "Schools", "Health Centers", "Shelters", "WASH", "Provenance"], admin_rows)}
       </section>
       {evolution_visual}
       <section aria-labelledby="oscillation-heading" class="alert-card">
@@ -480,10 +632,11 @@ def render_alert_html(
       <section aria-labelledby="provenance-heading" class="alert-card">
         <h2 id="provenance-heading">Provenance Labels</h2>
         <ul style="margin:0; padding-left:20px;">{provenance_items}</ul>
+        {_table_html("decision-provenance-caption", "Product decision provenance and fact references.", ["Fact", "Value"], decision_rows)}
       </section>
     </main>
     <footer>
-      <p style="margin:0;">This alert was generated automatically by an {escape(required_caveat)}, not observed conditions. Numbers reflect expected values across the forecast ensemble and should be reviewed before use.</p>
+      <p style="margin:0;">This Storm {product_label} was generated automatically by an {escape(required_caveat)}, not observed conditions. Numbers reflect expected values across the forecast ensemble and should be reviewed before use.</p>
     </footer>
   </div>
 </body>
@@ -491,54 +644,222 @@ def render_alert_html(
 """
 
 
-def compare_alert_output(alert_claims: dict[str, Any], rendered_alert_html: str) -> ComparisonReport:
+def _operational_decision_failures(
+    alert_claims: dict[str, Any],
+    evidence: _AlertPresentationEvidence,
+    facts: dict[str, str],
+) -> list[ComparisonIssue]:
+    failures: list[ComparisonIssue] = []
+    storm_state_claim = alert_claims.get("current_storm_state") or {}
+    for key, fact_label in {
+        "status": "Official Storm Status",
+        "provider": "Status Source",
+        "observed_at": "Status Observed",
+    }.items():
+        value = storm_state_claim.get(key)
+        if value and not _fact_value_matches(facts, fact_label, value, evidence.text):
+            failures.append(
+                _failure(
+                    "missing_current_storm_state_claim",
+                    f"rendered alert does not include current storm state: {key}={value}",
+                )
+            )
+    threat_claim = alert_claims.get("country_threat_assessment") or {}
+    local_hazard = threat_claim.get("local_hazard_summary")
+    if local_hazard and not _fact_value_matches(
+        facts, "Local Forecast", local_hazard, evidence.text
+    ):
+        failures.append(
+            _failure(
+                "missing_local_hazard_claim",
+                "rendered alert does not include the supplied local hazard summary",
+            )
+        )
+    product_decision = alert_claims.get("product_decision") or {}
+    product_type = product_decision.get("product_type")
+    if product_type in {"warning", "alert"}:
+        expected_label = f"Storm {str(product_type).title()}"
+        if expected_label.casefold() not in evidence.text.casefold():
+            failures.append(
+                _failure(
+                    "missing_product_classification",
+                    f"rendered alert does not include product classification: {expected_label}",
+                )
+            )
+    decision_table = _find_table(
+        evidence.tables,
+        headers=("fact", "value"),
+        caption_contains="decision provenance",
+    )
+    presented_decision = _key_value_table(decision_table)
+    for key, label in _PRODUCT_DECISION_LABELS:
+        value = product_decision.get(key)
+        if value is not None and not _normalized_values_match(
+            presented_decision.get(_normalize_text(label)), value
+        ):
+            failures.append(
+                _failure(
+                    "missing_product_decision_reference",
+                    f"rendered alert does not include product decision reference: {key}",
+                )
+            )
+    hazard_claims = alert_claims.get("hazard_availability") or {}
+    hazard_table = _find_table(
+        evidence.tables,
+        headers=("hazard", "status", "source", "detail"),
+        caption_contains="hazard",
+    )
+    presented_hazards = _hazard_availability_table(hazard_table)
+    for key in ("wind", "rainfall", "storm_surge"):
+        claim = hazard_claims.get(key)
+        if isinstance(claim, dict) and not _hazard_claim_matches(presented_hazards.get(key), claim):
+            failures.append(
+                _failure(
+                    "missing_hazard_availability_claim",
+                    f"rendered alert does not include hazard availability evidence: {key}",
+                )
+            )
+    return failures
+
+
+def compare_alert_output(
+    alert_claims: dict[str, Any], rendered_alert_html: str
+) -> ComparisonReport:
     evidence = _presentation_evidence(rendered_alert_html)
     failures: list[ComparisonIssue] = []
     warnings: list[ComparisonIssue] = []
     identity = alert_claims.get("identity", {})
     facts = _facts_table(evidence.tables)
-    for key, fact_label in {"storm": "Storm", "country": "Country", "forecast_time": "Forecast Issued"}.items():
+    for key, fact_label in {
+        "storm": "Storm",
+        "country": "Country",
+        "forecast_time": "Forecast Issued",
+    }.items():
         value = identity.get(key)
         if value and not _fact_value_matches(facts, fact_label, value, evidence.text):
-            failures.append(_failure("missing_alert_identity", f"rendered alert does not include {key}: {value}"))
+            failures.append(
+                _failure(
+                    "missing_alert_identity", f"rendered alert does not include {key}: {value}"
+                )
+            )
+    failures.extend(_operational_decision_failures(alert_claims, evidence, facts))
     threshold_claim = _main_threshold_label(alert_claims)
-    if threshold_claim and not _fact_value_matches(facts, "Alert Threshold", threshold_claim, evidence.text):
-        failures.append(_failure("missing_alert_threshold", f"rendered alert does not include alert threshold: {threshold_claim}"))
-    impact_rows = _metric_table(_find_table(evidence.tables, headers=("metric", "value", "provenance"), caption_contains="impact"))
-    people_rows = _metric_table(_find_table(evidence.tables, headers=("metric", "value", "provenance"), caption_contains="people"))
-    admin_rows = _admin_area_table(
+    local_threshold_claim = _threshold_label(alert_claims.get("local_forecast_threshold"))
+    if local_threshold_claim:
+        threshold_matches = _fact_value_matches(
+            facts, "Local Wind Threshold", local_threshold_claim, evidence.text
+        )
+    else:
+        threshold_matches = _fact_value_matches(
+            facts, "Alert Threshold", threshold_claim, evidence.text
+        )
+    threshold_matches = threshold_matches and (
+        not threshold_claim or threshold_claim.casefold() in evidence.text.casefold()
+    )
+    if threshold_claim and not threshold_matches:
+        failures.append(
+            _failure(
+                "missing_alert_threshold",
+                f"rendered alert does not include alert threshold: {threshold_claim}",
+            )
+        )
+    impact_table = _find_table(
+        evidence.tables,
+        headers=("metric", "value", "provenance"),
+        caption_contains="exposure totals",
+    ) or _find_table(
+        evidence.tables, headers=("metric", "value", "provenance"), caption_contains="impact"
+    )
+    impact_rows = _metric_table(impact_table)
+    local_impact_rows = _metric_table(
         _find_table(
             evidence.tables,
-            headers=("area", "population", "people in need", "schools", "health centers", "shelters", "wash", "provenance"),
-            caption_contains="administrative",
+            headers=("metric", "value", "provenance"),
+            caption_contains="local exposure",
         )
     )
+    people_rows = _metric_table(
+        _find_table(
+            evidence.tables, headers=("metric", "value", "provenance"), caption_contains="people"
+        )
+    )
+    admin_headers = (
+        "area",
+        "population",
+        "forecast-conditioned people in need",
+        "schools",
+        "health centers",
+        "shelters",
+        "wash",
+        "provenance",
+    )
+    admin_table = _find_table(
+        evidence.tables, headers=admin_headers, caption_contains="administrative"
+    )
+    admin_rows = _admin_area_table(admin_table)
     threshold_rows = _threshold_table(
         _find_table(
             evidence.tables,
-            headers=("wind threshold", "population", "children", "schools", "health centers", "shelters", "wash", "provenance"),
+            headers=(
+                "wind threshold",
+                "population",
+                "children",
+                "schools",
+                "health centers",
+                "shelters",
+                "wash",
+                "provenance",
+            ),
             caption_contains="threshold",
         )
     )
     for claim in _claim_rows(alert_claims.get("impact_totals")):
         if not _metric_claim_matches(impact_rows, claim):
-            failures.append(_failure("missing_impact_total_claim", _metric_claim_message("impact total", claim)))
+            failures.append(
+                _failure("missing_impact_total_claim", _metric_claim_message("impact total", claim))
+            )
+    for claim in _claim_rows(alert_claims.get("local_impact_totals")):
+        if not _metric_claim_matches(local_impact_rows, claim):
+            failures.append(
+                _failure(
+                    "missing_local_impact_claim",
+                    _metric_claim_message("local impact", claim),
+                )
+            )
     for claim in _claim_rows(alert_claims.get("people_in_need_values")):
         if not _metric_claim_matches(people_rows, claim):
-            failures.append(_failure("missing_people_in_need_claim", _metric_claim_message("people-in-need", claim)))
+            failures.append(
+                _failure(
+                    "missing_people_in_need_claim", _metric_claim_message("people-in-need", claim)
+                )
+            )
     for claim in _claim_rows(alert_claims.get("top_admin_areas")):
         if not _admin_area_claim_matches(admin_rows, claim):
-            failures.append(_failure("missing_top_admin_area_claim", _admin_area_claim_message(claim)))
+            failures.append(
+                _failure("missing_top_admin_area_claim", _admin_area_claim_message(claim))
+            )
     cross_threshold_claims = _cross_threshold_claims(alert_claims)
     for claim in cross_threshold_claims:
         if not _threshold_claim_matches(threshold_rows, claim):
-            failures.append(_failure("missing_threshold_exposure_claim", _threshold_claim_message(claim)))
+            failures.append(
+                _failure("missing_threshold_exposure_claim", _threshold_claim_message(claim))
+            )
     for caveat in _required_caveat_texts(alert_claims):
         if caveat and not _text_or_list_item_matches(evidence, caveat):
-            failures.append(_failure("missing_alert_caveat", "rendered alert is missing required AI/probabilistic caveat"))
+            failures.append(
+                _failure(
+                    "missing_alert_caveat",
+                    "rendered alert is missing required AI/probabilistic caveat",
+                )
+            )
     for label in alert_claims.get("provenance_labels", []):
         if not _text_or_list_item_matches(evidence, label):
-            failures.append(_failure("missing_provenance_label", f"rendered alert is missing provenance label: {label}"))
+            failures.append(
+                _failure(
+                    "missing_provenance_label",
+                    f"rendered alert is missing provenance label: {label}",
+                )
+            )
     for claim in _claim_rows(alert_claims.get("visual_assets")):
         if not _visual_asset_claim_matches(evidence.images, claim):
             failures.append(
@@ -548,8 +869,12 @@ def compare_alert_output(alert_claims: dict[str, Any], rendered_alert_html: str)
                 )
             )
     if not cross_threshold_claims:
-        warnings.append(_warning("missing_threshold_claims", "no cross-threshold alert claims were available"))
-    return ComparisonReport(status="failed" if failures else "passed", failures=failures, warnings=warnings)
+        warnings.append(
+            _warning("missing_threshold_claims", "no cross-threshold alert claims were available")
+        )
+    return ComparisonReport(
+        status="failed" if failures else "passed", failures=failures, warnings=warnings
+    )
 
 
 def baseline_replay_summary_prose(expected_alert_html: str | None) -> str:
@@ -607,7 +932,7 @@ def _bounded_alert_prose_slots(values: Mapping[str, Any]) -> AlertProseSlots:
 def _asset(
     *,
     kind: str,
-    threshold: int,
+    threshold: int | None,
     filename: str,
     png_base64: str | None,
     alt_text: str,
@@ -676,11 +1001,27 @@ def _render_donut_chart(
         wedgeprops={"width": 0.38, "edgecolor": "white"},
     )
     total = sum(sizes)
-    ax.text(0, 0.05, f"{int(round(total)):,}", ha="center", va="center", fontsize=14, fontweight="bold", color="#16313a")
+    ax.text(
+        0,
+        0.05,
+        f"{int(round(total)):,}",
+        ha="center",
+        va="center",
+        fontsize=14,
+        fontweight="bold",
+        color="#16313a",
+    )
     ax.text(0, -0.17, "total", ha="center", va="center", fontsize=8, color="#5a6b72")
     ax.set_title(title, fontsize=10, color="#0f4f5e", pad=8)
     legend_labels = [f"{label}: {int(round(size)):,}" for label, size in zip(display_labels, sizes)]
-    ax.legend(wedges, legend_labels, loc="lower center", bbox_to_anchor=(0.5, -0.16), fontsize=7, frameon=False)
+    ax.legend(
+        wedges,
+        legend_labels,
+        loc="lower center",
+        bbox_to_anchor=(0.5, -0.16),
+        fontsize=7,
+        frameon=False,
+    )
     ax.set_aspect("equal")
     plt.tight_layout(pad=0.6)
     return _figure_png_base64(fig, dpi=150)
@@ -690,12 +1031,17 @@ def _render_impact_evolution_chart(rows: Any) -> str | None:
     data = [row for row in rows if isinstance(row, dict)]
     if not data:
         return None
-    labels = [str(row.get("label") or row.get("forecast_date") or index + 1) for index, row in enumerate(data)]
+    labels = [
+        str(row.get("label") or row.get("forecast_date") or index + 1)
+        for index, row in enumerate(data)
+    ]
     population = [_float(row.get("population") or row.get("pop")) for row in data]
     children = [
         _float(row.get("children"))
         if row.get("children") is not None
-        else _float(row.get("infant")) + _float(row.get("school_age")) + _float(row.get("adolescent"))
+        else _float(row.get("infant"))
+        + _float(row.get("school_age"))
+        + _float(row.get("adolescent"))
         for row in data
     ]
     x = np.arange(len(labels))
@@ -703,11 +1049,22 @@ def _render_impact_evolution_chart(rows: Any) -> str | None:
     fig.patch.set_facecolor("white")
     ax.set_facecolor("white")
     zeros = [0.0] * len(labels)
-    ax.fill_between(x, zeros, population, color="#d8d8d8", alpha=0.85, label="Total population at risk")
+    ax.fill_between(
+        x, zeros, population, color="#d8d8d8", alpha=0.85, label="Total population at risk"
+    )
     ax.fill_between(x, zeros, children, color="#1CABE2", alpha=0.9, label="of which: children 0-19")
     if len(x) > 0:
         ax.axvspan(x[-1] - 0.45, x[-1] + 0.45, alpha=0.12, color="#1CABE2", zorder=0)
-        ax.text(x[-1], 0, "current", ha="center", va="bottom", fontsize=6.5, color="#1A6080", style="italic")
+        ax.text(
+            x[-1],
+            0,
+            "current",
+            ha="center",
+            va="bottom",
+            fontsize=6.5,
+            color="#1A6080",
+            style="italic",
+        )
     ax.set_xticks(x)
     ax.set_xticklabels(labels, rotation=40, ha="right", fontsize=7.5)
     ax.set_ylabel("People at risk (50 kt)", fontsize=8)
@@ -743,7 +1100,17 @@ def _render_admin_choropleth(rows: Any) -> str | None:
             continue
     if not features:
         return None
-    colors = ["#ffffcc", "#ffeda0", "#fed976", "#feb24c", "#fd8d3c", "#fc4e2a", "#e31a1c", "#bd0026", "#800026"]
+    colors = [
+        "#ffffcc",
+        "#ffeda0",
+        "#fed976",
+        "#feb24c",
+        "#fd8d3c",
+        "#fc4e2a",
+        "#e31a1c",
+        "#bd0026",
+        "#800026",
+    ]
     rgb = [_hex_to_rgb(color) for color in colors]
     max_value = max(feature["children"] for feature in features) or 1
     fig, ax = plt.subplots(figsize=(10, 6), dpi=150)
@@ -758,7 +1125,9 @@ def _render_admin_choropleth(rows: Any) -> str | None:
             ax.fill(x, y, facecolor=color, edgecolor=color, linewidth=0.6, antialiased=False)
             for interior in poly.interiors:
                 xi, yi = interior.xy
-                ax.fill(xi, yi, facecolor="white", edgecolor="white", linewidth=0.6, antialiased=False)
+                ax.fill(
+                    xi, yi, facecolor="white", edgecolor="white", linewidth=0.6, antialiased=False
+                )
             ax.plot(x, y, color="#888888", linewidth=0.4)
         west, south, east, north = feature["geom"].bounds
         bounds_lons.extend([west, east])
@@ -769,9 +1138,30 @@ def _render_admin_choropleth(rows: Any) -> str | None:
         label_name = _wrap_name(feature["name"])
         is_two_line = "\n" in label_name
         name_offset = 0.022 if is_two_line else 0.015
-        label_bbox = dict(boxstyle="round,pad=0.15", facecolor="white", alpha=0.75, edgecolor="none")
-        ax.text(feature["clon"], feature["clat"] + name_offset, label_name, fontsize=6.5 if is_two_line else 7, fontweight="bold", ha="center", va="bottom", color="#111111", bbox=label_bbox)
-        ax.text(feature["clon"], feature["clat"] - 0.010, f'{int(round(feature["children"])):,}', fontsize=6, ha="center", va="top", color="#333333", bbox=label_bbox)
+        label_bbox = dict(
+            boxstyle="round,pad=0.15", facecolor="white", alpha=0.75, edgecolor="none"
+        )
+        ax.text(
+            feature["clon"],
+            feature["clat"] + name_offset,
+            label_name,
+            fontsize=6.5 if is_two_line else 7,
+            fontweight="bold",
+            ha="center",
+            va="bottom",
+            color="#111111",
+            bbox=label_bbox,
+        )
+        ax.text(
+            feature["clon"],
+            feature["clat"] - 0.010,
+            f"{int(round(feature['children'])):,}",
+            fontsize=6,
+            ha="center",
+            va="top",
+            color="#333333",
+            bbox=label_bbox,
+        )
     if bounds_lons and bounds_lats:
         lon_range = max(bounds_lons) - min(bounds_lons) or 1
         lat_range = max(bounds_lats) - min(bounds_lats) or 1
@@ -786,14 +1176,34 @@ def _render_admin_choropleth(rows: Any) -> str | None:
         lo = (index / n) * max_value
         hi = ((index + 1) / n) * max_value
         legend_patches.append(
-            mpatches.Patch(facecolor=_hex_to_rgb(color), edgecolor="#cccccc", linewidth=0.3, label=f"{int(round(lo)):,}–{int(round(hi)):,}")
+            mpatches.Patch(
+                facecolor=_hex_to_rgb(color),
+                edgecolor="#cccccc",
+                linewidth=0.3,
+                label=f"{int(round(lo)):,}–{int(round(hi)):,}",
+            )
         )
-    fig.legend(handles=legend_patches, title="Children at risk (0-19) at 50kt", title_fontsize=8, fontsize=7, loc="lower center", ncol=n, bbox_to_anchor=(0.5, 0), frameon=True, framealpha=0.9, edgecolor="#dddddd", handlelength=1.2, handleheight=0.9)
+    fig.legend(
+        handles=legend_patches,
+        title="Children at risk (0-19) at 50kt",
+        title_fontsize=8,
+        fontsize=7,
+        loc="lower center",
+        ncol=n,
+        bbox_to_anchor=(0.5, 0),
+        frameon=True,
+        framealpha=0.9,
+        edgecolor="#dddddd",
+        handlelength=1.2,
+        handleheight=0.9,
+    )
     plt.tight_layout(rect=(0, 0.08, 1, 1))
     return _figure_png_base64(fig, dpi=150)
 
 
-def _render_ensemble_probability_map(rows: Any, tracks: Any, *, threshold: int, admin_rows: Any = None) -> str | None:
+def _render_ensemble_probability_map(
+    rows: Any, tracks: Any, *, threshold: int, admin_rows: Any = None
+) -> str | None:
     tiles = [row for row in rows if isinstance(row, dict)] if isinstance(rows, list) else []
     if not tiles:
         return None
@@ -818,7 +1228,21 @@ def _render_ensemble_probability_map(rows: Any, tracks: Any, *, threshold: int, 
         colors.append(p)
     if not patches:
         return None
-    cmap = mcolors.LinearSegmentedColormap.from_list("ylorrd", ["#ffffcc", "#ffeda0", "#fed976", "#feb24c", "#fd8d3c", "#fc4e2a", "#f03b20", "#e31a1c", "#bd0026", "#800026"])
+    cmap = mcolors.LinearSegmentedColormap.from_list(
+        "ylorrd",
+        [
+            "#ffffcc",
+            "#ffeda0",
+            "#fed976",
+            "#feb24c",
+            "#fd8d3c",
+            "#fc4e2a",
+            "#f03b20",
+            "#e31a1c",
+            "#bd0026",
+            "#800026",
+        ],
+    )
     actual_max = max(colors) if colors else 0.1
     norm = mcolors.Normalize(vmin=0, vmax=actual_max)
     for geom in admin_geoms:
@@ -826,25 +1250,48 @@ def _render_ensemble_probability_map(rows: Any, tracks: Any, *, threshold: int, 
             ax.fill(*poly.exterior.xy, facecolor="white", edgecolor="none", zorder=1)
             for interior in poly.interiors:
                 ax.fill(*interior.xy, facecolor="white", edgecolor="none", zorder=1)
-    ax.add_collection(PatchCollection(patches, array=np.array(colors), cmap=cmap, norm=norm, linewidths=0, antialiased=False, alpha=1.0, zorder=3))
-    track_rows = [row for row in tracks if isinstance(row, dict)] if isinstance(tracks, list) else []
+    ax.add_collection(
+        PatchCollection(
+            patches,
+            array=np.array(colors),
+            cmap=cmap,
+            norm=norm,
+            linewidths=0,
+            antialiased=False,
+            alpha=1.0,
+            zorder=3,
+        )
+    )
+    track_rows = (
+        [row for row in tracks if isinstance(row, dict)] if isinstance(tracks, list) else []
+    )
     members: dict[str, list[tuple[int, float, float]]] = {}
     for row in track_rows:
-        member = str(row.get("m") or row.get("ENSEMBLE_MEMBER") or row.get("ensemble_member") or "member")
+        member = str(
+            row.get("m") or row.get("ENSEMBLE_MEMBER") or row.get("ensemble_member") or "member"
+        )
         lon = _float_or_none(row.get("lon") or row.get("LONGITUDE") or row.get("longitude"))
         lat = _float_or_none(row.get("lat") or row.get("LATITUDE") or row.get("latitude"))
         lead = int(_float(row.get("lt") or row.get("LEAD_TIME") or row.get("lead_time")))
         if lon is None or lat is None:
             continue
         members.setdefault(member, []).append((lead, lon, lat))
-    all_x = [patch.get_x() for patch in patches] + [patch.get_x() + patch.get_width() for patch in patches]
-    all_y = [patch.get_y() for patch in patches] + [patch.get_y() + patch.get_height() for patch in patches]
+    all_x = [patch.get_x() for patch in patches] + [
+        patch.get_x() + patch.get_width() for patch in patches
+    ]
+    all_y = [patch.get_y() for patch in patches] + [
+        patch.get_y() + patch.get_height() for patch in patches
+    ]
     for geom in admin_geoms:
         west, south, east, north = geom.bounds
         all_x.extend([west, east])
         all_y.extend([south, north])
     if members:
-        initial_points = [points[0] for points in (sorted(points, key=lambda item: item[0]) for points in members.values()) if points]
+        initial_points = [
+            points[0]
+            for points in (sorted(points, key=lambda item: item[0]) for points in members.values())
+            if points
+        ]
         if initial_points:
             init_lon = sum(point[1] for point in initial_points) / len(initial_points)
             init_lat = sum(point[2] for point in initial_points) / len(initial_points)
@@ -874,15 +1321,34 @@ def _render_ensemble_probability_map(rows: Any, tracks: Any, *, threshold: int, 
             zorder=8,
         )
     if threshold == 50 and members:
-        initial_points = [points[0] for points in (sorted(points, key=lambda item: item[0]) for points in members.values()) if points]
+        initial_points = [
+            points[0]
+            for points in (sorted(points, key=lambda item: item[0]) for points in members.values())
+            if points
+        ]
         if initial_points:
             init_lon = sum(point[1] for point in initial_points) / len(initial_points)
             init_lat = sum(point[2] for point in initial_points) / len(initial_points)
-            ax.scatter([init_lon], [init_lat], s=60, color="white", edgecolors="#1a3a5c", linewidths=1.5, zorder=12)
+            ax.scatter(
+                [init_lon],
+                [init_lat],
+                s=60,
+                color="white",
+                edgecolors="#1a3a5c",
+                linewidths=1.5,
+                zorder=12,
+            )
             ax.scatter([init_lon], [init_lat], s=15, color="#1CABE2", zorder=13)
     for geom in admin_geoms:
         for poly in _polygons(geom):
-            ax.plot(*poly.exterior.xy, color="#888888", linewidth=0.4, solid_capstyle="round", solid_joinstyle="round", zorder=5)
+            ax.plot(
+                *poly.exterior.xy,
+                color="#888888",
+                linewidth=0.4,
+                solid_capstyle="round",
+                solid_joinstyle="round",
+                zorder=5,
+            )
     ax.set_title(f"P({threshold}kt winds)", fontsize=9)
     ax.axis("off")
     sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
@@ -955,7 +1421,12 @@ def _draw_ensemble_density_bands(
         alpha=0.85,
         zorder=4,
     )
-    ax.clabel(contours, fmt={level: f"{int(level * 100)}%" for level in contour_levels}, fontsize=5.5, inline=True)
+    ax.clabel(
+        contours,
+        fmt={level: f"{int(level * 100)}%" for level in contour_levels},
+        fontsize=5.5,
+        inline=True,
+    )
 
 
 def _figure_png_base64(fig, *, dpi: int) -> str:
@@ -1010,7 +1481,9 @@ def _tile_visual_row(row: dict[str, Any]) -> dict[str, Any] | None:
 
 def _track_visual_row(row: dict[str, Any]) -> dict[str, Any]:
     return {
-        "m": str(row.get("m") or row.get("ENSEMBLE_MEMBER") or row.get("ensemble_member") or "member"),
+        "m": str(
+            row.get("m") or row.get("ENSEMBLE_MEMBER") or row.get("ensemble_member") or "member"
+        ),
         "lt": int(_float(row.get("lt") or row.get("LEAD_TIME") or row.get("lead_time"))),
         "lon": _float(row.get("lon") or row.get("LONGITUDE") or row.get("longitude")),
         "lat": _float(row.get("lat") or row.get("LATITUDE") or row.get("latitude")),
@@ -1089,7 +1562,9 @@ def _hex_to_rgb(value: str) -> tuple[float, float, float]:
     )
 
 
-def _value_color(value: float, max_value: float, colors: list[tuple[float, float, float]]) -> tuple[float, float, float]:
+def _value_color(
+    value: float, max_value: float, colors: list[tuple[float, float, float]]
+) -> tuple[float, float, float]:
     if value <= 0 or max_value <= 0:
         return (1.0, 1.0, 1.0)
     index = min(int((value / max_value) * len(colors)), len(colors) - 1)
@@ -1157,7 +1632,9 @@ def _first_paragraph_after_heading(expected_alert_html: str, heading: str) -> st
 def _threshold_rows(report: dict[str, Any]) -> list[dict[str, Any]]:
     rows = []
     for threshold in [34, 40, 50, 64, 83, 96, 113, 137]:
-        population = report.get(f"expected_pop_{threshold}") or report.get(f"expected_population_{threshold}")
+        population = report.get(f"expected_pop_{threshold}") or report.get(
+            f"expected_population_{threshold}"
+        )
         children = report.get(f"expected_children_{threshold}")
         if population is None and children is None:
             continue
@@ -1182,34 +1659,43 @@ def _top_admin_claims(rows: Any) -> list[dict[str, Any]]:
     if isinstance(rows, list) and rows and isinstance(rows[0], dict) and "population" in rows[0]:
         sorted_rows = sorted(rows, key=lambda row: _float(row.get("population")), reverse=True)
         return [
-            _compact_dict({
-                "name": row.get("name"),
-                "population": row.get("population"),
-                "population_delta": row.get("population_delta"),
-                "people_in_need": row.get("people_in_need"),
-                "schools": row.get("schools"),
-                "health_centers": row.get("health_centers"),
-                "shelters": row.get("shelters"),
-                "wash": row.get("wash"),
-            })
+            _compact_dict(
+                {
+                    "name": row.get("name"),
+                    "population": row.get("population"),
+                    "population_delta": row.get("population_delta"),
+                    "people_in_need": row.get("people_in_need"),
+                    "schools": row.get("schools"),
+                    "health_centers": row.get("health_centers"),
+                    "shelters": row.get("shelters"),
+                    "wash": row.get("wash"),
+                }
+            )
             for row in sorted_rows[:5]
             if row.get("name")
         ]
     if not isinstance(rows, list):
         return []
     claims = []
-    sorted_rows = sorted(rows, key=lambda row: _float(row.get(str(MAIN_ALERT_THRESHOLD))) if isinstance(row, dict) else 0, reverse=True)
+    sorted_rows = sorted(
+        rows,
+        key=lambda row: _float(row.get(str(MAIN_ALERT_THRESHOLD))) if isinstance(row, dict) else 0,
+        reverse=True,
+    )
     for row in sorted_rows[:5]:
         if isinstance(row, dict) and row.get("name"):
             claims.append(
-                _compact_dict({
-                    "name": row.get("name"),
-                    "population": row.get(str(MAIN_ALERT_THRESHOLD)),
-                    "population_delta": _non_trivial_delta(
-                        row.get(f"change_{MAIN_ALERT_THRESHOLD}"), row.get(str(MAIN_ALERT_THRESHOLD))
-                    ),
-                    "people_in_need": row.get("people_in_need"),
-                })
+                _compact_dict(
+                    {
+                        "name": row.get("name"),
+                        "population": row.get(str(MAIN_ALERT_THRESHOLD)),
+                        "population_delta": _non_trivial_delta(
+                            row.get(f"change_{MAIN_ALERT_THRESHOLD}"),
+                            row.get(str(MAIN_ALERT_THRESHOLD)),
+                        ),
+                        "people_in_need": row.get("people_in_need"),
+                    }
+                )
             )
     return claims
 
@@ -1290,7 +1776,9 @@ def _people_in_need_from_legacy(alert_context: dict[str, Any]) -> dict[str, Any]
 
 def _legacy_totals(alert_context: dict[str, Any]) -> dict[str, Any]:
     totals = dict(alert_context.get("impact_totals") or _impact_totals_from_legacy(alert_context))
-    people_in_need = alert_context.get("people_in_need") or _people_in_need_from_legacy(alert_context)
+    people_in_need = alert_context.get("people_in_need") or _people_in_need_from_legacy(
+        alert_context
+    )
     if isinstance(people_in_need, dict):
         if "population" in people_in_need:
             totals["people_in_need"] = people_in_need["population"]
@@ -1329,12 +1817,20 @@ def _required_caveat_claims(alert_context: dict[str, Any]) -> list[dict[str, Any
         return [caveat for caveat in caveats if isinstance(caveat, dict)]
     caveat = alert_context.get("required_caveat")
     if caveat:
-        return [{"id": "ai_probabilistic_model_outputs", "text": caveat, "provenance_labels": ["inferred"]}]
+        return [
+            {
+                "id": "ai_probabilistic_model_outputs",
+                "text": caveat,
+                "provenance_labels": ["inferred"],
+            }
+        ]
     return []
 
 
 def _required_caveat_texts(values: dict[str, Any]) -> list[str]:
-    texts = [str(caveat.get("text")) for caveat in _required_caveat_claims(values) if caveat.get("text")]
+    texts = [
+        str(caveat.get("text")) for caveat in _required_caveat_claims(values) if caveat.get("text")
+    ]
     if texts:
         return texts
     caveat = values.get("required_caveat")
@@ -1363,9 +1859,9 @@ def _visual_asset_claims(visual_context: Any) -> list[dict[str, Any]]:
             claims.append(
                 {
                     "kind": "people_in_need_composition",
-                    "threshold": 50,
-                    "alt_text": "People in need composition donut chart",
-                    "caption": "Composition of people in need at the 50 kt threshold.",
+                    "threshold": None,
+                    "alt_text": "Forecast-conditioned people-in-need composition donut chart",
+                    "caption": "Composition of forecast-conditioned PiN integrated across available wind bands.",
                 }
             )
     impact = visual_context.get("impact_evolution")
@@ -1414,7 +1910,7 @@ def _compact_dict(values: dict[str, Any]) -> dict[str, Any]:
 
 
 def _table_row(label: str, value: Any) -> str:
-    return f"<tr><th style=\"text-align:left; padding:4px 8px;\">{escape(label.replace('_', ' ').title())}</th><td style=\"text-align:right; padding:4px 8px;\">{escape(str(value))}<code>data</code></td></tr>"
+    return f'<tr><th style="text-align:left; padding:4px 8px;">{escape(label.replace("_", " ").title())}</th><td style="text-align:right; padding:4px 8px;">{escape(str(value))}<code>data</code></td></tr>'
 
 
 def _provenance_labels_html(labels: list[Any]) -> str:
@@ -1447,20 +1943,35 @@ def _primary_visual_section(visual_assets: list[dict[str, Any]]) -> str:
 def _composition_visual_section(visual_assets: list[dict[str, Any]]) -> str:
     assets = [
         asset
-        for kind in ("population_composition", "people_in_need_composition")
-        if (asset := _find_visual_asset(visual_assets, kind, 50))
+        for kind, threshold in (
+            ("population_composition", 50),
+            ("people_in_need_composition", None),
+        )
+        if (asset := _find_visual_asset(visual_assets, kind, threshold))
     ]
     if not assets:
         return ""
-    body = '<div class="visual-secondary-grid">' + "".join(_visual_asset_figure(asset) for asset in assets) + "</div>"
+    body = (
+        '<div class="visual-secondary-grid">'
+        + "".join(_visual_asset_figure(asset) for asset in assets)
+        + "</div>"
+    )
     return _visual_section("visual-composition-heading", "Impact Composition", body)
 
 
 def _secondary_visual_section(visual_assets: list[dict[str, Any]]) -> str:
-    secondary = [asset for threshold in (34, 64) if (asset := _find_visual_asset(visual_assets, "ensemble_probability", threshold))]
+    secondary = [
+        asset
+        for threshold in (34, 64)
+        if (asset := _find_visual_asset(visual_assets, "ensemble_probability", threshold))
+    ]
     if not secondary:
         return ""
-    body = '<div class="visual-secondary-grid">' + "".join(_visual_asset_figure(asset) for asset in secondary) + "</div>"
+    body = (
+        '<div class="visual-secondary-grid">'
+        + "".join(_visual_asset_figure(asset) for asset in secondary)
+        + "</div>"
+    )
     return _visual_section(
         "visual-secondary-heading",
         "Additional Wind Probability Views",
@@ -1491,9 +2002,16 @@ def _evolution_visual_section(visual_assets: list[dict[str, Any]]) -> str:
     )
 
 
-def _find_visual_asset(visual_assets: list[dict[str, Any]], kind: str, threshold: int) -> dict[str, Any] | None:
+def _find_visual_asset(
+    visual_assets: list[dict[str, Any]], kind: str, threshold: int | None
+) -> dict[str, Any] | None:
     for asset in visual_assets:
-        if asset.get("status") == "rendered" and asset.get("data_uri") and asset.get("kind") == kind and int(asset.get("threshold") or 0) == threshold:
+        if (
+            asset.get("status") == "rendered"
+            and asset.get("data_uri")
+            and asset.get("kind") == kind
+            and asset.get("threshold") == threshold
+        ):
             return asset
     return None
 
@@ -1503,8 +2021,8 @@ def _visual_section(heading_id: str, heading: str, body: str, *, extra_class: st
     return (
         f'<section aria-labelledby="{escape(heading_id)}" class="{escape(class_value)}">'
         f'<h2 id="{escape(heading_id)}">{escape(heading)}</h2>'
-        f'{body}'
-        '</section>'
+        f"{body}"
+        "</section>"
     )
 
 
@@ -1515,10 +2033,10 @@ def _visual_asset_figure(asset: dict[str, Any], *, primary: bool = False) -> str
     labels = _provenance_labels_html(list(asset.get("provenance_labels") or []))
     max_width = "820px" if primary else "430px"
     return (
-        '<figure>'
+        "<figure>"
         f'<img src="{data_uri}" alt="{alt_text}" style="width:100%; max-width:{max_width}; display:block; margin:0 auto;" />'
-        f'<figcaption>{caption} {labels}</figcaption>'
-        '</figure>'
+        f"<figcaption>{caption} {labels}</figcaption>"
+        "</figure>"
     )
 
 
@@ -1530,9 +2048,106 @@ def _slot_value(slots: Mapping[str, Any], *names: str) -> str:
     return ""
 
 
-def _fact_row(label: str, value_html: str | None) -> str:
-    value = value_html if value_html else "Unknown"
+def _summary_fact_rows(alert_context: dict[str, Any]) -> str:
+    decision = alert_context.get("product_decision") or {}
+    threat = alert_context.get("country_threat_assessment") or {}
+    state = alert_context.get("current_storm_state") or {}
+    impacts = alert_context.get("local_impact_totals") or {}
+    people_in_need = alert_context.get("people_in_need") or {}
+    horizon = threat.get("horizon_hours")
+    complete = threat.get("complete") is True
+    outlook = f"{horizon} hours ({'complete' if complete else 'incomplete'})" if horizon else None
+    rows = [
+        _fact_row("Product", str(decision.get("product_type", "")).title()),
+        _fact_row("Official Status", state.get("status")),
+        _fact_row("Cumulative Outlook", outlook),
+        _fact_row(
+            "Local Wind Threshold", _threshold_label(alert_context.get("local_forecast_threshold"))
+        ),
+        _fact_row("Population Exposed", _display_metric(impacts.get("population"))),
+        _fact_row("Children Exposed", _display_metric(impacts.get("children"))),
+        _fact_row("Forecast-Conditioned PiN", _display_metric(people_in_need.get("population"))),
+        _fact_row("Forecast-Conditioned CHiN", _display_metric(people_in_need.get("children"))),
+        _fact_row("Impact Evidence", alert_context.get("local_impact_evidence_label")),
+    ]
+    return "".join(rows)
+
+
+def _format_location(storm_state: dict[str, Any]) -> str | None:
+    latitude = storm_state.get("latitude")
+    longitude = storm_state.get("longitude")
+    if not isinstance(latitude, (int, float)) or not isinstance(longitude, (int, float)):
+        return None
+    latitude_label = f"{abs(float(latitude)):.1f}°{'N' if latitude >= 0 else 'S'}"
+    longitude_label = f"{abs(float(longitude)):.1f}°{'E' if longitude >= 0 else 'W'}"
+    return f"{latitude_label}, {longitude_label}"
+
+
+def _format_movement(storm_state: dict[str, Any]) -> str | None:
+    direction = storm_state.get("movement_direction")
+    speed = storm_state.get("movement_speed_kt")
+    if not direction:
+        return None
+    direction_label = str(direction).replace("_", " ")
+    if isinstance(speed, (int, float)):
+        return f"{direction_label} at {_display_metric(speed)} kt"
+    return direction_label
+
+
+def _format_sustained_wind(storm_state: dict[str, Any]) -> str | None:
+    wind = storm_state.get("sustained_wind_kt")
+    averaging = storm_state.get("sustained_wind_averaging_minutes")
+    if not isinstance(wind, (int, float)):
+        return None
+    label = f"{_display_metric(wind)} kt"
+    if isinstance(averaging, int):
+        label += f" ({averaging}-minute average)"
+    return label
+
+
+def _display_metric(value: Any) -> str | None:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    if float(value).is_integer():
+        return f"{int(value):,}"
+    return f"{float(value):,.1f}"
+
+
+def _fact_row(label: str, value_html: Any, *, trusted_html: bool = False) -> str:
+    if value_html is None or value_html == "":
+        value = "Unknown"
+    else:
+        value = str(value_html) if trusted_html else escape(str(value_html))
     return f'<tr><th scope="row">{escape(label)}</th><td>{value}</td></tr>'
+
+
+def _hazard_availability_rows(value: Any) -> str:
+    if not isinstance(value, dict):
+        return _empty_table_row(4, "Hazard availability has not been supplied.")
+    rows = []
+    for key, label in (("wind", "Wind"), ("rainfall", "Rainfall"), ("storm_surge", "Storm Surge")):
+        fact = value.get(key)
+        if not isinstance(fact, dict):
+            continue
+        status = str(fact.get("status") or "unavailable").replace("_", " ").title()
+        source = str(fact.get("source") or "Not supplied")
+        detail = str(fact.get("detail") or "No detail supplied.")
+        rows.append(
+            "<tr>"
+            + f'<th scope="row">{escape(label)}</th>'
+            + f"<td>{escape(status)}</td>"
+            + f"<td>{escape(source)}</td>"
+            + f"<td>{escape(detail)}</td>"
+            + "</tr>"
+        )
+    return "".join(rows) or _empty_table_row(4, "Hazard availability has not been supplied.")
+
+
+def _product_decision_rows(value: Any) -> str:
+    if not isinstance(value, dict):
+        return _empty_table_row(2, "Product decision has not been supplied.")
+    rows = [_fact_row(label, value.get(key)) for key, label in _PRODUCT_DECISION_LABELS]
+    return "".join(rows)
 
 
 def _metric_rows(values: Any, provenance_labels: list[str]) -> str:
@@ -1543,11 +2158,11 @@ def _metric_rows(values: Any, provenance_labels: list[str]) -> str:
         if value is None:
             continue
         rows.append(
-            '<tr>'
+            "<tr>"
             + f'<th scope="row">{escape(key.replace("_", " ").title())}</th>'
-            + f'<td>{escape(str(value))}</td>'
-            + f'<td>{_provenance_labels_html(provenance_labels)}</td>'
-            + '</tr>'
+            + f"<td>{escape(str(value))}</td>"
+            + f"<td>{_provenance_labels_html(provenance_labels)}</td>"
+            + "</tr>"
         )
     return "".join(rows) or _empty_table_row(3, "No values available.")
 
@@ -1561,16 +2176,16 @@ def _admin_area_rows(rows: list[dict[str, Any]]) -> str:
         if not name:
             continue
         rendered.append(
-            '<tr>'
+            "<tr>"
             + f'<th scope="row">{escape(str(name))}</th>'
-            + f'<td>{_display_value(row.get("population"))}{_delta_html(row.get("population_delta"))}</td>'
-            + f'<td>{_display_value(row.get("people_in_need"))}</td>'
-            + f'<td>{_display_value(row.get("schools"))}</td>'
-            + f'<td>{_display_value(row.get("health_centers"))}</td>'
-            + f'<td>{_display_value(row.get("shelters"))}</td>'
-            + f'<td>{_display_value(row.get("wash"))}</td>'
-            + f'<td>{_provenance_labels_html(["data", "inferred"])}</td>'
-            + '</tr>'
+            + f"<td>{_display_value(row.get('population'))}{_delta_html(row.get('population_delta'))}</td>"
+            + f"<td>{_display_value(row.get('people_in_need'))}</td>"
+            + f"<td>{_display_value(row.get('schools'))}</td>"
+            + f"<td>{_display_value(row.get('health_centers'))}</td>"
+            + f"<td>{_display_value(row.get('shelters'))}</td>"
+            + f"<td>{_display_value(row.get('wash'))}</td>"
+            + f"<td>{_provenance_labels_html(['data', 'inferred'])}</td>"
+            + "</tr>"
         )
     return "".join(rendered) or _empty_table_row(8, "No administrative area rows available.")
 
@@ -1582,16 +2197,16 @@ def _threshold_exposure_rows(rows: list[dict[str, Any]]) -> str:
     for row in rows:
         threshold = row.get("wind_threshold")
         rendered.append(
-            '<tr>'
+            "<tr>"
             + f'<th scope="row">{escape(str(threshold))}kt</th>'
-            + f'<td>{_display_value(row.get("population"))}</td>'
-            + f'<td>{_display_value(row.get("children"))}</td>'
-            + f'<td>{_display_value(row.get("schools"))}</td>'
-            + f'<td>{_display_value(row.get("health_centers"))}</td>'
-            + f'<td>{_display_value(row.get("shelters"))}</td>'
-            + f'<td>{_display_value(row.get("wash"))}</td>'
-            + f'<td>{_provenance_labels_html(["data"])}</td>'
-            + '</tr>'
+            + f"<td>{_display_value(row.get('population'))}</td>"
+            + f"<td>{_display_value(row.get('children'))}</td>"
+            + f"<td>{_display_value(row.get('schools'))}</td>"
+            + f"<td>{_display_value(row.get('health_centers'))}</td>"
+            + f"<td>{_display_value(row.get('shelters'))}</td>"
+            + f"<td>{_display_value(row.get('wash'))}</td>"
+            + f"<td>{_provenance_labels_html(['data'])}</td>"
+            + "</tr>"
         )
     return "".join(rendered)
 
@@ -1600,14 +2215,17 @@ def _timing_rows(rows: Any) -> str:
     if not isinstance(rows, list) or not rows:
         return ""
     rendered_rows = []
-    for row in sorted([row for row in rows if isinstance(row, dict)], key=lambda item: int(_float(item.get("wind_threshold")))):
+    for row in sorted(
+        [row for row in rows if isinstance(row, dict)],
+        key=lambda item: int(_float(item.get("wind_threshold"))),
+    ):
         threshold = int(_float(row.get("wind_threshold")))
         rendered_rows.append(
             "<tr>"
             + f'<th scope="row">{_wind_level_label(threshold)}</th>'
-            + f'<td>{_timing_consensus(row)}</td>'
-            + f'<td>{_timing_window(row)}</td>'
-            + f'<td>{_timing_scenarios(row)}</td>'
+            + f"<td>{_timing_consensus(row)}</td>"
+            + f"<td>{_timing_window(row)}</td>"
+            + f"<td>{_timing_scenarios(row)}</td>"
             + "</tr>"
         )
     body = "".join(rendered_rows) or _empty_table_row(4, "No threshold timing rows available.")
@@ -1620,7 +2238,11 @@ def _timing_rows(rows: Any) -> str:
 
 
 def _wind_level_label(threshold: int) -> str:
-    labels = {34: "Storm Force (34kt)", 50: "Strong Storm Force (50kt)", 64: "Cat 1 Hurricane (64kt)"}
+    labels = {
+        34: "Storm Force (34kt)",
+        50: "Strong Storm Force (50kt)",
+        64: "Cat 1 Hurricane (64kt)",
+    }
     return labels.get(threshold, f"{threshold}kt")
 
 
@@ -1629,7 +2251,11 @@ def _timing_consensus(row: dict[str, Any]) -> str:
     time = row.get("consensus_local") or row.get("consensus_impact_time")
     if hours is None and not time:
         return "-"
-    suffix = f" ({escape(str(row.get('tz_offset')))})" if row.get("consensus_local") and row.get("tz_offset") else ""
+    suffix = (
+        f" ({escape(str(row.get('tz_offset')))})"
+        if row.get("consensus_local") and row.get("tz_offset")
+        else ""
+    )
     return f"{_fmt_hours(hours)} — {escape(str(time))}{suffix}" if time else _fmt_hours(hours)
 
 
@@ -1668,7 +2294,7 @@ def _required_caveat_items(caveats: list[dict[str, Any]]) -> str:
         if not text:
             continue
         items.append(
-            f'<li><span>{escape(str(text))}</span> {_provenance_labels_html(caveat.get("provenance_labels", []))}</li>'
+            f"<li><span>{escape(str(text))}</span> {_provenance_labels_html(caveat.get('provenance_labels', []))}</li>"
         )
     return "".join(items) or "<li>No caveats available.</li>"
 
@@ -1702,7 +2328,9 @@ def _delta_html(delta: Any) -> str:
     arrow = "▲" if value > 0 else "▼"
     color = "#c0392b" if value > 0 else "#27ae60"
     sign = "+" if value > 0 else "−"
-    return f' <span style="color:{color}; font-weight:bold;">{arrow} {sign}{int(abs(value)):,}</span>'
+    return (
+        f' <span style="color:{color}; font-weight:bold;">{arrow} {sign}{int(abs(value)):,}</span>'
+    )
 
 
 def _empty_table_row(column_count: int, message: str) -> str:
@@ -1725,12 +2353,15 @@ def _warning(code: str, message: str) -> ComparisonIssue:
 
 
 def _main_threshold_label(alert_claims: dict[str, Any]) -> str | None:
-    main_threshold = alert_claims.get("main_threshold")
-    if isinstance(main_threshold, dict):
-        label = main_threshold.get("label")
+    return _threshold_label(alert_claims.get("main_threshold"))
+
+
+def _threshold_label(value: Any) -> str | None:
+    if isinstance(value, dict):
+        label = value.get("label")
         if label is not None:
             return str(label)
-        wind_threshold = main_threshold.get("wind_threshold")
+        wind_threshold = value.get("wind_threshold")
         if wind_threshold is not None:
             return f"{wind_threshold}kt"
     return None
@@ -1757,6 +2388,20 @@ def _facts_table(tables: tuple[_AlertTableEvidence, ...]) -> dict[str, str]:
         for row in table.rows
         if len(row) >= 2 and row[0].strip() and row[1].strip()
     }
+
+
+def _key_value_table(table: _AlertTableEvidence | None) -> dict[str, str]:
+    if table is None:
+        return {}
+    return {
+        _normalize_text(row[0]): row[1]
+        for row in table.rows
+        if len(row) >= 2 and row[0].strip() and row[1].strip()
+    }
+
+
+def _normalized_values_match(presented: Any, expected: Any) -> bool:
+    return _normalize_text(presented) == _normalize_text(expected)
 
 
 def _metric_table(table: _AlertTableEvidence | None) -> dict[str, dict[str, Any]]:
@@ -1797,6 +2442,35 @@ def _admin_area_table(table: _AlertTableEvidence | None) -> dict[str, dict[str, 
     return values
 
 
+def _hazard_availability_table(
+    table: _AlertTableEvidence | None,
+) -> dict[str, dict[str, str]]:
+    if table is None:
+        return {}
+    values: dict[str, dict[str, str]] = {}
+    for row in table.rows:
+        if len(row) < 4:
+            continue
+        key = _normalize_text(row[0]).replace(" ", "_")
+        values[key] = {"status": row[1], "source": row[2], "detail": row[3]}
+    return values
+
+
+def _hazard_claim_matches(presented: dict[str, str] | None, claim: dict[str, Any]) -> bool:
+    if presented is None:
+        return False
+    expected_source = str(claim.get("source") or "Not supplied")
+    expected = {
+        "status": str(claim.get("status") or "").replace("_", " "),
+        "source": expected_source,
+        "detail": str(claim.get("detail") or ""),
+    }
+    return all(
+        _normalize_text(presented.get(key)) == _normalize_text(value)
+        for key, value in expected.items()
+    )
+
+
 def _threshold_table(table: _AlertTableEvidence | None) -> dict[str, dict[str, Any]]:
     if table is None:
         return {}
@@ -1834,7 +2508,9 @@ def _find_table(
     return None
 
 
-def _fact_value_matches(facts: dict[str, str], label: str, expected: Any, text_fallback: str) -> bool:
+def _fact_value_matches(
+    facts: dict[str, str], label: str, expected: Any, text_fallback: str
+) -> bool:
     actual = facts.get(_normalize_text(label))
     if actual is not None:
         return _normalize_text(actual) == _normalize_text(expected)
@@ -1893,7 +2569,9 @@ def _threshold_claim_matches(rows: dict[str, dict[str, Any]], claim: dict[str, A
     return _labels_match(row.get("provenance_labels"), claim.get("provenance_labels"))
 
 
-def _visual_asset_claim_matches(images: tuple[_AlertImageEvidence, ...], claim: dict[str, Any]) -> bool:
+def _visual_asset_claim_matches(
+    images: tuple[_AlertImageEvidence, ...], claim: dict[str, Any]
+) -> bool:
     alt = _normalize_text(claim.get("alt_text"))
     caption = _normalize_text(claim.get("caption"))
     if not alt:

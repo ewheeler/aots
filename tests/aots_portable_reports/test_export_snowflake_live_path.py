@@ -41,7 +41,9 @@ def write_env_file(tmp_path: Path) -> Path:
     return env_file
 
 
-def test_export_snowflake_writes_baseline_manifest_expected_report_and_artifacts(tmp_path: Path, monkeypatch) -> None:
+def test_export_snowflake_writes_baseline_manifest_expected_report_and_artifacts(
+    tmp_path: Path, monkeypatch
+) -> None:
     for key in list(__import__("os").environ):
         if key.startswith("SNOWFLAKE_"):
             monkeypatch.delenv(key, raising=False)
@@ -67,7 +69,9 @@ def test_export_snowflake_writes_baseline_manifest_expected_report_and_artifacts
     assert (out_dir / "expected-report.json").is_file()
     manifest = json.loads((out_dir / "manifest.json").read_text())
     roles = {artifact["role"] for artifact in manifest["artifacts"]}
-    assert {"admin", "tiles", "facilities", "cci", "tracks", "envelopes", "vulnerability"}.issubset(roles)
+    assert {"admin", "tiles", "facilities", "cci", "tracks", "envelopes", "vulnerability"}.issubset(
+        roles
+    )
     assert all((out_dir / artifact["path"]).is_file() for artifact in manifest["artifacts"])
     assert any("MERCATOR_TILE_IMPACT_MAT" in sql for sql, _ in fake.calls)
     assert any("TC_ENVELOPES_COMBINED" in sql for sql, _ in fake.calls)
@@ -94,6 +98,9 @@ def test_export_snowflake_can_include_alert_html_from_sent_log(tmp_path: Path, m
 
     manifest = json.loads((out_dir / "manifest.json").read_text())
     assert manifest["expected_alert_path"] == EXPECTED_ALERT_EMAIL_FILENAME
-    assert (out_dir / EXPECTED_ALERT_EMAIL_FILENAME).read_text() == "<html><body><h1>Storm Alert</h1></body></html>"
+    assert manifest["expected_alert_provenance"] == "unknown"
+    assert (
+        out_dir / EXPECTED_ALERT_EMAIL_FILENAME
+    ).read_text() == "<html><body><h1>Storm Alert</h1></body></html>"
     assert f"Alert HTML exported: {EXPECTED_ALERT_EMAIL_FILENAME}" in message
     assert any("ALERT_SENT_LOG" in sql for sql, _ in fake.calls)

@@ -3,6 +3,8 @@
   "country": "TST",
   "storm": "ALPHA",
   "forecast_time": "2026-01-01T00:00:00Z",
+  "expected_pop_34": 12,
+  "expected_children_34": 4,
   "expected_pop": 12,
   "rows_admins_pop_total": []
 }

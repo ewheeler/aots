@@ -124,7 +124,9 @@ def temporary_sibling_for(out_dir: Path) -> Path:
     return out_dir.with_name(f".{out_dir.name}.tmp-{uuid.uuid4().hex}")
 
 
-def export_snowflake_baseline(request: ExportRequest, query_runner: QueryRunner | None = None) -> str:
+def export_snowflake_baseline(
+    request: ExportRequest, query_runner: QueryRunner | None = None
+) -> str:
     ensure_output_target_available(request.out, overwrite=request.overwrite)
     config = load_snowflake_config(request.env_file)
     thresholds = list(request.wind_thresholds)
@@ -142,15 +144,23 @@ def export_snowflake_baseline(request: ExportRequest, query_runner: QueryRunner 
         shutil.rmtree(temp_dir)
     runner = query_runner if query_runner is not None else SnowflakeQueryRunner(config)
     try:
-        thresholds = list(request.wind_thresholds) or discover_wind_thresholds(runner, config, request)
+        thresholds = list(request.wind_thresholds) or discover_wind_thresholds(
+            runner, config, request
+        )
         if not thresholds:
-            raise SnowflakeExportError("no wind thresholds found for requested country/storm/forecast")
+            raise SnowflakeExportError(
+                "no wind thresholds found for requested country/storm/forecast"
+            )
         specs = build_export_artifact_specs(config, request, thresholds)
         artifacts = export_artifact_specs(runner, temp_dir, specs)
         timing_artifact = write_alert_timing_artifact(runner, temp_dir, request)
         if timing_artifact is not None:
             artifacts.append(timing_artifact)
-        expected_alert_path = write_expected_alert_email_html(runner, config, temp_dir, request) if request.include_alert_html else None
+        expected_alert_path = (
+            write_expected_alert_email_html(runner, config, temp_dir, request)
+            if request.include_alert_html
+            else None
+        )
         write_manifest(temp_dir, request, artifacts, expected_alert_path=expected_alert_path)
         expected_report_provenance = write_expected_report(temp_dir, request, artifacts)
         write_manifest(
@@ -190,7 +200,9 @@ def export_snowflake_baseline(request: ExportRequest, query_runner: QueryRunner 
     )
 
 
-def discover_wind_thresholds(runner: QueryRunner, config: SnowflakeConfig, request: ExportRequest) -> list[int]:
+def discover_wind_thresholds(
+    runner: QueryRunner, config: SnowflakeConfig, request: ExportRequest
+) -> list[int]:
     table = qualified_table(config, "TC_ENVELOPES_COMBINED")
     sql = f"""
     SELECT DISTINCT WIND_THRESHOLD
@@ -219,7 +231,12 @@ def build_export_artifact_specs(
             FROM {qualified_table(config, "MERCATOR_TILE_CCI_MAT")}
             WHERE COUNTRY = %s AND STORM = %s AND FORECAST_DATE = %s AND ZOOM_LEVEL = %s
             """,
-            params=[request.country, request.storm, compact_forecast_time(request.forecast_time), request.zoom_level],
+            params=[
+                request.country,
+                request.storm,
+                compact_forecast_time(request.forecast_time),
+                request.zoom_level,
+            ],
             query_filter=base_filter(request) | {"zoom_level": request.zoom_level},
         ),
         ExportArtifactSpec(
@@ -232,7 +249,12 @@ def build_export_artifact_specs(
             FROM {qualified_table(config, "ADMIN_ALL_CCI_MAT")}
             WHERE COUNTRY = %s AND STORM = %s AND FORECAST_DATE = %s AND ADMIN_LEVEL = %s
             """,
-            params=[request.country, request.storm, compact_forecast_time(request.forecast_time), request.admin_level],
+            params=[
+                request.country,
+                request.storm,
+                compact_forecast_time(request.forecast_time),
+                request.admin_level,
+            ],
             query_filter=base_filter(request) | {"admin_level": request.admin_level},
         ),
         ExportArtifactSpec(
@@ -245,7 +267,12 @@ def build_export_artifact_specs(
             FROM {qualified_table(config, "MERCATOR_TILE_VULNERABILITY_MAT")}
             WHERE COUNTRY = %s AND STORM = %s AND FORECAST_DATE = %s AND ZOOM_LEVEL = %s
             """,
-            params=[request.country, request.storm, compact_forecast_time(request.forecast_time), request.zoom_level],
+            params=[
+                request.country,
+                request.storm,
+                compact_forecast_time(request.forecast_time),
+                request.zoom_level,
+            ],
             query_filter=base_filter(request) | {"zoom_level": request.zoom_level},
         ),
         ExportArtifactSpec(
@@ -258,7 +285,12 @@ def build_export_artifact_specs(
             FROM {qualified_table(config, "ADMIN_ALL_VULNERABILITY_MAT")}
             WHERE COUNTRY = %s AND STORM = %s AND FORECAST_DATE = %s AND ADMIN_LEVEL = %s
             """,
-            params=[request.country, request.storm, compact_forecast_time(request.forecast_time), request.admin_level],
+            params=[
+                request.country,
+                request.storm,
+                compact_forecast_time(request.forecast_time),
+                request.admin_level,
+            ],
             query_filter=base_filter(request) | {"admin_level": request.admin_level},
         ),
         ExportArtifactSpec(
@@ -298,8 +330,14 @@ def build_export_artifact_specs(
             GROUP BY FORECAST_DATE
             ORDER BY FORECAST_DATE
             """,
-            params=[request.country, request.storm, compact_forecast_time(request.forecast_time), request.zoom_level],
-            query_filter=base_filter(request) | {"wind_threshold": 50, "zoom_level": request.zoom_level},
+            params=[
+                request.country,
+                request.storm,
+                compact_forecast_time(request.forecast_time),
+                request.zoom_level,
+            ],
+            query_filter=base_filter(request)
+            | {"wind_threshold": 50, "zoom_level": request.zoom_level},
         ),
         ExportArtifactSpec(
             name="envelopes",
@@ -339,15 +377,79 @@ def build_export_artifact_specs(
     return specs
 
 
-def _threshold_specs(config: SnowflakeConfig, request: ExportRequest, threshold: int) -> list[ExportArtifactSpec]:
+def _threshold_specs(
+    config: SnowflakeConfig, request: ExportRequest, threshold: int
+) -> list[ExportArtifactSpec]:
     return [
-        _threshold_spec(config, request, threshold, "admin", "admin", "ADMIN_ALL_IMPACT_MAT", "artifacts/admin/admin_{threshold}.parquet", ["ADMIN_LEVEL = %s"], [request.admin_level], {"admin_level": request.admin_level}),
-        _threshold_spec(config, request, threshold, "tiles", "tiles", "MERCATOR_TILE_IMPACT_MAT", "artifacts/tiles/tiles_{threshold}.parquet", ["ZOOM_LEVEL = %s"], [request.zoom_level], {"zoom_level": request.zoom_level}),
-        _threshold_spec(config, request, threshold, "schools", "facilities", "SCHOOL_IMPACT_MAT", "artifacts/facilities/schools_{threshold}.parquet"),
-        _threshold_spec(config, request, threshold, "health_centers", "facilities", "HC_IMPACT_MAT", "artifacts/facilities/health_centers_{threshold}.parquet"),
-        _threshold_spec(config, request, threshold, "shelters", "facilities", "SHELTER_IMPACT_MAT", "artifacts/facilities/shelters_{threshold}.parquet"),
-        _threshold_spec(config, request, threshold, "wash", "facilities", "WASH_IMPACT_MAT", "artifacts/facilities/wash_{threshold}.parquet"),
-        _threshold_spec(config, request, threshold, "tracks", "tracks", "TRACK_MAT", "artifacts/tracks/tracks_{threshold}.parquet"),
+        _threshold_spec(
+            config,
+            request,
+            threshold,
+            "admin",
+            "admin",
+            "ADMIN_ALL_IMPACT_MAT",
+            "artifacts/admin/admin_{threshold}.parquet",
+            ["ADMIN_LEVEL = %s"],
+            [request.admin_level],
+            {"admin_level": request.admin_level},
+        ),
+        _threshold_spec(
+            config,
+            request,
+            threshold,
+            "tiles",
+            "tiles",
+            "MERCATOR_TILE_IMPACT_MAT",
+            "artifacts/tiles/tiles_{threshold}.parquet",
+            ["ZOOM_LEVEL = %s"],
+            [request.zoom_level],
+            {"zoom_level": request.zoom_level},
+        ),
+        _threshold_spec(
+            config,
+            request,
+            threshold,
+            "schools",
+            "facilities",
+            "SCHOOL_IMPACT_MAT",
+            "artifacts/facilities/schools_{threshold}.parquet",
+        ),
+        _threshold_spec(
+            config,
+            request,
+            threshold,
+            "health_centers",
+            "facilities",
+            "HC_IMPACT_MAT",
+            "artifacts/facilities/health_centers_{threshold}.parquet",
+        ),
+        _threshold_spec(
+            config,
+            request,
+            threshold,
+            "shelters",
+            "facilities",
+            "SHELTER_IMPACT_MAT",
+            "artifacts/facilities/shelters_{threshold}.parquet",
+        ),
+        _threshold_spec(
+            config,
+            request,
+            threshold,
+            "wash",
+            "facilities",
+            "WASH_IMPACT_MAT",
+            "artifacts/facilities/wash_{threshold}.parquet",
+        ),
+        _threshold_spec(
+            config,
+            request,
+            threshold,
+            "tracks",
+            "tracks",
+            "TRACK_MAT",
+            "artifacts/tracks/tracks_{threshold}.parquet",
+        ),
     ]
 
 
@@ -365,7 +467,12 @@ def _threshold_spec(
 ) -> ExportArtifactSpec:
     table = qualified_table(config, table_name)
     filters = ["COUNTRY = %s", "STORM = %s", "FORECAST_DATE = %s", "WIND_THRESHOLD = %s"]
-    params: list[Any] = [request.country, request.storm, compact_forecast_time(request.forecast_time), threshold]
+    params: list[Any] = [
+        request.country,
+        request.storm,
+        compact_forecast_time(request.forecast_time),
+        threshold,
+    ]
     if extra_filters:
         filters.extend(extra_filters)
     if extra_params:
@@ -377,11 +484,15 @@ def _threshold_spec(
         source_table=table,
         sql=f"SELECT * FROM {table} WHERE " + " AND ".join(filters),
         params=params,
-        query_filter=base_filter(request) | {"wind_threshold": threshold} | (extra_filter_values or {}),
+        query_filter=base_filter(request)
+        | {"wind_threshold": threshold}
+        | (extra_filter_values or {}),
     )
 
 
-def export_artifact_specs(runner: QueryRunner, root: Path, specs: list[ExportArtifactSpec]) -> list[dict[str, Any]]:
+def export_artifact_specs(
+    runner: QueryRunner, root: Path, specs: list[ExportArtifactSpec]
+) -> list[dict[str, Any]]:
     artifacts: list[dict[str, Any]] = []
     for spec in specs:
         df = runner.query(spec.sql, spec.params)
@@ -405,7 +516,9 @@ def export_artifact_specs(runner: QueryRunner, root: Path, specs: list[ExportArt
     return artifacts
 
 
-def write_expected_report_seed(root: Path, request: ExportRequest, artifacts: list[dict[str, Any]]) -> None:
+def write_expected_report_seed(
+    root: Path, request: ExportRequest, artifacts: list[dict[str, Any]]
+) -> None:
     payload = {
         "country": request.country,
         "storm": request.storm,
@@ -417,7 +530,9 @@ def write_expected_report_seed(root: Path, request: ExportRequest, artifacts: li
     (root / "expected-report.json").write_text(json.dumps(payload, indent=2) + "\n")
 
 
-def write_expected_report(root: Path, request: ExportRequest, artifacts: list[dict[str, Any]]) -> str:
+def write_expected_report(
+    root: Path, request: ExportRequest, artifacts: list[dict[str, Any]]
+) -> str:
     from aots_portable_reports.models import BaselineManifest
     from aots_portable_reports.report_wrapper import generate_report_from_baseline
     from aots_portable_reports.validation import ValidatedBaseline
@@ -464,12 +579,22 @@ def write_expected_alert_email_html(
     return relative_path
 
 
-def write_alert_timing_artifact(runner: QueryRunner, root: Path, request: ExportRequest) -> dict[str, Any] | None:
+def write_alert_timing_artifact(
+    runner: QueryRunner, root: Path, request: ExportRequest
+) -> dict[str, Any] | None:
     rows: list[dict[str, Any]] = []
     timezone_name = lookup_country_timezone(runner, config=None, request=request)
     for threshold in [34, 50, 64]:
         sql = "CALL AOTS.TC_ECMWF.GET_STORM_ARRIVAL_TIMING(%s, %s, %s, %s)"
-        df = runner.query(sql, [request.country, request.storm, compact_forecast_time(request.forecast_time), str(threshold)])
+        df = runner.query(
+            sql,
+            [
+                request.country,
+                request.storm,
+                compact_forecast_time(request.forecast_time),
+                str(threshold),
+            ],
+        )
         if df.empty:
             continue
         raw = df.iloc[0, 0]
@@ -507,7 +632,9 @@ def write_alert_timing_artifact(runner: QueryRunner, root: Path, request: Export
     }
 
 
-def lookup_country_timezone(runner: QueryRunner, config: SnowflakeConfig | None, request: ExportRequest) -> str:
+def lookup_country_timezone(
+    runner: QueryRunner, config: SnowflakeConfig | None, request: ExportRequest
+) -> str:
     del config
     try:
         df = runner.query(
@@ -562,6 +689,7 @@ def write_manifest(
     *,
     expected_report_provenance: str = "unknown",
     expected_alert_path: str | None = None,
+    expected_alert_provenance: str = "unknown",
 ) -> None:
     payload = {
         "baseline_version": 1,
@@ -575,16 +703,23 @@ def write_manifest(
     }
     if expected_alert_path is not None:
         payload["expected_alert_path"] = expected_alert_path
+        payload["expected_alert_provenance"] = expected_alert_provenance
     (root / "manifest.json").write_text(json.dumps(payload, indent=2, default=str) + "\n")
 
 
 def validate_export_layout(root: Path) -> None:
     if not (root / "manifest.json").is_file() or not (root / "expected-report.json").is_file():
-        raise SnowflakeExportError("export failed validation: manifest.json or expected-report.json missing")
+        raise SnowflakeExportError(
+            "export failed validation: manifest.json or expected-report.json missing"
+        )
 
 
 def format_export_plan(
-    config: SnowflakeConfig, request: ExportRequest, specs: list[ExportArtifactSpec], *, json_output: bool
+    config: SnowflakeConfig,
+    request: ExportRequest,
+    specs: list[ExportArtifactSpec],
+    *,
+    json_output: bool,
 ) -> str:
     if json_output:
         payload = {
@@ -614,12 +749,18 @@ def format_export_plan(
             ],
         }
         return json.dumps(payload, indent=2)
-    artifact_lines = [f"  - {spec.name}: {spec.source_table} -> {spec.relative_path}" for spec in specs]
-    return "\n".join([config.non_secret_summary(), f"Output: {request.out}", "Artifacts:", *artifact_lines])
+    artifact_lines = [
+        f"  - {spec.name}: {spec.source_table} -> {spec.relative_path}" for spec in specs
+    ]
+    return "\n".join(
+        [config.non_secret_summary(), f"Output: {request.out}", "Artifacts:", *artifact_lines]
+    )
 
 
 def qualified_table(config: SnowflakeConfig, table: str) -> str:
-    return ".".join([safe_identifier(config.database), safe_identifier(config.schema), safe_identifier(table)])
+    return ".".join(
+        [safe_identifier(config.database), safe_identifier(config.schema), safe_identifier(table)]
+    )
 
 
 def safe_identifier(value: str) -> str:
@@ -629,7 +770,11 @@ def safe_identifier(value: str) -> str:
 
 
 def base_filter(request: ExportRequest) -> dict[str, Any]:
-    return {"country": request.country, "storm": request.storm, "forecast_time": compact_forecast_time(request.forecast_time)}
+    return {
+        "country": request.country,
+        "storm": request.storm,
+        "forecast_time": compact_forecast_time(request.forecast_time),
+    }
 
 
 def compact_forecast_time(value: str) -> str:
