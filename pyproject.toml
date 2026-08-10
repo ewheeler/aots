@@ -77,6 +77,7 @@ mccabe = { max-complexity = 22 }
 python_version = "3.11"
 files = [
     "src/aots_portable_reports/alert_contract.py",
+    "src/aots_portable_reports/canonical_artifact.py",
     "src/aots_portable_reports/cli.py",
     "src/aots_portable_reports/local_adapter.py",
     "src/aots_portable_reports/models.py",
