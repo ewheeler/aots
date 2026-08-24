@@ -1,0 +1,130 @@
+---
+title: "Alert Product V2 Readiness"
+page-type: reference
+audience: "contract implementers, reviewers, and operational approvers"
+status: current
+aliases:
+  - /alert-product-v2-readiness.html
+---
+
+## Authority and Scope
+
+The machine-readable authority is `Ahead-of-the-Storm-ORCHESTRATION/contracts/alert_product_v2/`, especially its `README.md`, `canonicalization.md`, `schemas/`, `vectors/`, `canonical/`, `v1-conformance/`, and `manifest.json`. Those files win over prose.
+
+Readiness contracts and independent verification scaffolding are implemented. Runtime ProductDecision v2, ProductFactSet v2 production, episode/link persistence, V1 adaptation, PresentationProfile rendering, CompositionManifest production, and PublicationManifest v2 integration are not implemented. Operational activation remains blocked.
+
+Durable boundaries are recorded in [ADR 0010](../adr/0010-separate-semantic-alert-facts-from-presentation.md), [ADR 0011](../adr/0011-use-provisional-storm-episode-identity.md), [ADR 0012](../adr/0012-use-canonical-content-addressed-alert-artifacts.md), and [ADR 0013](../adr/0013-keep-alert-publication-data-minimal.md).
+
+## Readiness Inventory
+
+| Evidence | Exact inventory | Boundary proved |
+|---|---:|---|
+| Strict Draft 2020-12 schemas | 11 | Closed structural and controlled-metadata contracts. |
+| Synthetic V2 vectors | 32 | Positive and categorized negative conformance cases. |
+| Compact canonical full-document byte files | 4 | Exact producer/consumer bytes, not digest-only agreement. |
+| Frozen V1 conformance bundles | 8 | Existing synthetic V1 behavior. |
+| Compatibility-profile components | 13 | Closed presentation order and missing-fact behavior. |
+
+The Orchestration manifest checksums every normative file except itself. `src/aots_portable_reports/canonical_artifact.py` independently verifies restricted encoding, normalization, identities, safe paths, the pinned manifest, null rejection, and exact equality with all four canonical files. `tests/aots_portable_reports/test_alert_product_v2_readiness.py` also freezes root Alert Decision and Alert Claim fixture checksums.
+
+## Contract Index
+
+| Contract | Schema ID / version | Content identity |
+|---|---|---|
+| ProductDecision v2 | `urn:aots:schema:product-decision:2` / `2.0.0` | `pd2:<hex>` |
+| ProductFactSet v2 | `urn:aots:schema:product-fact-set:2` / `2.0.0` | `pfs2:<hex>` |
+| StormEpisode v2 | `urn:aots:schema:storm-episode:2` / `2.0.0` | `episode2:<hex>` |
+| StormEpisodeLink v1 | `urn:aots:schema:storm-episode-link:1` / `1.0.0` | `episode-link1:<hex>` |
+| ArtifactReference v1 | `urn:aots:schema:artifact-reference:1` / `1.0.0` | `artifact1:<hex>` |
+| ProductFactSet producer result v1 | `urn:aots:schema:product-fact-set-producer-result:1` / `1.0.0` | `producer-result1:<hex>` |
+| V1 policy-result aggregate | `urn:aots:schema:v1-policy-result-aggregate:1` / `1.0.0` | `v1-aggregate1:<hex>` |
+| PresentationProfile v1 | `urn:aots:schema:presentation-profile:1` / `1.0.0` | Immutable ID plus digest |
+| CompositionManifest v1 | `urn:aots:schema:composition-manifest:1` / `1.0.0` | `cm1:<hex>` |
+| PublicationManifest v2 | `urn:aots:schema:publication-manifest:2` / `2.0.0` | `publication2:<hex>` |
+
+All contract records are strict. Consult schemas for exact required fields, cardinality, conditionals, patterns, and enums.
+
+## Decision and Fact-Set Boundaries
+
+ProductDecision v2 permits only complete schema-authorized combinations of decision kind, product type, reason, and evidence kind. Forecast-only evidence can produce Warning but never Alert. ProductFactSet is produced only for Warning or Alert; producer results are a strict union of complete `produced`, `no_product`, and `review_failure` outcomes, and no variant permits a partial ProductFactSet.
+
+ProductFactSet requires identity, decision, classification evidence, threat, metrics, hazards, source references, visual source references, and review disposition. It admits only three decision projections: official-advisory Warning, official-advisory Alert, and forecast-only Warning. Forecast/provisional identity equality is enforced.
+
+Initial metrics cover modeled population, children, school, health-center, shelter, and WASH exposure plus forecast-conditioned PiN and CHiN. PiN/CHiN are threshold-free, wind-integrated need metrics; other current metrics require a wind threshold. Hazards are exactly rainfall, storm surge, and wind in canonical order. Availability describes evidence condition independently of review disposition.
+
+## Provisional Episode Identity
+
+Forecast extraction retains raw `storm_identifier` separately from `long_storm_name` and legacy `storm_id`/`TRACK_ID`. The candidate tuple is:
+
+```text
+(forecast_producer, basin, season, normalized_track_id)
+```
+
+`forecast_producer` is `ecmwf-ifs-tc-track`; supported tracer basins are `AL`, `EP`, and `CP`; season is an integer from 2000 through 9999. Track normalization applies Unicode NFKC, rejects controls, trims Unicode edge whitespace, requires non-empty ASCII, uppercases ASCII, and enforces `^[A-Z0-9]+(?:-[A-Z0-9]+)*$`. Storm name and forecast time are excluded from the candidate key.
+
+This is structural readiness, not qualified operational identity. Historical/provider evidence has not established cross-run stability or non-reuse; the current `TRACK_ID` audit failed that gate.
+
+## Restricted Canonical Subset
+
+| Concern | Rule |
+|---|---|
+| Object names | Non-empty ASCII; keys sort by ASCII byte value. |
+| Strings | Already Unicode NFC; provisional track normalization is the explicit NFKC-to-ASCII exception. |
+| Numbers | Integers only in `[-9007199254740991, 9007199254740991]`; no floats, NaN, infinity, negative zero, or exponent notation. |
+| Time | Whole-second UTC `YYYY-MM-DDTHH:MM:SSZ`. |
+| Absence | JSON `null` is forbidden; optional fields are omitted. |
+| Encoding | UTF-8, no BOM, insignificant whitespace, or trailing newline; compact sorted JSON. |
+| Digest | SHA-256 over canonical semantic fields excluding identity and `content_digest`; lowercase `sha256:<hex>`. |
+
+The exact files are `canonical/official-alert-product-fact-set.json`, `canonical/compatibility-profile.json`, `canonical/composition-manifest.json`, and `canonical/publication-manifest.json`. Both repositories compare canonicalized complete documents byte-for-byte with them.
+
+## Artifact and Privacy Boundary
+
+ArtifactReference uses controlled roles, media types, producer IDs, safe POSIX-relative paths, checksums, timestamps, and publication classifications. `source_uri` is not allowed. ProductFactSet, source evidence, raw provider identity, and visual sources remain internal. Recipients, contacts, delivery state, facility-point geography, raw geometry, and detailed rainfall/surge metadata are prohibited from the first tracer's public contracts.
+
+CompositionManifest public outputs are `rendered-alert.html` followed by path-sorted `alert-assets/*.png`. It exposes an opaque ProductFactSet identity/digest but no ProductFactSet path, semantic content, or source-reference paths. Component results, omissions, and outputs carry no `source_reference_ids`.
+
+PublicationManifest v2 uses opaque `case-[0-9a-f]{16}` IDs, exact snapshot-derived paths, controlled comparison tuples, a CompositionManifest reference, and public HTML/PNG artifacts only. It excludes storm display name, recipients, contacts, provider attempts, ProductFactSet content/path, raw identity, coordinates, detailed admin/facility data, and source references.
+
+Schemas validate structure and controlled metadata; they do not inspect HTML or PNG bytes for private content, remote resources, licensing, unsafe embedded data, or misleading claims. Content inspection, source licensing, country-office/publication approval, and enforcement remain blocking.
+
+## Compatibility Profile and Composition
+
+The compatibility profile ID is `aots.compatibility.long-product.en.v1`; locale is `en`, audience is `technical_review`, and output kind is `html`. Its closed component order is:
+
+1. `product_header.v1`
+2. `headline_facts.v1`
+3. `current_storm_state.v1`
+4. `local_threat.v1`
+5. `modeled_exposure_summary.v1`
+6. `forecast_conditioned_need.v1`
+7. `arrival_timing.v1`
+8. `threshold_table.v1`
+9. `maps.v1`
+10. `administrative_table.v1`
+11. `forecast_evolution.v1`
+12. `provenance.v1`
+13. `caveats.v1`
+
+CompositionManifest requires profile-order component results, exact status/reason pairings, one matching omission record for each omitted component, controlled renderer ID `aots-compatibility-renderer`, HTML-first output ordering, path-sorted visuals, and `public_output` classification.
+
+## Parity Authority
+
+The frozen V1 bundles are `v1-official-warning`, `v1-official-hurricane-alert`, `v1-no-product`, `v1-manual-review-identity`, `v1-threshold-boundary`, `v1-incomplete-evidence`, `v1-sparse-facts`, and `v1-invalid-provenance`. `external-compatibility-references.json` independently binds current root Alert Decision and Alert Claim fixtures.
+
+Expected alert HTML, prose, screenshots, and V2-generated claims are not independent parity authority. Future runtime compatibility passes only against independently frozen V1 Alert Claims while preserving schema, canonical identity, omissions, privacy, and unknown-version behavior.
+
+## Readiness Matrix
+
+| Requirement | State |
+|---|---|
+| Raw provider identifier retention | Implemented structurally. |
+| Qualified operational episode identity | Blocked by missing stability/non-reuse evidence. |
+| V1 freezes, V2 schemas/vectors, canonical bytes, manifest checksums | Implemented readiness authority. |
+| Independent root canonical verification | Implemented readiness scaffolding. |
+| ProductDecision/ProductFactSet producer and V1 adapter runtime | Unimplemented. |
+| Profile/composition renderer runtime | Unimplemented. |
+| PublicationManifest v2 root integration and content privacy enforcement | Unimplemented. |
+| Persistence, scheduling, delivery, monitoring, and operational approval | Blocked and outside readiness scaffolding. |
+
+Documentation, schemas, vectors, and structural tests do not authorize runtime or operational use.

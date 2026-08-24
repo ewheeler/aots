@@ -1,0 +1,48 @@
+---
+title: "Comparison and Certification"
+page-type: reference
+audience: "reviewers, developers, and publication operators"
+status: current
+---
+
+## Report Comparison
+
+`comparison.json` records `status`, `certification_state`, `certifying`, `failures`, and `warnings`.
+
+| Outcome | `certification_state` | `certifying` | Meaning |
+|---|---|---:|---|
+| Comparison fails | `reproduction_ready` | `false` | Inputs were sufficient to run, but actual output materially differs. |
+| Comparison passes against wrapper-generated, seed, or unknown expected output | `provisional_comparison` | `false` | Plumbing and repeatability evidence only. |
+| Comparison passes against `independent_current_output` | `certifying_comparison` | `true` | Certifying Comparison. |
+
+Baseline integrity alone is `integrity_checked`; having sufficient source artifacts is `reproduction_ready`. Neither state certifies output equality.
+
+Report comparison recursively checks fields and sequence lengths. Integers compare exactly; other numeric values use a raw tolerance of `1e-9`, or `0.01` for paths containing `percent` or `percentage`. Named administrative row collections are normalized by name. Equal-probability top-facility descriptor ordering can produce a `top_facility_tie_order` warning rather than a failure.
+
+## Provenance Rule
+
+Only `expected_report_provenance: independent_current_output` can produce a Certifying Comparison. These values cannot:
+
+- `portable_wrapper_generated`
+- `seed_placeholder`
+- `unknown`
+
+A passing provisional result must not be described as certified.
+
+## Alert Presentation Self-Check
+
+`alert-comparison.json` checks that locally derived Alert Claims are represented consistently in locally rendered HTML and that required DOM/visual sections are present. It can block omissions in the local presentation, but it has no independent expected side.
+
+Therefore `alert-comparison.json` is an **Alert Presentation Self-Check**, not Alert Parity. Its `ComparisonReport` field names do not change that evidence boundary.
+
+## Alert Parity
+
+Reserve **Alert Parity** for comparison against independently sourced expected alert facts or expected output. Independent expected facts must not be derived from the same local Alert Context, renderer, or V2-generated claims being evaluated. Expected HTML, prose, and screenshots are review evidence unless an explicit independent fact-extraction and provenance contract makes them comparison authority.
+
+Alert Parity is claim-based rather than byte-, prose-, or pixel-identical: significant factual differences, omissions, provenance errors, availability errors, threshold mismatches, privacy failures, or missing required visuals block parity. Exact wording and pixel placement remain advisory.
+
+Current V2 readiness reserves frozen independent V1 Alert Claims as future runtime compatibility authority. Runtime V2 Alert Parity is not implemented.
+
+## Authority
+
+Report comparison behavior is defined in `src/aots_portable_reports/comparison.py`; local presentation checks are defined by `compare_alert_output(...)` in `src/aots_portable_reports/alert_renderer.py`. Provenance semantics are durable in [ADR 0006](../adr/0006-baseline-provenance-and-certification.md).

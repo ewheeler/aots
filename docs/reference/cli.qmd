@@ -1,0 +1,65 @@
+---
+title: "Command-Line Interface"
+page-type: reference
+audience: "operators and developers"
+status: current
+---
+
+`aots-report` exposes three subcommands. Run it through the project environment as `uv run aots-report`.
+
+## `snapshot`
+
+```text
+aots-report snapshot --baseline PATH --out PATH
+```
+
+| Option | Required | Default | Meaning |
+|---|---:|---|---|
+| `--baseline PATH` | yes | none | Known-Good Baseline directory to validate and materialize. |
+| `--out PATH` | yes | none | Snapshot Output Bundle directory. |
+
+The command returns exit code `2` when baseline validation fails.
+
+## `export-snowflake`
+
+```text
+aots-report export-snowflake --country CODE --storm ID --forecast-time TIME (--out PATH | --case-name NAME) [OPTIONS]
+```
+
+| Option | Required | Default | Meaning |
+|---|---:|---|---|
+| `--country CODE` | yes | none | Country code used by the export queries. |
+| `--storm ID` | yes | none | Storm/track identifier used by the export queries. |
+| `--forecast-time TIME` | yes | none | Forecast time used by the export queries. |
+| `--out PATH` | runtime choice | none | Explicit baseline output directory. |
+| `--case-name NAME` | runtime choice | none | Writes under `known-good-baselines/NAME` when `--out` is omitted. |
+| `--env-file PATH` | no | none | dotenv file supplying `SNOWFLAKE_*` settings. Shell environment values take precedence. |
+| `--wind-threshold INTEGER` | no, repeatable | `[]` | Explicit wind threshold. In a live export, an empty list triggers threshold discovery; plan construction falls back to `34` when no threshold has been supplied. |
+| `--zoom-level INTEGER` | no | `14` | Zoom level for tile artifacts. |
+| `--admin-level INTEGER` | no | `1` | Administrative level for admin artifacts. |
+| `--include-alert-html` | no | `false` | Requests export of `ALERT_SENT_LOG.EMAIL_BODY` as `expected-alert.html` when a matching row exists. |
+| `--overwrite` | no | `false` | Allows replacement of a non-empty output directory after a temporary export validates. |
+| `--plan-only` | no | `false` | Validates configuration and prints the plan without connecting or writing. |
+| `--dry-run` | no | `false` | Alias for `--plan-only`. |
+| `--json` | no | `false` | Prints the secret-free export plan as JSON. |
+
+`argparse` does not make `--out` or `--case-name` individually required. Runtime validation requires at least one. If both are supplied, `--out` wins. If neither is supplied, the command writes `either --out or --case-name is required` to stderr and returns `2`.
+
+Credentials come from `SNOWFLAKE_ACCOUNT`, `SNOWFLAKE_USER`, `SNOWFLAKE_PASSWORD`, `SNOWFLAKE_WAREHOUSE`, `SNOWFLAKE_DATABASE`, `SNOWFLAKE_SCHEMA`, and optional `SNOWFLAKE_ROLE`; there is no password CLI option.
+
+## `publish`
+
+```text
+aots-report publish --snapshots-dir PATH --out PATH
+```
+
+| Option | Required | Default | Meaning |
+|---|---:|---|---|
+| `--snapshots-dir PATH` | yes | none | Directory whose child directories are Snapshot Output Bundles. |
+| `--out PATH` | yes | none | Publication manifest, Quarto source, and rendered site output directory. |
+
+`publish` consumes Snapshot Output Bundles, not Known-Good Baselines.
+
+## Implementation Authority
+
+The parser and runtime dispatch in `src/aots_portable_reports/cli.py` are authoritative. Export defaults are represented by `ExportRequest` in `src/aots_portable_reports/export_snowflake.py`.

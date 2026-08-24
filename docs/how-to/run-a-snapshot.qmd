@@ -1,0 +1,51 @@
+---
+title: "Run a Snapshot"
+page-type: how-to
+audience: "Report developers and reviewers"
+status: current
+---
+
+## Prerequisites
+
+- A configured development environment.
+- A valid Known-Good Baseline or committed Synthetic Baseline Fixture.
+- Quarto on `PATH`.
+
+## Steps
+
+1. Set the baseline and create a unique output directory:
+
+   ```bash
+   BASELINE="tests/fixtures/synthetic_alert_present_baseline"
+   SNAPSHOT_OUT="$(mktemp -d "${TMPDIR:-/tmp}/aots-snapshot.XXXXXX")"
+   ```
+
+2. Generate the Snapshot Output Bundle:
+
+   ```bash
+   uv run aots-report snapshot --baseline "$BASELINE" --out "$SNAPSHOT_OUT"
+   ```
+
+3. Inspect the machine-readable result:
+
+   ```bash
+   python -m json.tool "$SNAPSHOT_OUT/comparison.json"
+   ```
+
+4. Review `manifest.json`, `report-snapshot.json`, `comparison.md`, and `site/index.html` in the same output directory.
+
+## Expected Result
+
+The output is a Snapshot Output Bundle containing a manifest, report snapshot, JSON and Markdown comparisons, Quarto source, and a rendered site. The synthetic fixture passes provisionally and is not certifying.
+
+## Safety Constraints
+
+- Never infer certification from `status: passed`; require `certifying: true` and `certification_state: certifying_comparison`.
+- Keep real baseline and bundle data local unless an explicit sharing decision permits publication.
+- Use a new or disposable output directory; generated bundle contents are reproducible outputs.
+
+## Related Documentation
+
+- Reference: [Snapshot Output Bundle](../reference/snapshot-output-bundle.qmd)
+- Explanation: [Portable Report Flow](../explanation/architecture.qmd#portable-report-flow)
+- Next task: [Review Comparison Results](review-comparison-results.qmd)

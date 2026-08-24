@@ -1,0 +1,56 @@
+---
+title: "Set Up Development"
+page-type: how-to
+audience: "Contributors"
+status: current
+---
+
+## Prerequisites
+
+- A checkout of this repository.
+- Python 3.11 or 3.12, `uv`, Git, and Quarto on `PATH`.
+- No Snowflake credentials unless you plan to export a real baseline.
+
+## Steps
+
+1. Initialize the pinned upstream repositories:
+
+   ```bash
+   git submodule update --init --recursive
+   ```
+
+2. Create the project environment, including development dependencies:
+
+   ```bash
+   uv sync --dev
+   ```
+
+3. Confirm the public CLI is available:
+
+   ```bash
+   uv run aots-report --help
+   ```
+
+4. Run the repository checks:
+
+   ```bash
+   uv run --frozen pre-commit run --all-files
+   uv run --frozen pytest
+   quarto render docs
+   ```
+
+## Expected Result
+
+The CLI lists `snapshot`, `export-snowflake`, and `publish`; the checks and Quarto render complete successfully.
+
+## Safety Constraints
+
+- Keep `.env`, real Known-Good Baselines, credentials, and generated sites out of commits.
+- Treat the four submodule directories as pinned upstream repositories, not root-package implementation authority.
+- Do not weaken Ruff, mypy, test, privacy, or accessibility guardrails to make setup pass.
+
+## Related Documentation
+
+- Reference: [Command-Line Interface](../reference/cli.qmd)
+- Explanation: [Architecture](../explanation/architecture.qmd)
+- Contributor policy: [Documentation Guide](../contributor/documentation-guide.qmd)

@@ -1,5 +1,7 @@
 # Publication Source Of Truth
 
+Status: Accepted.
+
 The publication path will use Snapshot Output Bundles as the source of truth, not raw Known-Good Baseline directories. Baselines are source/reference inputs. Snapshot Output Bundles contain regenerated report artifacts, comparison outputs, Quarto source, and rendered site output, so they are the appropriate unit for publication manifests.
 
 ## Considered Options

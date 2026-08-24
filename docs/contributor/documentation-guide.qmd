@@ -1,0 +1,87 @@
+---
+title: "Documentation Guide"
+page-type: contributor
+audience: "Documentation authors and reviewers"
+status: current
+---
+
+This contributor page governs documentation placement, ownership, compatibility, and checks. `contributor` is an explicit non-Diátaxis exception: it collects rules for people changing the repository rather than pretending that those rules are a tutorial, how-to, reference, or explanation page.
+
+## Choose One Primary Purpose
+
+Every page has one primary purpose. Use this decision tree before writing:
+
+1. Is the reader learning by completing a guided, safe first experience? Write a **tutorial**.
+2. Is the reader trying to accomplish a specific real-world task? Write a **how-to**.
+3. Is the reader looking up exact commands, options, schemas, or facts? Write **reference**.
+4. Is the reader trying to understand concepts, architecture, rationale, or tradeoffs? Write **explanation**.
+5. Is the content repository contribution policy or agent-workspace orientation? Use the explicit **contributor** exception.
+
+If a draft answers more than one branch, keep the dominant purpose and link to the canonical owner of the other material. A tutorial must not become an option catalog; a how-to must not become an architecture essay; reference must not become a workflow; explanation must not become a command recipe.
+
+## Canonical Owners
+
+| Information | Canonical owner |
+|---|---|
+| Domain terminology and evidence boundaries | `CONTEXT.md` |
+| Current architecture | `docs/explanation/architecture.qmd` |
+| Commands and options | `docs/reference/cli.qmd`, validated against CLI source/tests |
+| Snapshot bundle layout | `docs/reference/snapshot-output-bundle.qmd` |
+| Comparison and certification semantics | `docs/reference/comparison-and-certification.qmd` |
+| Exact V2 schemas, vectors, counts, and readiness | `docs/reference/alert-product-v2-readiness.qmd`, subordinate to the Orchestration manifest |
+| Alert presentation specification | `docs/reference/alert-email-design.qmd` |
+| Ownership and test routing | `docs/agents/repository-map.md` |
+| Durable decisions | `docs/adr/` |
+| Current implemented/blocked status | `docs/project/status.qmd` |
+| Open implementation sequence | concise `plan.md`, exposed through `docs/project/roadmap.qmd` |
+| Historical comparison evidence | `docs/explanation/comparison-case-studies.qmd` |
+| Agent configuration | `AGENTS.md`, `.agents/`, `.repo-familiar/bootstrap.yml` |
+
+## Link, Do Not Copy
+
+When another page owns a fact, summarize only enough context to orient the reader, then link to the owner. Do not copy command catalogs, check matrices, architecture rationale, terminology definitions, agent inventories, or certification rules into multiple pages. Update the canonical owner first; dependent pages should retain short links whose meaning survives owner edits.
+
+## Legacy URLs
+
+Existing URLs remain compatibility entry points. Preserve them with Quarto `aliases` on canonical pages. If aliases are unavailable, retain only a short supersession page at the old source path. Never maintain a second substantive copy.
+
+## Front Matter
+
+Every new page in this structure declares its purpose and review state:
+
+```yaml
+---
+title: "Run a Snapshot"
+page-type: how-to
+audience: "Report developers and reviewers"
+status: current
+---
+```
+
+Allowed reader-facing `page-type` values are `tutorial`, `how-to`, `reference`, and `explanation`. Landing pages, ADRs, project management, and contributor governance use the explicit `landing`, `adr`, `project`, and `contributor` exceptions. Use `status: current` for maintained guidance; dated evidence may declare a precise historical status.
+
+## Drift Guardrails
+
+- Review changes against the canonical owner table; a topic should gain detail in only one owner.
+- Search for copied command blocks and policy prose when changing a canonical fact.
+- Keep CLI examples aligned with `src/aots_portable_reports/cli.py`.
+- Keep canonical terminology aligned with `CONTEXT.md` and durable decisions aligned with `docs/adr/`.
+- Preserve legacy URLs as links or redirects, never parallel maintained copies.
+- Reject pages whose sections cross multiple Diátaxis purposes without links to their owners.
+
+## Contributor Check Matrix
+
+This matrix is the sole canonical owner of documentation contributor checks. Other pages link here instead of copying it.
+
+| Change | Required checks |
+| --- | --- |
+| Any documentation source change | Confirm front matter, one primary purpose, canonical ownership, working relative links, and `quarto render docs`. |
+| Visible report, alert, or documentation output | Render the affected output and inspect it in a real browser at relevant desktop and mobile widths. |
+| New or moved documentation page | Update navigation/render configuration in the same change, preserve any legacy URL, and verify inbound links. |
+| CLI command or option documentation | Compare examples with `src/aots_portable_reports/cli.py` and run the documented `--help` or credential-free command path. |
+| Hamilton DAG documentation | Run focused DAG/snapshot tests, regenerate the DAG image, render the architecture page, and inspect the image. |
+| Architecture, trust, or certification semantics | Check `CONTEXT.md`, relevant ADRs, implementation, and focused tests; do not present proposed behavior as implemented. |
+| Publication or real-case evidence | Apply privacy, accessibility, dignity, and data-sharing review; never commit real baseline data by default. |
+| Python source, tests, or scripts changed alongside docs | Run `uv run --frozen pre-commit run --all-files` and the tests required by `AGENTS.md`. |
+
+Automated checks are baseline evidence, not substitutes for editorial, browser, privacy, or accessibility review.

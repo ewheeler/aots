@@ -1,0 +1,66 @@
+---
+title: "Export a Snowflake Baseline"
+page-type: how-to
+audience: "Authorized data engineers"
+status: current
+---
+
+## Prerequisites
+
+- A configured development environment.
+- Authorized read access supplied through `SNOWFLAKE_*` environment variables or an uncommitted env file.
+- A country code, storm identifier, and forecast time for the case.
+
+## Steps
+
+1. Preview the export without connecting or writing artifacts:
+
+   ```bash
+   uv run aots-report export-snowflake \
+     --country <ISO3> \
+     --storm <STORM_ID> \
+     --forecast-time <FORECAST_TIME> \
+     --case-name <CASE_NAME> \
+     --env-file .env \
+     --plan-only \
+     --json
+   ```
+
+2. Review the non-secret plan, especially the target and filters.
+
+3. Run the read-only export:
+
+   ```bash
+   uv run aots-report export-snowflake \
+     --country <ISO3> \
+     --storm <STORM_ID> \
+     --forecast-time <FORECAST_TIME> \
+     --case-name <CASE_NAME> \
+     --env-file .env
+   ```
+
+4. Validate and regenerate from the exported baseline:
+
+   ```bash
+   SNAPSHOT_OUT="$(mktemp -d "${TMPDIR:-/tmp}/aots-export-check.XXXXXX")"
+   uv run aots-report snapshot \
+     --baseline "known-good-baselines/<CASE_NAME>" \
+     --out "$SNAPSHOT_OUT"
+   ```
+
+## Expected Result
+
+The exporter writes a validated Known-Good Baseline under `known-good-baselines/<CASE_NAME>` and prints the next snapshot command. The baseline contains `manifest.json`, `expected-report.json`, and role-grouped source artifacts.
+
+## Safety Constraints
+
+- Never place passwords or other secrets in CLI arguments, logs, fixtures, or committed files.
+- The exporter is read-only against Snowflake and writes through a validated temporary sibling directory.
+- It refuses a non-empty destination by default. Use `--overwrite` only after independently confirming that replacement is safe.
+- Treat exported facility, beneficiary, geospatial, and operational data as local and sensitive.
+
+## Related Documentation
+
+- Reference: [Command-Line Interface](../reference/cli.qmd#export-snowflake)
+- Explanation: [Fixtures and Baselines](../reference/fixtures-and-baselines.qmd)
+- Next task: [Run a Snapshot](run-a-snapshot.qmd)

@@ -10,10 +10,10 @@ Use these sources according to the question being answered:
 
 1. `AGENTS.md` defines repository working rules and required checks.
 2. `CONTEXT.md` defines canonical project terminology.
-3. `docs/adr/` records durable architecture decisions and their status; `docs/alert-product-v2-readiness.qmd` is the normative V2 readiness contract under those ADRs.
+3. `docs/adr/` records durable architecture decisions and their status; `docs/reference/alert-product-v2-readiness.qmd` is the human-readable V2 readiness reference under those ADRs and the Orchestration manifest.
 4. `src/aots_portable_reports/`, `tests/aots_portable_reports/`, `pyproject.toml`, and `.github/workflows/ci.yml` establish implemented behavior.
-5. `docs/architecture.qmd` explains the current architecture.
-6. `plan.md`, `docs/snowflake-agnostic-report-publication.qmd`, and `docs/alert-product-flexibility-plan.qmd` mix current status with future direction.
+5. `docs/explanation/architecture.qmd` explains the current architecture.
+6. `docs/project/status.qmd` records current implemented and blocked status; `plan.md` and `docs/project/roadmap.qmd` record open work.
 
 Treat target, candidate, and future language in plans as proposed until source and tests implement it.
 
@@ -45,10 +45,10 @@ The root package owns cross-submodule integration. It should remain artifact-ori
 | `src/aots_portable_reports/runner.py` | Hamilton driver execution boundary. | `tests/aots_portable_reports/test_snapshot_cli.py` |
 | `src/aots_portable_reports/comparison.py` | Report comparison and certification-state semantics. | `tests/aots_portable_reports/test_comparison.py` |
 | `src/aots_portable_reports/alert_contract.py` | Alert audit filenames and bundle persistence contracts. | `tests/aots_portable_reports/test_alert_renderer.py` |
-| `src/aots_portable_reports/alert_renderer.py` | Structured alert facts, bounded prose, HTML, visual assets, and claim-based parity. | `tests/aots_portable_reports/test_alert_renderer.py` |
+| `src/aots_portable_reports/alert_renderer.py` | Structured alert facts, bounded prose, HTML, visual assets, and the Alert Presentation Self-Check. | `tests/aots_portable_reports/test_alert_renderer.py` |
 | `src/aots_portable_reports/local_adapter.py` | Local Snapshot Output Bundle discovery. | `tests/aots_portable_reports/test_publication.py` |
 | `src/aots_portable_reports/publication.py` | Multi-snapshot publication manifest and Quarto index generation. | `tests/aots_portable_reports/test_publication.py` |
-| `src/aots_portable_reports/canonical_artifact.py` | Readiness-only independent verification of restricted V2 canonical bytes, null rejection, identity prefixes, safe manifest paths/checksums, provisional-track normalization, and exact equality with all four frozen full-document byte files. It is not a runtime ProductFactSet/PublicationManifest consumer. | `tests/aots_portable_reports/test_alert_product_v2_readiness.py` |
+| `src/aots_portable_reports/canonical_artifact.py` | Readiness-only independent verification of restricted V2 canonical bytes, null rejection, identity prefixes, safe manifest paths/checksums, provisional-track normalization, and frozen full-document bytes. It is not a runtime ProductFactSet/PublicationManifest consumer. | `tests/aots_portable_reports/test_alert_product_v2_readiness.py` |
 
 `report_wrapper.py` dynamically loads `Ahead-of-the-Storm-DATAPIPELINE/reports.py`. Report calculations remain owned by that submodule; the root wrapper owns adaptation and explicitly named normalization only.
 
@@ -76,7 +76,7 @@ Current Orchestration alert-policy routes:
 | `Ahead-of-the-Storm-ORCHESTRATION/07b_alert_agent/alert_lifecycle.py` | Country lifecycle transitions and recipient-aware dry-run attempts. | `Ahead-of-the-Storm-ORCHESTRATION/tests/test_alert_lifecycle.py` |
 | `Ahead-of-the-Storm-ORCHESTRATION/07b_alert_agent/product_facts.py` | Implemented V1 deterministic Summary/Situation/Forecast assembly; it is not the planned semantic ProductFactSet v2 shape. | `Ahead-of-the-Storm-ORCHESTRATION/tests/test_product_facts.py` |
 | `Ahead-of-the-Storm-ORCHESTRATION/04_data/09_alert_policy_tables.sql` | Registry, identity, official state, threat, decision, lifecycle-head, and recipient-delivery schema contracts; no writer is shipped. | `Ahead-of-the-Storm-ORCHESTRATION/tests/test_alert_policy_sql.py` |
-| `Ahead-of-the-Storm-ORCHESTRATION/contracts/alert_product_v2/` | Normative readiness authority: 11 strict schemas, restricted canonicalization, 32 V2 vectors, four exact canonical byte files, eight V1 freezes, and checksummed manifest. No V2 runtime is implemented here. | `Ahead-of-the-Storm-ORCHESTRATION/tests/test_alert_product_v2_contracts.py` |
+| `Ahead-of-the-Storm-ORCHESTRATION/contracts/alert_product_v2/` | Normative machine-readable readiness authority for strict schemas, vectors, canonical bytes, V1 freezes, and the checksummed manifest. No V2 runtime is implemented here. | `Ahead-of-the-Storm-ORCHESTRATION/tests/test_alert_product_v2_contracts.py` |
 
 Current forecast-identity readiness routes:
 
@@ -107,19 +107,13 @@ The current `TRACK_ID` audit failed because the forecast extractor prefers `long
 - Live exporter query or artifact changes: use the fake query runner in `test_export_snowflake_live_path.py`; tests must not require live credentials.
 - Contract-field or artifact-role changes: update `models.py`, producer, consumer, fixture manifests, and the nearest focused tests together.
 - Report behavior mismatches: first decide whether ownership is the upstream calculation or root adaptation; do not add new calculations to `report_wrapper.py`.
-- DAG dependency or bundle-layout changes: update `dag.py`, snapshot tests, architecture docs, and the generated DAG image together.
+- DAG dependency or bundle-layout changes: update `dag.py`, snapshot tests, `docs/explanation/architecture.qmd`, and the generated DAG image together.
 - Alert changes: keep structured facts, bounded prose, presentation, visual generation, and persistence as distinct review seams.
 - ProductFactSet/Profile changes: update the Orchestration producer or V1 adapter, root contract/validation, artifact-role fixture manifests, compatibility-profile renderer, claim-parity tests, architecture docs, and this map together.
-- V2 identity/canonicalization/privacy changes: the machine-readable Orchestration contract set is normative; update it, its manifest/vectors/tests, root independent verification, `docs/alert-product-v2-readiness.qmd`, and ADRs 0011-0013 together. Do not infer runtime behavior from readiness scaffolding.
+- V2 identity/canonicalization/privacy changes: the machine-readable Orchestration contract set is normative; update it, its manifest/vectors/tests, root independent verification, `docs/reference/alert-product-v2-readiness.qmd`, and ADRs 0011-0013 together. Do not infer runtime behavior from readiness scaffolding.
 - Certification changes: update comparison tests and architecture documentation or an ADR when trust semantics change.
 
-Run focused tests first:
-
-```bash
-uv run pytest tests/aots_portable_reports/<focused-test-file>.py
-```
-
-Run `uv run --frozen pre-commit run --all-files` and `uv run --frozen pytest` before handoff when shared behavior changes.
+Use the canonical contributor check matrix in `docs/contributor/documentation-guide.qmd` after selecting the focused test route above.
 
 ## Durable Inputs And Generated Boundaries
 
@@ -142,7 +136,7 @@ Real `known-good-baselines/`, `.env`, credentials, keys, and certificates are lo
 
 Implemented behavior includes the three public commands, integrity validation, the Hamilton snapshot DAG, the thin existing-report wrapper, provisional and certifying comparison states, Alert Decision validation, decision-driven Warning/Alert rendering, non-renderable decision auditing, and publication from Snapshot Output Bundles. Orchestration also contains a credential-free local feed/parser, state normalization, storm identity, country threat, classifier, lifecycle, recipient suppression, and Product Facts composition with focused tests.
 
-Implemented readiness scaffolding includes raw ECMWF identifier retention/candidate normalization, 11 strict schemas, 32 V2 vectors, four exact canonical byte files, eight V1 conformance bundles, a checksummed Orchestration manifest/test suite, and independent root null/manifest/exact-byte/frozen-fixture verification. Hardened metadata contracts constrain ProductDecision and ProductFactSet projections, forecast/provisional identity equality, CompositionManifest status/reason, omission correspondence and output order/coupling, controlled renderer ID, source-reference exclusion, PublicationManifest comparison semantics and case-derived paths, and ArtifactReference producer IDs/no `source_uri`. Runtime ProductDecision/ProductFactSet production, episode/link persistence, V1 adaptation, PresentationProfile rendering, CompositionManifest production, and root PublicationManifest v2 integration remain proposed. HTML/PNG content privacy inspection, source licensing, approval, and publication enforcement are unimplemented and blocking. Other incomplete architecture includes typed official warning/rain/surge payloads, scheduled/monitored authoritative advisory retrieval, Snowflake classifier and persistence deployment, operational lifecycle/delivery, explicit repository/store interfaces, a fully typed Report Contract, complete file/blob adapters, broad public report publication, and removal of Snowflake coupling from the live dashboard or orchestration stack.
+Alert Product V2 readiness is implemented at the contract, vector, manifest, and independent-verification seams; runtime production and consumption are absent. See `docs/reference/alert-product-v2-readiness.qmd` for exact inventories and contract detail. HTML/PNG content privacy inspection, source licensing, approval, and publication enforcement are unimplemented and blocking. Other incomplete architecture includes typed official warning/rain/surge payloads, scheduled/monitored authoritative advisory retrieval, Snowflake classifier and persistence deployment, operational lifecycle/delivery, explicit repository/store interfaces, a fully typed Report Contract, complete file/blob adapters, broad public report publication, and removal of Snowflake coupling from the live dashboard or orchestration stack.
 
 ## Change Locality
 
@@ -150,5 +144,5 @@ Implemented readiness scaffolding includes raw ECMWF identifier retention/candid
 - Preserve Snapshot Output Bundles, not raw baselines, as the publication source of truth.
 - Keep independent expected output provenance separate from wrapper-generated or seed output.
 - Keep secrets out of CLI arguments, logs, fixtures, and committed artifacts.
-- Keep `cli.py`, `pyproject.toml`, usage documentation, and command tests aligned when public commands change.
+- Keep `cli.py`, `pyproject.toml`, `docs/reference/cli.qmd`, and command tests aligned when public commands change.
 - Update this map in the same change that moves ownership or adds a high-leverage seam.

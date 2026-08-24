@@ -1,5 +1,7 @@
 # Include Read-Only Snowflake Baseline Exporter
 
+Status: Accepted.
+
 The first portable report implementation will include a read-only `aots-report export-snowflake` command instead of requiring users to manually export baseline artifacts from Snowflake. This keeps the portable report flow grounded in a Known-Good Baseline while acknowledging that manual Snowflake export would be error-prone for users who are not familiar with Snowflake; `aots-report snapshot` remains the command of record for validation, regeneration, rendering, and comparison.
 
 The exporter will read credentials from existing `SNOWFLAKE_*` environment variables or an optional `--env-file <path>`. It will not accept positional secrets or command-line password flags, because shell history and process listings can leak command-line secrets.

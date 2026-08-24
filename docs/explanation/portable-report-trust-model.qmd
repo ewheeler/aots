@@ -1,0 +1,42 @@
+---
+title: "Portable Report Trust Model"
+page-type: explanation
+audience: "Reviewers, publishers, and maintainers"
+status: "Current"
+---
+
+## Why Portability Needs A Trust Model
+
+The Portable Report Flow reproduces an Impact Report from exported artifacts without requiring live Snowflake access. Portability improves auditability and publication independence, but it does not make every exported or regenerated artifact equally trustworthy.
+
+A Known-Good Baseline is an input and reference package. A Snapshot Output Bundle is the generated, reviewable publication unit. Keeping them distinct prevents sensitive source material from becoming publication content and prevents a successful checksum check from being mistaken for independent validation.
+
+## Three Trust Levels
+
+### Integrity
+
+A Baseline Integrity Check proves that the manifest shape, required artifacts, checksums, schema hashes, row counts, and safe relative paths are internally consistent. It answers: "Are these the bytes the manifest describes?"
+
+Integrity does not prove that the baseline is complete enough to reproduce the report, that expected output is independent, or that publication is approved.
+
+### Provisional Comparison
+
+A Provisional Comparison is a passing comparison whose expected report was produced by the portable wrapper, a seed, or an unknown source. It demonstrates plumbing, deterministic behavior, and useful drift detection, but both sides may share the same implementation or assumptions.
+
+Provisional evidence must not be labeled certified. Baseline Replay is likewise a historical, explicitly selected, non-default presentation experiment; it is not independent evidence.
+
+### Certifying Comparison
+
+A Certifying Comparison is a passing comparison against expected output from an independent trusted-current source. Independence is the essential property: it provides evidence that the portable path reproduced behavior rather than merely agreeing with itself.
+
+Certification still does not grant publication approval. Privacy, accessibility, source licensing, audience suitability, and accountable approval remain separate [Publication Gates](../project/publication-gates.qmd).
+
+## Publication Consequences
+
+- Publish from Snapshot Output Bundles, not Known-Good Baselines.
+- Preserve expected-output provenance in comparison results.
+- Label provisional and certifying evidence distinctly wherever results are presented.
+- Treat screenshots, expected HTML, and visual similarity as review evidence rather than calculation authority.
+- Require independent semantic evidence for certification; a Presentation Self-Check only verifies the local presentation against its own structured facts.
+
+This model allows portable generation to be useful early without overstating what integrity checks, self-comparison, or visual review establish.

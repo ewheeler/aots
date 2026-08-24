@@ -1,0 +1,85 @@
+---
+title: "Alert Email Design"
+page-type: reference
+audience: "alert renderer developers and design reviewers"
+status: current
+aliases:
+  - /alert-email-design.html
+---
+
+This is the normative presentation reference for local `rendered-alert.html` output. It specifies the portable renderer's compatibility layout without making implementation-status claims.
+
+## Design Principles
+
+- Match the Snowflake alert-agent email's section order and visual hierarchy where practical.
+- Keep deterministic facts, tables, visuals, provenance labels, and caveats outside unrestricted LLM output.
+- Limit prose providers to `summary`, `narrative`, `shift`, and `oscillation` slots.
+- Treat `expected-alert.html` as provenance-qualified reference evidence, never as a generation input or factual source.
+- Require product-family and claim alignment, not exact prose, byte-for-byte HTML, or pixel parity.
+- Prefer semantic headings, regions, tables, captions, image alt text, and readable fallback labels.
+
+## Presentation Boundary
+
+Product Facts contain no sections, headings, prose, visual placement, packaging, recipients, or delivery settings. Presentation Profiles select a closed set of renderer-owned component IDs with typed options, declared fact requirements, and explicit missing-fact behavior. A profile cannot execute expressions, query arbitrary fact paths, alter a Product Decision, or invent evidence.
+
+The first V2 profile is a compatibility profile for the current long product. Concise operational-email and technical report/link profiles require a later packaging decision. PDF and attachment delivery are outside this specification.
+
+## Compatibility Layout
+
+Use this order:
+
+1. Branded Warning or Alert header.
+2. Urgency strip for review status and local forecast threshold.
+3. Summary.
+4. Situation, separating official current status from the local forecast.
+5. Situation overview and modeled exposure totals.
+6. Forecast and deterministic wind, rainfall, and storm-surge availability.
+7. Impact composition donut charts.
+8. Primary wind exposure probability map.
+9. Optional secondary probability maps.
+10. Threshold exposure table.
+11. Administrative choropleth for expected children at risk.
+12. Forecast shift prose.
+13. Highest-exposure administrative areas table.
+14. Forecast evolution chart.
+15. Oscillation notice prose.
+16. Required caveats, provenance labels, and footer.
+
+## Style Tokens
+
+| Token | Use |
+|---|---|
+| UNICEF blue `#1CABE2` | Header, table headers, section rails, and primary accents. |
+| Blue border `#1499c7` | Table header borders. |
+| Deep blue `#1A6080` | Urgency strip and provenance label text. |
+| Neutral text `#222` | Body text. |
+| Light gray `#e8e8e8` / `#ddd` | Section dividers and table borders. |
+| Pale blue `#f0f9ff` | Situation summary callout background. |
+
+## Visual Placement
+
+Generated PNG files remain under `alert-assets/` for audit and are embedded inline as `data:image/png;base64,...` for email portability.
+
+| Visual asset | Placement |
+|---|---|
+| `ensemble-probability-50kt.png` | Full-width primary visual in Forecast Exposure. |
+| `ensemble-probability-34kt.png`, `ensemble-probability-64kt.png` | Optional side-by-side secondary visuals. |
+| `population-composition-50kt.png` | Donut beside Forecast Exposure totals, showing child/adult composition. |
+| `people-in-need-composition.png` | Unthresholded donut beside forecast-conditioned, wind-integrated PiN values, showing child/other composition. |
+| `admin-choropleth-50kt.png` | Administrative exposure section before its table. |
+| `impact-evolution-50kt.png` | Forecast evolution section before caveats. |
+
+## Prose Rules
+
+Portable generation defaults to empty bounded prose slots. Baseline Replay is allowed only for an explicit non-certifying experiment. It must extract bounded paragraphs rather than tables, cap long prose, normalize repeated whitespace, and leave factual metrics in deterministic tables and charts.
+
+## Conformance
+
+- A supplied Product Decision controls Warning versus Alert; presentation thresholds do not classify the product.
+- Official global storm status and local forecast hazard remain visibly separate.
+- Hazard unavailability is deterministic, explicit content.
+- Required claims and visual sections must survive rendering.
+- Optional component reordering may change presentation/composition hashes but cannot change Product Facts or Product Decision identity.
+- Cleaner componentized HTML, non-identical prose, and small dimensional differences are intentional and allowed.
+
+Architecture boundaries are recorded in [ADR 0010](../adr/0010-separate-semantic-alert-facts-from-presentation.md). Artifact inventory and conditionality are defined in [Snapshot Output Bundle](snapshot-output-bundle.qmd).

@@ -14,7 +14,7 @@ SHA-256 semantic digests exclude the contract's identity field and `content_dige
 
 Keep schema version, producer release, adapter release, renderer release, semantic digest, stable artifact ID, schema ID, and file checksum distinct. `created_at` and `composed_at` are strict semantic timestamps covered by their content identities; runtime clocks, storage metadata, and export time never enter identities.
 
-Orchestration tests validate all 11 schemas, 32 vectors, the checksummed manifest, null rejection, and four exact full-document files under `canonical/`. Root `canonical_artifact.py` and its focused test independently reject null and compare canonicalized official Alert ProductFactSet, compatibility profile, CompositionManifest, and PublicationManifest documents byte-for-byte with all four frozen files. This proves readiness compatibility, not ProductFactSet loading or composition/publication runtime. Unknown versions or digest mismatches fail closed.
+Orchestration tests validate the complete schema and vector inventory, checksummed manifest, null rejection, and exact full-document files under `canonical/`. Root `canonical_artifact.py` and its focused test independently reject null and compare canonicalized official Alert ProductFactSet, compatibility profile, CompositionManifest, and PublicationManifest documents byte-for-byte with the frozen files. The readiness reference owns the current exact inventory. This proves readiness compatibility, not ProductFactSet loading or composition/publication runtime. Unknown versions or digest mismatches fail closed.
 
 ## Consequences
 

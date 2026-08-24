@@ -1,5 +1,7 @@
 # Root Portable Report Package
 
+Status: Accepted.
+
 The portable report implementation will live at the repository root, with `src/aots_portable_reports/` as the candidate package path, instead of being added to one of the forecast, impact, dashboard, or orchestration submodules. The first Report Snapshot slice crosses those submodule boundaries, so a root package keeps the integration layer explicit while avoiding premature ownership changes inside the existing upstream repositories.
 
 ## Considered Options

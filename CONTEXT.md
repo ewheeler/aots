@@ -101,11 +101,11 @@ A comparison warning for top-facility descriptor slots whose probabilities match
 _Avoid_: Failure, certified mismatch.
 
 **Alert HTML Artifact**:
-An HTML alert email artifact that can be independently reviewed in a browser. In the current portable path, the independent Expected Alert Email and the local Rendered Alert HTML are separate alert HTML artifacts.
+An HTML alert email artifact that can be reviewed in a browser. In the current portable path, the provenance-qualified Expected Alert Email and the local Rendered Alert HTML are separate alert HTML artifacts.
 _Avoid_: Dash impact report HTML, report JSON.
 
 **Expected Alert Email**:
-The independent Snowflake alert-agent email exported from `ALERT_SENT_LOG.EMAIL_BODY` and stored as `expected-alert.html` when available.
+The Snowflake alert-agent email exported from `ALERT_SENT_LOG.EMAIL_BODY` and stored as `expected-alert.html` when available. It is reference evidence whose independence depends on recorded provenance; the filename alone does not establish parity authority.
 _Avoid_: Locally rendered alert, audit bundle, report HTML.
 
 **Rendered Alert HTML**:
@@ -125,8 +125,12 @@ A non-default Alert Prose Provider retained for explicit parity experiments that
 _Avoid_: LLM provider, exact HTML replay, screenshot fixture.
 
 **Alert Parity**:
-A review standard for local alert output where content is substantially similar to the expected alert without significant factual differences or omissions; exact prose wording and pixel-perfect rendering are not required.
-_Avoid_: Pixel parity, byte-for-byte HTML equality, exact prose reproduction.
+A comparison standard for local alert output against independently sourced expected facts or output. Significant factual differences or omissions fail; exact prose wording and pixel-perfect rendering are not required.
+_Avoid_: Alert Presentation Self-Check, pixel parity, byte-for-byte HTML equality, exact prose reproduction.
+
+**Alert Presentation Self-Check**:
+A local consistency check that verifies Rendered Alert HTML contains and agrees with the Alert Claims generated from the same Alert Context. It is useful presentation evidence but is not Alert Parity because its expected claims are not independently sourced.
+_Avoid_: Alert Parity, certification, comparison with Expected Alert Email.
 
 **Alert Claim**:
 A structured fact that must be present and consistent in an Alert HTML Artifact, such as storm identity, forecast time, impact totals, top administrative areas, trend direction, caveats, and provenance labels.
@@ -201,7 +205,7 @@ The alert-specific JSON files inside a Snapshot Output Bundle that make local al
 _Avoid_: Expected Alert Email, Rendered Alert HTML, publication bundle.
 
 **Alert Visual Asset**:
-A PNG image generated from portable alert inputs, written to `alert-assets/` for audit and embedded as a base64 data URI in Rendered Alert HTML for email portability.
+A PNG image generated from portable alert inputs and written to `alert-assets/` for audit. When Rendered Alert HTML is produced, included assets are also embedded as base64 data URIs for email portability; visual-only bundles need not contain HTML.
 _Avoid_: External image URL, expected alert screenshot, Dash map.
 
 **Alert Visual Context**:
@@ -242,7 +246,7 @@ _Avoid_: Pipeline, job, DAG when the user-facing report production concept is me
 - A **Vulnerability Artifact** supplies people-in-need fields required by independent current reports.
 - A **Tie-Order Warning** preserves certification when equal-probability top-facility descriptor order is unstable but compared probabilities match.
 - An **Alert HTML Artifact** can be visually reviewed with Playwright, but it is separate from the Dash-rendered **Impact Report** page.
-- The **Expected Alert Email** remains an independent Snowflake artifact while the **Rendered Alert HTML** is produced locally from portable inputs.
+- The **Expected Alert Email** remains separate provenance-qualified reference evidence while the **Rendered Alert HTML** is produced locally from portable inputs.
 - An **Alert Decision Artifact** supplies a **Product Decision** to the portable renderer; the renderer does not classify from forecast wind thresholds.
 - A **Product Fact Set** is the planned semantic cross-repository boundary between Orchestration policy/evidence and root presentation/publication.
 - A **Presentation Profile** composes a **Product Fact Set** without changing its **Product Decision** or evidence meaning.
@@ -256,12 +260,12 @@ _Avoid_: Pipeline, job, DAG when the user-facing report production concept is me
 - An **Alert Renderer** is the medium-term replacement path for the current Snowflake alert-agent email.
 - An **Alert Prose Provider** may use an LLM, but only for bounded prose slots; deterministic facts, tables, caveats, and layout remain owned by the **Alert Renderer**.
 - Portable generation defaults to empty bounded prose slots; a **Baseline Replay Prose Provider** may be selected only for an explicit non-certifying parity experiment.
-- **Alert Parity** blocks on significant factual differences or omissions, while exact prose wording and pixel-level rendering remain advisory.
-- **Alert Parity** is evaluated through **Alert Claims** rather than prose string equality.
+- **Alert Parity** requires independently sourced expected facts or output and blocks on significant factual differences or omissions, while exact prose wording and pixel-level rendering remain advisory.
+- The current `alert-comparison.json` is an **Alert Presentation Self-Check** over local **Alert Claims** and local HTML, not **Alert Parity**.
 - **Alert Provenance Labels** travel with **Alert Context**, **Alert Claims**, and **Rendered Alert HTML**, not with baseline-path metadata.
 - **Alert Claims** should be derived from **Alert Context** and report data first; rendered HTML is checked as presentation evidence, not as the source of truth.
 - An **Alert Audit Bundle** belongs inside a **Snapshot Output Bundle** so local alert rendering can be reviewed without treating raw baselines as publication inputs.
-- **Alert Visual Assets** are written as PNG files for audit/debug and embedded inline in **Rendered Alert HTML** so the email remains portable.
+- **Alert Visual Assets** are written as PNG files for audit/debug and, when **Rendered Alert HTML** is produced, included assets are embedded inline so the email remains portable.
 - **Alert Visual Context** is the source of truth for **Alert Visual Assets**; visual parity checks should not scrape expected alert HTML for map facts.
 - The **Alert Email Design Spec** aligns section order, hierarchy, visual placement, and styling tokens with the Snowflake alert-agent email while keeping exact pixels and exact prose out of scope.
 - An **Ignored Local Baseline Root** keeps real baselines out of git while letting the portable flow reuse them locally.

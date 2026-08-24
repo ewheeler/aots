@@ -1,0 +1,48 @@
+---
+title: "Warning And Alert Policy"
+page-type: explanation
+audience: "Operational reviewers, product owners, and maintainers"
+status: "Approved policy rationale; operational activation blocked"
+aliases:
+  - /alert-email-sop-alignment-plan.html
+---
+
+## The Operational Mismatch
+
+Legacy operational products were organized around available forecast artifacts: an early 34kt email path and a fuller 50kt impact path. Later renaming those paths as Warning and Alert changed public nouns without introducing authoritative current storm status or a shared product-decision contract.
+
+The two paths also used different country-selection and deduplication rules. Threat eligibility, classification, rendering, lifecycle, and delivery were embedded in separate procedures. As a result, the system could not represent one auditable country-level Warning-to-Alert lifecycle or reliably distinguish product urgency from local wind threshold.
+
+## Evidence Vocabulary
+
+- **Current storm state** is observed or advisory information from an approved authority, with source and observation time.
+- **Forecast exposure** is modeled population, children, or infrastructure intersecting a forecast hazard footprint.
+- **At risk** is used only when probability, threshold, horizon, and aggregation are defined by the producing artifact.
+- **Forecast-conditioned PiN/CHiN** is a wind-integrated vulnerability estimate, not current observed need.
+- **Affected or damaged** is reserved for approved observed-impact evidence.
+- **Unavailable** is an explicit evidence condition, never a zero or prose substitute.
+
+These boundaries prevent modeled forecasts from becoming claims about observed harm.
+
+## Target Policy
+
+- Forecast evidence determines whether an eligible Country Office is threatened.
+- A qualifying threat with fresh authoritative status below hurricane strength produces Warning.
+- A qualifying threat with fresh authoritative hurricane status produces Alert.
+- Approved forecast-only or pre-genesis evidence may produce Warning but can never establish Alert.
+- Missing, stale, conflicting, or unsupported evidence fails closed to withholding or manual review.
+- Global classification and local forecast hazard are presented as separate facts.
+
+Warning and Alert are country-level semantic products. A regional digest may package country products, but it cannot replace their decisions or lifecycle records.
+
+## Why Lifecycle Is Separate
+
+The lifecycle stream is the Storm Episode plus Country Office. Product type is decision data, not stream identity. This lets a forecast-only Warning later escalate to an official Alert without rewriting history, while repeated evaluation of identical evidence remains idempotent.
+
+Decision events and recipient delivery attempts are separate. Newly threatened countries, recipient retries, and future regional packaging can therefore remain traceable without changing policy history.
+
+## Separation Of Responsibilities
+
+Orchestration owns evidence normalization, threat assessment, Product Decision, lifecycle, and semantic Product Facts. Upstream producers own forecast and impact calculations. Root consumes validated decisions and artifacts for presentation and publication; it does not infer classification from report values.
+
+Exact contracts and implementation status are intentionally maintained elsewhere: see the [Alert Product V2 Readiness Reference](../reference/alert-product-v2-readiness.qmd), [Project Status](../project/status.qmd), and open [Roadmap](../project/roadmap.qmd).

@@ -67,7 +67,7 @@ Content releases, lifecycle policy releases, regional composition, private recip
 
 - Freeze V1 conformance and claims vectors.
 - Keep V1 fixtures and ledgers unchanged.
-- Follow the exact canonical-contract, digest, identity, artifact-handshake, parity, and privacy rules in the [Alert Product V2 Readiness Reference](../alert-product-v2-readiness.qmd), [ADR 0011](0011-use-provisional-storm-episode-identity.md), [ADR 0012](0012-use-canonical-content-addressed-alert-artifacts.md), and [ADR 0013](0013-keep-alert-publication-data-minimal.md).
+- Follow the exact canonical-contract, digest, identity, artifact-handshake, parity, and privacy rules in the [Alert Product V2 Readiness Reference](../reference/alert-product-v2-readiness.qmd), [ADR 0011](0011-use-provisional-storm-episode-identity.md), [ADR 0012](0012-use-canonical-content-addressed-alert-artifacts.md), and [ADR 0013](0013-keep-alert-publication-data-minimal.md).
 - Add a pure, one-way, fail-closed V1-to-V2 adapter for supported official-advisory cases.
 - Emit official-advisory V2 alongside V1 in dry-run memory without changing V1 identities or behavior.
 - Emit native forecast-only V2 Warning, no-product, or manual-review outcomes without fabricating a Current Storm State; every forecast-only Alert attempt fails closed.

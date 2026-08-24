@@ -1,0 +1,66 @@
+---
+title: "Architecture"
+page-type: explanation
+audience: "Maintainers and technical reviewers"
+status: "Current"
+aliases:
+  - /architecture.html
+---
+
+## Architectural Intent
+
+Ahead of the Storm turns forecast evidence into impact artifacts and decision-support products while keeping operational policy, report calculations, presentation, and publication independently reviewable. The root Portable Report Package coordinates artifacts across four pinned upstream repositories; it does not absorb their forecast, impact, dashboard, or orchestration responsibilities.
+
+The portability goal is narrow: report generation and publication can run from local or blob-backed artifacts without Snowflake credentials. Snowflake remains a supported operational backend.
+
+## Ownership Boundaries
+
+- The forecast producer owns forecast ingestion, transformation, track lineage, and wind-envelope artifacts.
+- The impact producer owns exposure, facility, vulnerability, and existing report calculations.
+- Orchestration owns authoritative-evidence normalization, Country Threat Assessment, Product Decision, lifecycle, semantic Product Facts, and future delivery plans.
+- The dashboard repository owns interactive Dash and FastAPI presentation.
+- The root package owns cross-repository artifact validation, report adaptation, comparison, presentation profiles, composition, and publication.
+
+Repositories exchange versioned, checksummed artifacts. Root does not reclassify an operational decision, and Orchestration does not depend on root presentation internals. New report calculations remain with their upstream producer rather than entering the root adapter.
+
+## Portable Report Flow
+
+```text
+Snowflake or equivalent source artifacts
+  -> read-only Known-Good Baseline export
+  -> Baseline Integrity Check
+  -> thin existing-report wrapper
+  -> Hamilton materialization
+  -> report comparison and alert audit
+  -> Snapshot Output Bundle
+  -> publication manifest and static site
+```
+
+The wrapper adapts inputs and outputs around existing report behavior; it does not create calculations. Publication consumes Snapshot Output Bundles, never raw Known-Good Baselines. This preserves an auditable boundary between sensitive reference material and generated publication candidates.
+
+## Product Decision To Presentation
+
+The next-stage boundary follows [ADR 0010](../adr/0010-separate-semantic-alert-facts-from-presentation.md):
+
+```text
+Orchestration Product Decision + semantic ProductFactSet
+  -> checksummed artifact boundary
+  -> root PresentationProfile
+  -> CompositionManifest
+  -> publication artifacts
+```
+
+ProductFactSet carries evidence meaning and provenance without headings, prose, layout, recipients, or delivery state. Presentation can change without changing classification identity. See [Semantic Facts and Presentation](semantic-facts-and-presentation.qmd) for the rationale.
+
+Contract and verification readiness exists, but the V2 runtime path does not. Exact readiness counts and contract details belong to the [Alert Product V2 Readiness Reference](../reference/alert-product-v2-readiness.qmd), not this architecture explanation.
+
+## Trust Boundaries
+
+- Integrity validates bytes and structure; it does not certify reproduction or approve publication.
+- A passing comparison is certifying only with independent trusted-current expected output.
+- Expected Alert Email HTML is optional historical evidence, not a rendering input or trigger.
+- Alert rendering consumes a supplied Product Decision and must not infer Warning or Alert from wind thresholds.
+- Deterministic facts, tables, caveats, provenance, and layout remain outside unrestricted prose generation.
+- Privacy, accessibility, certification, and approval are separate [Publication Gates](../project/publication-gates.qmd).
+
+These boundaries make policy, calculation, presentation, and publication drift visible at their owning seams rather than hiding it in one end-to-end procedure.

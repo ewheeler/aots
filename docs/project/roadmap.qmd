@@ -1,0 +1,25 @@
+---
+title: "Roadmap"
+page-type: project
+audience: "Maintainers and project sponsors"
+status: "Open work only"
+aliases:
+  - /alert-product-flexibility-plan.html
+  - /snowflake-agnostic-report-publication.html
+---
+
+This page presents the open sequence only. The concise source roadmap, including blocked decisions and milestone history, is [root `plan.md`](../../plan.md).
+
+## Open Sequence
+
+1. Implement deterministic Storm Episode and link-event runtime while preserving existing V1 behavior; keep episode-dependent operations disabled until identity stability evidence is approved.
+2. Add ProductDecision v2 and complete ProductFactSet v2 production for official Warning/Alert and forecast-only Warning, with fail-closed review outcomes.
+3. Add the one-way supported V1 adapter and a checksummed cross-repository ProductFactSet artifact handshake.
+4. Add strict root loading and validation without duplicating Orchestration classification policy.
+5. Compose the compatibility product from the closed PresentationProfile and prove semantic claim parity against independent frozen V1 claims.
+6. Integrate CompositionManifest and PublicationManifest v2, including actual HTML/PNG privacy inspection and source approval enforcement.
+7. Hold packaging consultation before adding concise email or technical-report profiles.
+8. Add typed official warning-zone, rainfall, and surge facts only after source and manual-review behavior are approved.
+9. Add versioned content and lifecycle releases before persistence, regional composition, recipients, or delivery.
+
+Every slice remains non-sending and must pass the relevant [Activation And Publication Gates](publication-gates.qmd).
