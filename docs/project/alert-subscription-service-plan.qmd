@@ -1,0 +1,576 @@
+---
+title: "Alert Subscription Service Plan"
+page-type: project
+audience: "Alert product owners, platform engineers, security reviewers, and implementers"
+status: "Proposed implementation plan; registration and delivery are not implemented"
+---
+
+<style>
+main table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+}
+</style>
+
+## Purpose And Authority
+
+This plan defines a small, private, containerized service through which an authenticated employee or invited Microsoft Entra B2B guest could record alert-email preferences. It covers the proposed user interface, service boundary, data model, Azure deployment, security controls, tests, and activation gates.
+
+The service is a **subscription registry only**. This plan does not implement or authorize email delivery, operational persistence, a delivery worker, an outbox, an email provider, a writer to `ALERT_RECIPIENT_DELIVERY_LEDGER`, or a change to Country Office operational approval. A saved preference is not delivery eligibility and does not guarantee that an email will be sent.
+
+The durable boundaries in [ADR 0009](../adr/0009-dry-run-alert-policy-engine.md), [ADR 0010](../adr/0010-separate-semantic-alert-facts-from-presentation.md), and [ADR 0013](../adr/0013-keep-alert-publication-data-minimal.md) remain authoritative. Recipient identity, contact, consent, provider, attempt, and delivery data must remain outside ProductFactSet, CompositionManifest, PublicationManifest, Snapshot Output Bundles, public reports, and publication telemetry.
+
+## Recommended Decision
+
+Build a standalone FastAPI and Jinja application, package it as one Linux container, and deploy it to Azure App Service. Use App Service authentication and authorization, backed by a single Microsoft Entra workforce tenant, for employees and explicitly invited B2B guests. Store private profiles, preferences, and audit events in Azure Cosmos DB for NoSQL through managed identity.
+
+The application should use server-rendered HTML and minimal progressive JavaScript. The expected interactions are forms, preference summaries, confirmations, and status messages; a single-page application would add a second build system, browser token pressure, client-state reconciliation, and accessibility scope without a demonstrated product need.
+
+Use Azure App Service rather than Azure Container Apps for the first implementation. App Service provides the required container hosting, server-directed authentication, stable availability, custom domains, managed identity, VNet integration, and deployment slots with less operational surface. Reconsider Container Apps only if measured cost or workload evidence shows a need for scale-to-zero or a separate elastic worker. A future worker belongs to Orchestration and is not a reason to add Dapr or Container Apps to the registry now.
+
+## Ownership And Repository Boundary
+
+The recommended physical boundary is a separate private repository, provisionally named `Ahead-of-the-Storm-SUBSCRIPTIONS`. If stakeholders instead place the service in an existing repository, its logical owner must still be the private recipient and delivery domain rather than `src/aots_portable_reports/`.
+
+| Owner | Responsibility |
+|---|---|
+| Subscription service | Entra principal association, delivery contact, preferences, consent, self-service deletion, and private audit events. |
+| Orchestration | Country Office operational approval, future delivery eligibility, delivery planning, outbox/provider behavior, and attempt persistence. |
+| Root Portable Report Package | No recipient dependency. It continues to consume semantic alert artifacts and publish approved Snapshot Output Bundles. |
+| Microsoft Entra administrators | Workforce/B2B lifecycle, enterprise-application assignment, Conditional Access, MFA, and access reviews. |
+| Azure platform owners | Landing zone, identities, networking, policy, monitoring, backup, cost, and incident response. |
+
+Implementation must update the [Repository Map](../agents/repository-map.md) only after the service repository and its supported integration seam exist. Until then, this page records proposed rather than implemented ownership.
+
+## Proposed Architecture
+
+```text
+Employee or invited B2B guest
+             |
+             v
+Microsoft Entra workforce tenant
+             |
+             v
+Azure App Service authentication
+             |
+             v
+FastAPI + Jinja subscription service
+             |
+             +--> Cosmos DB private registry
+             +--> Key Vault
+             +--> Application Insights
+```
+
+Nothing in the first deployment publishes a recipient projection or can send email. After separate delivery approval, the preferred integration is:
+
+```text
+Orchestration delivery worker
+       |
+       +--> internal-sensitive active-eligibility index
+       |
+       +--> private just-in-time recipient resolver
+                |
+                +--> current plaintext address returned only to
+                     the delivery-worker managed identity
+```
+
+The eligibility index contains opaque recipient references, Country Office IDs, product types, and status/version facts. It contains no email address or Entra identifier. The resolver rechecks current preference and approval state before returning contact data. Both interfaces remain private operational data and never become report or publication inputs.
+
+## User Interface
+
+### Global Shell
+
+Every authenticated page should contain:
+
+- A skip-to-content link, one primary heading, semantic landmarks, and a visible keyboard focus treatment.
+- Product title and a persistent service-status banner.
+- Navigation for **My subscriptions**, **Add subscription**, **Help**, and **Privacy**.
+- A signed-in account summary and **Sign out** action.
+- A footer with the privacy notice, support route, accessibility statement, and deployed service version.
+- `no-store` responses for authenticated pages and search-engine exclusion.
+
+The persistent MVP banner should say, in equivalent reviewed language:
+
+::: {.callout-warning}
+## Registration-only status
+
+Email delivery is not operational. Saving preferences does not activate alerts or guarantee delivery.
+:::
+
+Layouts must reflow from a single mobile column to a compact desktop table without horizontal scrolling at 320 CSS pixels. The UI must meet WCAG 2.2 AA, work without a pointer, preserve meaning without color, support browser zoom, and announce validation and status changes.
+
+### My Subscriptions
+
+The home page should show:
+
+- The directory-provided delivery address and an explanation that it is contact data rather than account identity.
+- One card per Country Office on mobile and an equivalent table on desktop.
+- Country Office name, selected Warning/Alert products, preference state, independent operational state, and last-updated time.
+- **Edit**, **Pause**, and **Delete** actions for each preference.
+- An **Add subscription** action.
+
+Use **Saved** or **Paused** for preference state. Do not use an unqualified **Active** label. Operational state should be separately labeled, for example **Delivery not operational**, **Country Office approval pending**, or **Registration unavailable**.
+
+The page must include these states:
+
+- **Empty:** explain what can be registered and offer the add action.
+- **Missing directory email:** explain that registration is blocked and provide support guidance.
+- **Catalog unavailable:** block new subscriptions while leaving pause and deletion available.
+- **Concurrent update:** explain that another session changed the record and offer reload rather than overwriting it.
+- **Session expired:** preserve only a safe GET destination and return the user to sign-in.
+
+### Add Subscription
+
+Use a short server-rendered flow:
+
+1. **Select Country Offices.** Provide search/filter and checkboxes. Show registration availability and operational approval as separate facts. Disabled offices include a reason.
+2. **Choose products.** Offer Warning and Alert checkboxes with plain-language descriptions and select-all/clear controls.
+3. **Review delivery address.** Show the read-only directory-provided address. Do not accept arbitrary addresses in the MVP.
+4. **Record consent.** Present versioned consent text, link to the privacy notice, explain withdrawal/deletion, and state that registration does not guarantee delivery.
+5. **Review and save.** Summarize all selections. Provide **Save preferences** and **Cancel** actions and an idempotent submission token.
+6. **Confirm.** Show what was saved, repeat the non-operational status, and link back to management.
+
+Validation must provide an error summary linked to field-level errors. Require at least one Country Office, one product, a valid directory contact, and explicit consent. Disable repeated submission only as progressive enhancement; server-side idempotency remains authoritative.
+
+### Edit, Pause, And Delete
+
+- **Edit** changes product selections and records a new consent version when reviewed text or purpose changes.
+- **Pause** immediately excludes the preference from any future eligibility interface while retaining it for easy resumption under the approved retention policy.
+- **Delete** uses a dedicated confirmation page rather than a modal. It explains immediate operational removal, PII purge timing, and backup expiry.
+- Every update carries the current Cosmos `_etag`. A stale update renders a conflict page with **Reload current preference** and **Cancel**.
+
+### Supporting Pages
+
+- **Access denied:** explain that enterprise-application assignment is required and provide a non-sensitive support route.
+- **No directory email:** explain why no address can be inferred and how to request directory correction.
+- **Problem:** display a friendly message and random, non-identifying correlation ID.
+- **Logged out:** clarify that signing out of the service might not sign the user out of the wider Microsoft session.
+- **Help, privacy, and accessibility:** explain service purpose, data use, retention, withdrawal, and support.
+
+### Support Surface
+
+Do not include an operator console in the MVP unless an approved support process requires it. A later console must use separate `Support` and `Admin` app roles, allow exact lookup by opaque subscription ID, mask contact data by default, audit every view or mutation, and prohibit browse-all and CSV export.
+
+## Authentication And Authorization
+
+### Entra Configuration
+
+Use a separate single-tenant web app registration and enterprise application for each environment. Production and its staging slot should use separately reviewed redirect URIs; prefer separate registrations for a production slot when current App Service slot guidance requires it.
+
+The enterprise application must require assignment. Assign approved employee and B2B guest security groups to application roles rather than granting every tenant principal access.
+
+Proposed app roles are:
+
+- `Subscriber` for self-service routes.
+- `Support` for a future exact-lookup support surface.
+- `Admin` for future single-record remediation and purge.
+- `DeliveryResolver` for a future workload identity, never a human browser session.
+
+Entra Conditional Access, MFA, guest invitation, guest access review, and offboarding remain tenant controls. No application feature substitutes for them.
+
+### Principal And Contact Claims
+
+Use `(tenant ID, object ID)` as the durable principal. Never use email address, UPN, display name, or guest status as identity or authorization input.
+
+Prefer an Entra `email` claim as directory-asserted contact data. Use `preferred_username` only after validating that it is a plausible address and not a guest `#EXT#` UPN. If no supported claim is present, fail safely and route the user to support. Avoid Microsoft Graph and `User.Read` unless deployed claim evidence demonstrates that they are necessary.
+
+When a later login presents a changed directory address, do not silently redirect future alerts. Show the change and require confirmation before updating the recipient profile.
+
+### App Service Authentication
+
+Configure Auth Settings V2 to:
+
+- Require authentication and redirect browser requests to Microsoft Entra.
+- Restrict issuer and tenant to the selected workforce tenant.
+- Restrict allowed audience to the exact application registration.
+- Inject the authenticated claims through `X-MS-CLIENT-PRINCIPAL`.
+- Reject requests lacking the required tenant, object ID, and route-specific app role.
+
+Microsoft documents that external requests cannot set the App Service identity headers. Application middleware should decode the App Service-injected principal and perform authorization; it should not independently validate provider JWTs or depend on `X-MS-TOKEN-AAD-ID-TOKEN`.
+
+Verify claim mapping, repeated-role handling, employee/B2B behavior, and token-store requirements against current App Service documentation and the deployed tenant. If the token store is required solely for mapped claims, do not request Graph scopes, consume provider tokens, or add refresh-token behavior.
+
+### Request And Session Controls
+
+- Secure, HTTP-only, same-site cookies.
+- Synchronizer CSRF tokens and Origin/Referer checks on every mutation.
+- HSTS, restrictive Content Security Policy, `frame-ancestors 'none'`, MIME-sniffing protection, and a restrictive referrer policy.
+- App Service logout through `/.auth/logout`.
+- Rate limits for writes and repeated authorization failures.
+- No principal IDs accepted from forms or route ownership parameters.
+- Local mock authentication behind an explicit development-only mode that production startup rejects.
+
+## Private Data Model
+
+Use one Cosmos logical partition per Entra principal:
+
+```text
+partition key: /principalKey
+principalKey:  <tenant-id>:<object-id>
+```
+
+Keeping profile and preference documents in one partition permits deterministic IDs and transactional batches.
+
+### Recipient Profile
+
+| Field | Purpose |
+|---|---|
+| `id = "profile"` | Stable document ID inside the principal partition. |
+| `tenantId`, `objectId` | Durable Entra identity. |
+| `deliveryAddress` | Current directory-asserted and user-confirmed contact. |
+| `addressSource` | Claim or later approved verification source. |
+| `addressConfirmedAt` | Contact confirmation time. |
+| `createdAt`, `updatedAt` | Audit timestamps. |
+| `schemaVersion` | Explicit migration/version boundary. |
+
+### Country Office Preference
+
+| Field | Purpose |
+|---|---|
+| `id = "subscription:<country-office-id>"` | Deterministic uniqueness inside the principal partition. |
+| `subscriptionId` | Opaque public/support reference. |
+| `countryOfficeId` | Versioned catalog identifier. |
+| `productTypes` | Closed Warning/Alert set. |
+| `preferenceStatus` | `enabled` or `paused`; never delivery eligibility. |
+| `consentVersion`, `consentedAt` | Consent evidence. |
+| `catalogVersion` | Catalog reviewed at registration time. |
+| `createdAt`, `updatedAt`, `pausedAt` | Lifecycle timestamps. |
+| `_etag` | Cosmos optimistic-concurrency token. |
+
+Creating the same principal/Country Office preference is idempotent. Updates and deletions require `If-Match` semantics. The server derives `principalKey`; clients cannot submit it.
+
+### Audit Event
+
+Store append-only, retention-limited audit events in the same private partition or a dedicated private container. Record an opaque event ID, subscription ID, event type, timestamp, actor type, minimal before/after facts, and random correlation ID. Do not store IP addresses, IP hashes, request bodies, or full contact values without a separately approved need.
+
+### Retention And Deletion
+
+Privacy and legal owners must approve exact periods before production. The safe default is:
+
+- Pause affects eligibility immediately.
+- Delete removes current contact data immediately and completes primary-store purge within a short documented period.
+- Retain only minimal non-identifying audit facts for the approved audit period.
+- Let backup copies expire through the declared Cosmos continuous-backup window.
+- Document all timing and support exceptions in the privacy notice.
+
+## Country Office Catalog
+
+The web application consumes a versioned, read-only catalog with:
+
+- Country Office ID and display name.
+- `registrationOpen` and an explanatory reason.
+- `operationalApproved` and effective time.
+- Catalog version and publication time.
+
+`registrationOpen` controls whether the service can record a preference. `operationalApproved` remains an Orchestration-owned fact and cannot be changed by signup. A catalog outage fails closed for creation and expansion but must never prevent pause or deletion.
+
+The MVP may package a reviewed non-secret catalog with the container. A later integration may consume a private versioned artifact or API, but the web service must not query Snowflake directly or become the owner of Country Office approval.
+
+## Routes And Contracts
+
+Server-rendered browser routes are:
+
+```text
+GET   /
+GET   /subscriptions/new
+POST  /subscriptions
+GET   /subscriptions/{id}/edit
+POST  /subscriptions/{id}
+GET   /subscriptions/{id}/pause
+POST  /subscriptions/{id}/pause
+GET   /subscriptions/{id}/delete
+POST  /subscriptions/{id}/delete
+GET   /help
+GET   /privacy
+GET   /access-denied
+GET   /logged-out
+GET   /health/live
+GET   /health/ready
+```
+
+Health routes expose only status and no configuration or dependency details. Browser mutations require authentication, app role, ownership, CSRF, idempotency, and concurrency checks.
+
+These future internal routes are reserved design seams, not MVP endpoints:
+
+```text
+GET /internal/v1/eligibility
+GET /internal/v1/recipients/{opaque-reference}
+```
+
+The first returns no direct identity or contact. The second returns current contact details only to a `DeliveryResolver` workload identity after rechecking preference version, Country Office approval, and delivery activation. Both require a separate delivery ADR, threat/privacy review, and activation approval.
+
+## Azure Resource Inventory
+
+### Tenant-Level Objects
+
+These objects are outside ordinary Azure Resource Manager deployment and require approved Entra automation, Microsoft Graph, or an Entra-capable Terraform provider:
+
+| Object | Purpose |
+|---|---|
+| App registration per environment/slot boundary | Browser authentication and exact redirect URI/audience. |
+| Enterprise application | Assignment-required access control. |
+| App roles | Subscriber, deferred support/admin, and future resolver authorization. |
+| Employee and B2B guest groups | Explicit human access assignment. |
+| Conditional Access and MFA policy | Tenant authentication assurance. |
+| Guest access reviews | Removal of stale external access. |
+| GitHub OIDC federated credential | Secretless CI/CD login. |
+| Easy Auth client identity/federation | Prefer managed-identity client assertion where currently supported. |
+
+If secretless Easy Auth is unavailable or unapproved in the tenant, use a Key Vault reference for a time-limited client secret with an owned rotation procedure. Never place it directly in source, workflow YAML, container layers, or ordinary app settings.
+
+### Required Per-Environment Resources
+
+| Azure resource | Proposed use |
+|---|---|
+| Resource group | One lifecycle and policy boundary per environment. |
+| Linux App Service Plan | Container compute; initially one small measured SKU. |
+| Linux custom-container web app | FastAPI/Jinja registry. |
+| Production staging slot | Tested manual promotion and rollback. |
+| Azure Container Registry | Immutable application images; admin user disabled. |
+| Runtime user-assigned managed identity | Stable ACR, Cosmos, and Key Vault access. |
+| Cosmos DB for NoSQL account | Private profile, preference, and audit storage. |
+| Cosmos database/containers | Principal-partitioned registry and retention-limited audit. |
+| Key Vault | Session/CSRF material and fallback auth secret only if required. |
+| Application Insights | PII-minimized application telemetry. |
+| Log Analytics workspace | Central diagnostics and bounded retention. |
+| Azure Monitor Action Group | Production operational notification. |
+| Azure Monitor alert rules | Availability, error, auth, resource, and data alerts. |
+| VNet and integration subnet | App Service outbound access to private backends. |
+| Private endpoint subnet | Isolated Cosmos and Key Vault endpoints. |
+| Cosmos private endpoint and DNS zone | Production data path with public access disabled. |
+| Key Vault private endpoint and DNS zone | Production secret path with public access disabled. |
+| DNS record and custom hostname | User-facing service name. |
+| App Service managed certificate | TLS when App Service is the direct ingress. |
+| Diagnostic settings | App Service, Cosmos, Key Vault, and registry diagnostics. |
+| Cost budget and alerts | Environment cost ownership. |
+
+Use separate production and nonproduction Azure subscriptions where the landing zone supports them. Otherwise use distinct resource groups, identities, app registrations, Cosmos accounts, and policy assignments. Tag resources with owner, environment, system, cost center, and `internal_sensitive` data classification.
+
+### App Service
+
+Configure HTTPS only, minimum TLS 1.2, HTTP/2, Always On, platform health checks, and an immutable container digest. Disable FTP and basic publishing credentials. Restrict the SCM endpoint and configure slot-specific identities and settings.
+
+Choose a Standard or small Premium v3 plan only after verifying required slot, networking, and availability capabilities. Share a nonproduction plan only if data and failure-domain requirements permit it. Scale from measured latency, CPU, memory, and request demand rather than speculative traffic.
+
+App Service authentication, managed identities, VNet integration, and some settings do not swap like ordinary application configuration. Preprovision and test the staging slot. Do not rely on Linux custom-container auto-swap; use an explicit smoke-test and manual swap sequence.
+
+### Azure Container Registry
+
+- Disable the admin user.
+- Grant runtime identity `AcrPull` and CI identity `AcrPush` at the narrowest scope.
+- Deploy by immutable digest and retain rollback digests.
+- Generate an SBOM and scan image and dependency vulnerabilities.
+- Use Basic or Standard for the initial service; use Premium only if policy requires an ACR private endpoint.
+
+### Cosmos DB
+
+- Start with serverless for development/test and a low-volume production evaluation. Move to provisioned autoscale only from measured request-unit demand.
+- Use one region aligned with App Service and approved data residency.
+- Disable local/key authentication and use Entra data-plane RBAC.
+- Disable public network access in production and use private endpoint/DNS.
+- Enable continuous backup and point-in-time restore.
+- Use `_etag` concurrency and deterministic partition-local IDs.
+- Define and test the purge behavior for profiles, preferences, audits, and backup expiry.
+- Run a periodic restore exercise.
+
+Multi-region replication remains deferred until an approved RTO/RPO and regional failure analysis justify its cost and conflict behavior.
+
+### Key Vault
+
+- Use RBAC, soft delete, and purge protection.
+- Grant runtime identity access only to specifically required secrets.
+- Keep CI unable to read runtime secrets under the normal deployment path.
+- Use a production private endpoint and private DNS.
+- Prefer managed identity so that the vault remains empty or nearly empty.
+
+### Networking And Ingress
+
+The production minimum is:
+
+```text
+VNet
+|-- App Service integration subnet
+`-- Private endpoint subnet
+    |-- Cosmos private endpoint
+    `-- Key Vault private endpoint
+```
+
+The browser-facing App Service endpoint can remain public because Easy Auth and application authorization protect it. Azure Front Door Premium and WAF are optional unless organizational policy requires managed WAF, the App Service origin must be private, multi-region routing is approved, or measured abuse requires edge bot/rate controls.
+
+If Front Door is added, restrict App Service ingress to the `AzureFrontDoor.Backend` service tag and the exact `X-Azure-FDID`. Use an ACR private endpoint only with Premium ACR. Add a NAT Gateway only if a fixed outbound address is required.
+
+Do not provision Application Gateway, API Management, a load balancer, Dapr, Redis, or an Azure Container Apps environment for the MVP.
+
+### Observability And Alerting
+
+Collect aggregate request count, latency, 4xx/5xx, process restarts, CPU/memory, health status, authorization-denial counts, Cosmos failures/429s/request units/write conflicts, Key Vault failures, container startup/pull failures, and deployment smoke results.
+
+Configure production alerts for:
+
+- Availability and health-check failure.
+- Elevated 5xx or sustained latency.
+- Unusual 401/403 volume.
+- Restart loops or resource saturation.
+- Cosmos throttling, failed writes, or elevated latency.
+- Key Vault access failure.
+- Certificate expiry.
+- Backup-policy drift.
+- Monthly budget thresholds.
+
+No telemetry may contain claims, email address, display name, object/tenant ID, form values, request bodies, consent text, or query strings. Use random correlation IDs and a bounded Log Analytics retention period. Tests must search logs for seeded synthetic PII.
+
+### Governance And Recovery
+
+- Apply Azure Policy for HTTPS, approved regions/SKUs, managed identity, diagnostics, required tags, disabled data-plane local auth, and private production data endpoints.
+- Enable Defender for Cloud plans only according to platform policy and cost review; include App Service, container-image, Key Vault, and Cosmos findings in the risk review.
+- Add production resource locks to data resources after deployment automation is proven.
+- Define RTO/RPO before production. The default recovery path is Cosmos point-in-time restore plus App Service redeployment from IaC and a retained image digest.
+- Do not back up the stateless App Service file system or create recipient export storage.
+
+## Explicitly Deferred Resources And Capabilities
+
+The registry MVP must not provision:
+
+- Azure Container Apps, Dapr, or a React/static-web-app deployment.
+- API Management, Service Bus, Event Grid, Redis, or a delivery worker.
+- Azure Communication Services, SendGrid, SMTP credentials, or another provider.
+- A recipient outbox, delivery-attempt writer, or ledger mutation path.
+- The future eligibility index or recipient resolver.
+- Front Door/WAF unless an explicit trigger above applies.
+- Multi-region Cosmos.
+- Recipient CSV/export storage or bulk admin download.
+- A public or report-facing subscription projection.
+
+The absence of send-capable resources, credentials, packages, routes, and network integrations is required launch evidence; a disabled feature flag is insufficient.
+
+## Infrastructure And Delivery Pipeline
+
+Use Bicep for Azure resources and separate approved automation for Entra objects. Bicep receives app/client/tenant IDs as parameters but must not create or expose client secrets.
+
+The CI/CD sequence is:
+
+1. Run domain, adapter, authorization, security, UI, and documentation checks.
+2. Build the container without credentials, private fixtures, or real recipient data.
+3. Generate an SBOM and scan dependencies and image layers.
+4. Push an immutable digest to ACR through GitHub OIDC.
+5. Validate Bicep and run `what-if`.
+6. Deploy infrastructure using a dedicated deployment identity.
+7. Deploy the image digest to the staging slot.
+8. Run health, auth, authorization, browser, accessibility, and no-PII smoke tests.
+9. Require protected-environment approval for production.
+10. Swap staging to production manually.
+11. Recheck Easy Auth, managed identity, VNet, health, and slot-specific settings.
+12. Roll back by swap or by redeploying the prior digest.
+
+Separate the identity allowed to create role assignments from the ordinary application deployment identity. The ordinary workflow should not read Key Vault secrets and must never use a publish profile.
+
+## Threat And Privacy Review
+
+| Threat | Required control |
+|---|---|
+| Spoofed App Service identity headers | Require Easy Auth on every ingress path and run a deployed spoof-header test. |
+| Authenticated but unauthorized tenant principal | Enterprise-app assignment plus app-role checks on every route. |
+| Insecure direct object reference | Derive ownership from `(tid, oid)` and never from route/form principal fields. |
+| Cross-site request forgery | Synchronizer token, same-site cookie, and Origin/Referer checks. |
+| XSS or content injection | Autoescaping templates, restrictive CSP, no user-authored HTML, and security tests. |
+| Duplicate or lost updates | Idempotency token, deterministic IDs, transactional batch, and `_etag` checks. |
+| Directory address changes | Explicit confirmation before updating contact data. |
+| Stale B2B access | Entra guest lifecycle, access reviews, assignment removal, and short sessions. |
+| Bulk recipient exfiltration | No list-all/export endpoint; exact support lookup; private data-plane RBAC. |
+| PII in logs, CI, or image layers | Field allowlist logging, synthetic canaries, secret/PII scans, and private fixtures only. |
+| Premature delivery activation | No provider/queue/worker/ledger resources or credentials; independent activation ADR. |
+| Dependency or image compromise | Lock files, dependency review, SBOM, vulnerability scanning, digest deployment, and provenance. |
+
+Personal data categories are Entra tenant/object IDs, delivery address, selected locations/products, consent evidence, and lifecycle/audit facts. Data enters from Easy Auth claims and user forms, remains in the private registry, and is exposed only to App Service, Cosmos, Key Vault where applicable, Azure Monitor after minimization, and a future separately approved delivery provider. It must not enter prompts, public analytics, screenshots, support exports, or generated report artifacts.
+
+## Verification Strategy
+
+### Domain And Adapter Tests
+
+- Preference creation, update, pause, deletion, and consent-version behavior.
+- Deterministic uniqueness and repeated-submit idempotency.
+- `_etag` conflict handling and partition-local transactions.
+- Catalog-open versus operational-approved separation.
+- Catalog outage fails closed for creation but permits pause/delete.
+- Shared repository-contract tests for in-memory and Cosmos adapters.
+
+### Authentication And Authorization Tests
+
+- Assigned employee and invited B2B guest can access.
+- Unassigned tenant principal and other-tenant principal are denied.
+- Missing/malformed claims and missing app roles are denied.
+- External spoofed `X-MS-CLIENT-*` headers do not reach the application as trusted identity.
+- A user cannot read or mutate another principal's preference.
+- Missing/invalid directory email blocks creation.
+- Local mock-auth configuration cannot start in a deployed environment.
+
+### Browser And Accessibility Tests
+
+- Playwright coverage for empty, add, confirmation, edit, pause, delete, conflict, denied, missing-email, catalog-failure, and session-expiry states.
+- Desktop and mobile viewport coverage with no horizontal overflow.
+- Automated WCAG A/AA scan plus manual keyboard order, visible focus, headings, landmarks, labels, error association, zoom/reflow, contrast, and screen-reader announcement checks.
+- No unexpected network requests, console errors, remote assets, or browser-held provider tokens.
+
+### Security, Privacy, And Infrastructure Tests
+
+- CSRF, XSS, IDOR, open-redirect, mass-assignment, and rate-control tests.
+- Dependency, secret, IaC, and container vulnerability scans.
+- Synthetic email/tenant/object ID cannot be found in logs, traces, CI output, image layers, or generated artifacts.
+- IaC contains no email provider, queue, worker, outbox, eligibility index, resolver, or delivery-ledger writer.
+- Bicep lint/validation/`what-if`, Azure Policy compliance, and least-privilege role verification.
+- Staging deployment, real Entra employee/B2B smoke, managed-identity data access, slot swap, rollback, and Cosmos restore exercises.
+
+Automated accessibility and security scans are baseline evidence rather than approval.
+
+## Ordered Implementation
+
+1. Record repository ownership, data classification, region, RTO/RPO, retention, consent owner, support owner, and approved Entra groups.
+2. Add an ADR for the private registry boundary and update the Repository Map when the repository exists.
+3. Create the service repository with domain tests, FastAPI/Jinja shell, container, health endpoints, and production-safe local-auth guard.
+4. Provision nonproduction Entra and Azure foundations without delivery resources.
+5. Prove Easy Auth, app-role authorization, employee/B2B claims, spoof-header protection, logout, and CSRF.
+6. Implement the profile, preference, consent, audit, concurrency, idempotency, pause, and deletion contracts test-first.
+7. Implement the reviewed Country Office catalog boundary and fail-closed behavior.
+8. Complete all UI pages and states, responsive review, accessibility testing, and content review.
+9. Add private production data paths, observability, alerts, budgets, policy checks, backup/restore evidence, staging deployment, and rollback.
+10. Complete privacy, security, accessibility, platform, Country Office, and operations review.
+11. Launch registration-only with the non-operational banner and technical evidence that no send path exists.
+12. Treat any future eligibility index, resolver, worker, provider, outbox, attempt writer, or real send as a separate approved delivery program.
+
+## Stop And Go Gates
+
+| Gate | Go condition | Passing does not authorize |
+|---|---|---|
+| Plan approval | Named owners approve boundary, data classification, retention, region, and consent scope. | Implementation, deployment, or recipient collection. |
+| Nonproduction build | Tests pass; Easy Auth/B2B behavior proven; synthetic data only; no delivery resources. | Production collection or delivery. |
+| Production registration | Privacy, security, accessibility, operations, restore, monitoring, and support reviews pass; no-send evidence recorded. | Country Office approval, delivery eligibility, or email sending. |
+| Delivery design | Separate ADR defines eligibility, resolver, outbox, provider, revocation, and attempts; threat/privacy review passes. | Real sending. |
+| Operational activation | All applicable [Publication Gates](publication-gates.qmd), Country Office approvals, provider controls, monitoring, rollback, and accountable approval pass. | Certification unless independent expected evidence also exists. |
+
+## Open Stakeholder Decisions
+
+- Service repository and accountable product/operations owners.
+- Azure region and data-residency boundary.
+- Production RTO/RPO and whether they justify multi-region resources.
+- Retention, purge, audit, and backup-expiry periods.
+- Exact consent, privacy, non-operational, and support language.
+- Employee and B2B guest groups eligible for assignment.
+- Country Offices open for registration while operational approval remains false.
+- Process for principals without a usable directory email.
+- Whether tenant policy supports secretless Easy Auth client assertion.
+- Whether platform security policy mandates Front Door/WAF before production.
+- Support role scope and whether any operator console is justified.
+
+Recommended defaults are single-region App Service and Cosmos, server-rendered UI, explicit enterprise-app assignment, directory-only contact in the MVP, no support console or export, short PII deletion windows, no Front Door without a policy/threat trigger, and no delivery resources until a separate approval.
+
+## Current Microsoft References
+
+- [App Service authentication and authorization](https://learn.microsoft.com/azure/app-service/overview-authentication-authorization)
+- [Configure Microsoft Entra authentication for App Service](https://learn.microsoft.com/azure/app-service/configure-authentication-provider-aad)
+- [Work with user identities in App Service](https://learn.microsoft.com/azure/app-service/configure-authentication-user-identities)
+- [Work with OAuth provider tokens in App Service](https://learn.microsoft.com/azure/app-service/configure-authentication-oauth-tokens)
+- [Configure a custom container for App Service](https://learn.microsoft.com/azure/app-service/configure-custom-container)
+- [Cosmos DB data-plane RBAC](https://learn.microsoft.com/azure/cosmos-db/how-to-setup-rbac)
+
+Verify current platform behavior before implementation; these external services can change independently of this repository.
