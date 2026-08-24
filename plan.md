@@ -12,19 +12,23 @@ Complete a non-sending, artifact-oriented path from operational Product Decision
 4. Add strict root consumption without re-running Orchestration policy.
 5. Render the compatibility profile from semantic facts and prove Alert Parity against independently sourced expected facts or output.
 6. Integrate composition and publication manifests with real output-content privacy enforcement.
-7. Consult on packaging before adding concise email and technical-report profiles.
+7. Implement the non-normative [Alert Packaging Consultation Plan](docs/project/alert-packaging-consultation.qmd), complete accountable review, and record the decision before adding concise email or technical-report profiles.
 
 ## Blocked Decisions
 
 - Approve historical/provider evidence for forecast identity stability and non-reuse.
 - Approve supported official warning-zone, rainfall, and storm-surge sources and manual-review behavior.
-- Approve information density, section order, email/report packaging, and audience variants.
+- Approve minimum self-contained email facts, information density, section order, email/report packaging, and audience or locale variants.
+- Approve presentation differences among official Alert, official Warning, and forecast-only Warning while preserving supplied Product Decision and complete cumulative 144-hour 34 kt semantics.
+- Approve whether a linked report is optional, its failure fallback, and the owner of any future secure hosting; attachments and delivery remain separate decisions.
 - Approve lifecycle update, downgrade, closure, all-clear, and regional-composition policy.
 - Select delivery and attachment mechanisms only after focused reproducibility and provider review.
 
 ## Gates
 
 All runtime slices remain non-sending. Operational activation and external publication require the privacy, accessibility, certification, licensing, consultation, and accountable-approval checks in [Publication Gates](docs/project/publication-gates.qmd). Readiness contracts, integrity checks, self-checks, and rendered output do not satisfy those gates.
+
+The consultation pack is itself publication-sensitive review evidence. Exact synthetic assets require local/private screening before they are pushed to a public branch and accountable review before merge or broad cross-link promotion. A merged pack or stakeholder feedback does not approve a normative profile; that requires an accepted durable decision.
 
 ## Milestone History
 

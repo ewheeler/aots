@@ -21,8 +21,15 @@ status: "Current as of 2026-08-24"
 - No root PublicationManifest v2 integration or HTML/PNG privacy enforcement exists.
 - No operational persistence writer, scheduled ingestion, recipient outbox, provider delivery, real send, or legacy cutover is active.
 
+## Active Consultation Planning
+
+- The [Alert Packaging Consultation Plan](alert-packaging-consultation.qmd) defines a root-owned, non-normative review pack for four email/report alternatives using minimized synthetic official Alert, official Warning, and forecast-only Warning evidence states.
+- Prototype sources, generated HTML/QMD, screenshots, and stakeholder approval have not yet been implemented or completed.
+- The plan does not add PresentationProfile IDs or change Orchestration policy, V2 contracts, the compatibility renderer, publication approval, or delivery state.
+- The draft root readiness integration must verify the exact current dependency heads before claiming cross-repository current-head coverage, then repin to default-branch-reachable commits after dependency merges.
+
 ## Blocked Activation
 
-Operational activation remains blocked on forecast-identity stability evidence, content privacy inspection, source licensing, Country Office and stakeholder approval, deployment monitoring, persistence/concurrency validation, delivery controls, and explicit accountable approval.
+Operational activation remains blocked on forecast-identity stability evidence, content privacy inspection, source licensing, packaging consultation and its durable decision, Country Office and stakeholder approval, deployment monitoring, persistence/concurrency validation, delivery controls, and explicit accountable approval.
 
 Readiness evidence is not runtime behavior, certification, publication approval, or permission to send.

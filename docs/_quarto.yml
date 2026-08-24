@@ -91,6 +91,7 @@ website:
       contents:
         - project/status.qmd
         - project/roadmap.qmd
+        - project/alert-packaging-consultation.qmd
         - project/publication-gates.qmd
     - title: Contributor
       contents:

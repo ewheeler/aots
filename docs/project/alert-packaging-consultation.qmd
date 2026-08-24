@@ -1,0 +1,172 @@
+---
+title: "Alert Packaging Consultation Plan"
+page-type: project
+audience: "Alert Product V2 stakeholders, implementers, and reviewers"
+status: "Implementation plan; non-normative consultation not yet approved"
+---
+
+<style>
+main code {
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+</style>
+
+## Purpose And Authority
+
+This plan defines a non-normative review pack for deciding how future Warning and Alert products should be packaged. It does not approve a PresentationProfile, change Product Decision policy, implement ProductFactSet consumption, authorize publication, or enable delivery.
+
+The current machine-readable contracts intentionally freeze only the compatibility long-product profile. Concise email, technical-report/link, expanded email, attachment, and delivery profiles remain blocked until consultation produces a durable decision. The root repository owns this presentation consultation; Orchestration continues to own Product Decision and semantic facts. No submodule code, schema, canonical vector, profile ID, or current renderer changes belong in this work.
+
+Canonical boundaries remain in [ADR 0008](../adr/0008-separate-alert-classification-from-country-threat.md), [ADR 0009](../adr/0009-dry-run-alert-policy-engine.md), [ADR 0010](../adr/0010-separate-semantic-alert-facts-from-presentation.md), the [Alert Product V2 Readiness Reference](../reference/alert-product-v2-readiness.qmd), and the [Publication Gates](publication-gates.qmd).
+
+## Review Scope
+
+The pack will compare four packaging alternatives:
+
+1. Existing combined long product.
+2. Concise self-contained operational email.
+3. Concise self-contained email plus a non-essential technical-report link.
+4. Expanded email-only briefing.
+
+The linked technical-report prototype will demonstrate executive interpretation, modeled exposure, complete cumulative 144-hour local threat, optional supplied forecast evolution, provenance, unavailable hazards, and caveats. It must not imply that secure hosting, authentication, attachments, or delivery have been implemented.
+
+Three minimized synthetic evidence states are required:
+
+| Evidence state | Product Decision boundary | Required presentation |
+|---|---|---|
+| Official Alert | Supplied Alert decision plus official hurricane status | Keep official global status separate from complete cumulative 144-hour local 34 kt threat. |
+| Official Warning | Supplied Warning decision plus supported below-hurricane official status | Use the same factual core and distinguish official status from local threat. |
+| Forecast-only Warning | Supplied Warning decision without fabricated official status | Mark official state unavailable; never present forecast-only evidence as Alert. |
+
+All four alternatives are reviewed for official Alert and official Warning. The recommended alternative is also reviewed for forecast-only Warning. If stakeholders decline that edge-case review, the decision record must explicitly exclude forecast-only Warning from the approved scope.
+
+## Semantic And Safety Invariants
+
+Every prototype and technical report must visibly state:
+
+- `CONSULTATION PROTOTYPE - NOT OPERATIONAL`
+- Synthetic public test data.
+- Modeled exposure, not observed impact.
+- Forecast-conditioned PiN/CHiN, not observed need.
+- Rainfall and storm surge unavailable where unsupported.
+- Prototype wording, not approved action guidance.
+
+The implementation must also preserve these invariants:
+
+- Product Decision is supplied input. Presentation never infers Warning or Alert from 34 kt, 50 kt, or 64 kt values.
+- Official global storm status and local Country Threat Assessment are separate labeled facts.
+- The local view is complete cumulative 144-hour 34 kt evidence, not a period-indexed outlook.
+- Legacy 50 kt totals never substitute for qualifying 34 kt exposure.
+- Forecast evolution appears only when supplied in the minimized synthetic input and is never labeled an observed trend.
+- Unavailable rainfall or surge is shown as unavailable, never as zero.
+- No prototype contains real baselines, recipients, private contacts, coordinates, facility detail, source URLs, raw provider identifiers, delivery state, inferred actions, operational recommendations, remote assets, or V2 profile IDs.
+- Alternative slugs are consultation labels only; they are not normative profile identifiers.
+
+## Planned Ownership And Files
+
+- `docs/project/alert-packaging-consultation.qmd`: canonical durable plan and decision questions.
+- `docs/project/alert-packaging-consultation/scenarios/`: durable minimized synthetic display inputs, not ProductFactSet contracts.
+- `docs/project/alert-packaging-consultation/prototype-templates/`: durable non-normative email and technical-report template sources.
+- `docs/project/alert-packaging-consultation/prototype.css`: prototype-only styling that must not alter the compatibility renderer.
+- `scripts/build_alert_packaging_consultation.py`: deterministic offline root tooling with no classification or network access.
+- `tests/aots_portable_reports/test_alert_consultation_prototypes.py`: focused semantic, safety, and deterministic-generation checks.
+- `build/alert-packaging-consultation/`: ignored, reproducible HTML, QMD, and Quarto support output that is never committed.
+- `docs/assets/alert-packaging-consultation/`: approved screenshots and `provenance.json` retained as review evidence, never parity or calculation authority.
+
+Implementation must add the generated build path to `.gitignore`. It must not modify `report_wrapper.py`, the current alert renderer, V2 contracts, canonical readiness fixtures, readiness counts, or any submodule merely to create the pack.
+
+## Deterministic Build Contract
+
+The generator will accept an explicit input and output directory, run without network access, and use fixed timestamps and locale. It will sort scenarios and alternatives, escape display content, reject undeclared fields and unsafe HTML, and reject external URLs, contacts, coordinates, source paths, provider identifiers, profile IDs, and remote resources.
+
+For identical inputs, generator-owned HTML, QMD, CSS copies, and manifests must be byte-identical. Tests will generate twice into temporary directories and compare those files. Quarto and browser output are version-bound review evidence; regenerated PNG bytes are not expected to match across browsers, fonts, operating systems, or Quarto versions.
+
+## Screenshot And Review Evidence
+
+Use fixed CSS viewports of 1440 by 900 and 390 by 844 at device-pixel ratio 1. The expected evidence matrix is:
+
+- Four email alternatives for official Alert and official Warning at both viewports: 16 captures.
+- The recommended email alternative for forecast-only Warning at both viewports: 2 captures.
+- The linked technical report for all three evidence states at both viewports: 6 captures.
+
+The evidence set therefore contains 24 captures unless the consultation scope records an explicit reduction. Each screenshot must omit browser chrome and have embedded metadata removed. `provenance.json` records the scenario, alternative, screenshot SHA-256, source HTML SHA-256, generator source commit, viewport, device-pixel ratio, browser and version, operating system, applicable Quarto version, capture date, and `synthetic_public` classification.
+
+Screenshots are visual review evidence only. Do not use pixel-diff tests or describe them as expected output, Alert Parity, certification, or approved design.
+
+## Ordered Implementation
+
+1. Record whether the consultation venue is internal, partner-restricted, or public and identify accountable reviewers.
+2. On the existing root readiness branch, refresh the Forecast PR gitlink in a dedicated commit before claiming current dependency-head verification. Do not mix the gitlink correction with prototype content.
+3. Create the three minimized synthetic evidence states with fixed invented names, times, aggregate values, and synthetic provenance.
+4. Implement deterministic template sources and the offline generator without importing or changing runtime presentation code.
+5. Generate the four email alternatives and linked technical reports under `build/alert-packaging-consultation/`.
+6. Add focused tests for semantics, prohibited content, deterministic source generation, and accessible HTML structure.
+7. Add the consultation page to Quarto navigation and link it from the roadmap, status, presentation reference, and repository map.
+8. Run local/private pre-publication screening on the exact generated outputs and proposed screenshots before pushing them to the public root branch.
+9. Commit deterministic sources, tests, and documentation separately from screenshot evidence and its provenance manifest.
+10. Run focused and full repository checks, render the documentation, and record desktop/mobile browser and accessibility evidence.
+11. Complete accountable privacy, accessibility, licensing, brand, dignity, and data-sharing review before merge or broad cross-link promotion.
+12. Comment on dependency PRs only after the exact pack is cleared for public circulation; state that it is non-normative and imposes no contract or runtime change.
+13. After dependency PRs merge, repin root gitlinks to verified default-branch-reachable commits and rerun root CI before marking the root readiness PR ready.
+14. Record the consultation result in an accepted ADR or equivalent durable decision before beginning normative profile work.
+
+## Verification
+
+Focused automated checks must assert:
+
+- Every output contains all prototype and evidence disclaimers.
+- Changing local numeric facts cannot change the supplied Product Decision.
+- Official status and local 34 kt threat use separate labels.
+- Complete cumulative 144-hour semantics are explicit and no period-indexed claim is invented.
+- 50 kt totals never substitute for 34 kt qualifying evidence.
+- Modeled exposure and forecast-conditioned PiN/CHiN use qualified language.
+- Unsupported rainfall and surge are unavailable rather than zero.
+- Prohibited fields, phrases, external URLs, remote assets, and V2 profile IDs are absent.
+- Generated HTML escapes content and has language metadata, one primary heading, landmarks, ordered headings, table headers and captions, meaningful link text, and alternative text or equivalent descriptions.
+- Repeated generator runs produce byte-identical generator-owned text outputs.
+
+Run the focused prototype test first, then the documentation-structure, alert-renderer, and V2-readiness tests. Before completion run the full test suite, repository pre-commit checks, and `quarto render docs`.
+
+Browser review must cover each distinct template at desktop and mobile widths. Record an axe-compatible WCAG A/AA scan plus manual checks for keyboard order, visible focus, heading and landmark structure, contrast, color-independent meaning, zoom, reflow at 320-390 px, alternative text, low-bandwidth behavior, console errors, horizontal overflow, and unexpected network requests. Automated scans are baseline evidence, not accessibility approval. Browser tooling remains a separately recorded check until a dedicated change adds pinned dependencies and a lockfile.
+
+## Stop And Go Gates
+
+| Gate | Go condition | What passing does not authorize |
+|---|---|---|
+| Build | Root-only changes, minimized synthetic inputs, deterministic source generation, no committed generated HTML, focused tests pass | Public circulation, normative profiles, or delivery. |
+| Public branch push | Exact assets pass local/private pre-publication screening | Merge or broad promotion. |
+| Merge and cross-link promotion | Exact immutable assets pass accountable privacy, accessibility, licensing, brand, dignity, and data-sharing review | Normative profile approval or operational publication. |
+| Normative profile work | An accepted durable decision records the complete consultation outcome and named owners for unresolved blockers | Publication, persistence, recipients, provider delivery, or sending. |
+| Publication and activation | All applicable [Publication Gates](publication-gates.qmd) and activation controls pass independently | Certification unless independent expected evidence also exists. |
+
+## Required Consultation Decision
+
+The durable decision must record:
+
+- Chosen packaging family and fallback behavior.
+- Intended audiences and locales.
+- Minimum self-contained email facts and acceptable density.
+- Section order and visual emphasis.
+- Official status versus local threat presentation.
+- Exact complete cumulative 144-hour 34 kt treatment.
+- Differences among official Alert, official Warning, and forecast-only Warning.
+- Missing-hazard behavior and forecast-evolution limits.
+- Whether a linked report is optional, how link failure degrades, and who owns future secure hosting.
+- Country-first versus regional presentation rules.
+- Approved action, reference, and public-contact sources, or their continued omission.
+- Privacy classification, accessibility requirements, licensing and brand constraints, approver roles, approval date, and reviewed source commit.
+- An explicit statement that the decision does not approve operational publication, attachment delivery, recipients, persistence, or sending.
+
+Recommended defaults are a concise self-contained email with a non-essential secure-report link, country-first presentation, the same factual core across product types, complete cumulative 144-hour presentation, omission of actions and contacts until separately approved, and deferral of attachments and delivery mechanisms.
+
+## Current Review Chain
+
+The consultation is staged alongside these draft readiness changes:
+
+- [Orchestration dry-run policy PR #2](https://github.com/felixschwebel/Ahead-of-the-Storm-ORCHESTRATION/pull/2)
+- [Orchestration V2 readiness-contract PR #3](https://github.com/felixschwebel/Ahead-of-the-Storm-ORCHESTRATION/pull/3)
+- [Forecast identity-retention PR #3](https://github.com/unicef-drp/TC-ECMWF-Forecast-Pipeline/pull/3)
+- [Root readiness-integration PR #1](https://github.com/ewheeler/aots/pull/1)
+
+Before current-head verification is claimed, Root PR #1 must pin the exact reviewed dependency heads and report the resulting checks. Orchestration PR #3 remains stacked on PR #2. After dependencies merge, resolve and pin commits reachable from their default branches; do not assume that reviewed head commits remain reachable after squash or rebase.

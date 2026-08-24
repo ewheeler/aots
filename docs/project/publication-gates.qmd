@@ -28,6 +28,13 @@ No report or alert becomes publishable merely because it renders, validates agai
 - Treat a Presentation Self-Check, screenshot review, expected HTML, and Baseline Replay as non-certifying evidence.
 - Label comparison state and limitations for the intended audience.
 
+## Consultation And Review Evidence
+
+- Treat a public repository branch as public circulation: screen exact synthetic assets locally or in a private review venue before pushing them.
+- Complete accountable privacy, accessibility, licensing, brand, dignity, and data-sharing review before merging visible prototypes or broadly promoting cross-repository links.
+- Record tool versions and limitations for browser screenshots and automated accessibility scans; do not treat screenshots as expected output, parity, certification, or approved design.
+- Keep consultation approval separate from profile, publication, attachment, recipient, delivery, and activation approval.
+
 ## Approval
 
 - Confirm source licensing and permission to publish every factual and visual source.
@@ -39,4 +46,4 @@ No report or alert becomes publishable merely because it renders, validates agai
 
 Operational Warning/Alert activation additionally requires approved identity evidence, policy and registry releases, monitored authoritative retrieval, persistence/concurrency validation, recipient and provider controls, shadow/canary evidence, rollback procedures, and explicit send approval.
 
-Failure of any applicable gate blocks publication or activation. Passing one gate never implies another.
+Failure of any applicable gate blocks circulation, publication, or activation at that stage. Passing one gate never implies another.

@@ -13,7 +13,7 @@ Use these sources according to the question being answered:
 3. `docs/adr/` records durable architecture decisions and their status; `docs/reference/alert-product-v2-readiness.qmd` is the human-readable V2 readiness reference under those ADRs and the Orchestration manifest.
 4. `src/aots_portable_reports/`, `tests/aots_portable_reports/`, `pyproject.toml`, and `.github/workflows/ci.yml` establish implemented behavior.
 5. `docs/explanation/architecture.qmd` explains the current architecture.
-6. `docs/project/status.qmd` records current implemented and blocked status; `plan.md` and `docs/project/roadmap.qmd` record open work.
+6. `docs/project/status.qmd` records current implemented and blocked status; `plan.md` and `docs/project/roadmap.qmd` record open work; `docs/project/alert-packaging-consultation.qmd` owns the non-normative packaging consultation plan.
 
 Treat target, candidate, and future language in plans as proposed until source and tests implement it.
 
@@ -110,6 +110,7 @@ The current `TRACK_ID` audit failed because the forecast extractor prefers `long
 - DAG dependency or bundle-layout changes: update `dag.py`, snapshot tests, `docs/explanation/architecture.qmd`, and the generated DAG image together.
 - Alert changes: keep structured facts, bounded prose, presentation, visual generation, and persistence as distinct review seams.
 - ProductFactSet/Profile changes: update the Orchestration producer or V1 adapter, root contract/validation, artifact-role fixture manifests, compatibility-profile renderer, claim-parity tests, architecture docs, and this map together.
+- Alert packaging consultation changes: start with `docs/project/alert-packaging-consultation.qmd`; keep minimized synthetic scenario and template sources root-owned, route future generator behavior through `scripts/build_alert_packaging_consultation.py` and `tests/aots_portable_reports/test_alert_consultation_prototypes.py`, and do not change profile contracts or submodule runtime until an accepted consultation decision authorizes normative work. The generator and focused test paths are proposed until implemented.
 - V2 identity/canonicalization/privacy changes: the machine-readable Orchestration contract set is normative; update it, its manifest/vectors/tests, root independent verification, `docs/reference/alert-product-v2-readiness.qmd`, and ADRs 0011-0013 together. Do not infer runtime behavior from readiness scaffolding.
 - Certification changes: update comparison tests and architecture documentation or an ADR when trust semantics change.
 
@@ -126,7 +127,7 @@ Generated or reproducible outputs include:
 - `docs/assets/architecture/portable-report-hamilton-dag.png`, generated from `dag.py`.
 - `docs/_site/`, `.quarto/`, caches, and temporary output directories.
 
-Comparison screenshots under `docs/assets/comparison-cases/` are deliberately committed review evidence, not calculation authority.
+Comparison screenshots under `docs/assets/comparison-cases/` are deliberately committed review evidence, not calculation authority. Proposed consultation screenshots under `docs/assets/alert-packaging-consultation/` have the same review-only boundary and require a provenance manifest; generated prototype HTML and QMD belong under ignored `build/alert-packaging-consultation/` rather than documentation source.
 
 Real `known-good-baselines/`, `.env`, credentials, keys, and certificates are local-only. Real baselines may contain facility-level, beneficiary, geospatial, or operational data. Normal committed baseline data belongs under `tests/fixtures/` and must be synthetic.
 
@@ -136,7 +137,7 @@ Real `known-good-baselines/`, `.env`, credentials, keys, and certificates are lo
 
 Implemented behavior includes the three public commands, integrity validation, the Hamilton snapshot DAG, the thin existing-report wrapper, provisional and certifying comparison states, Alert Decision validation, decision-driven Warning/Alert rendering, non-renderable decision auditing, and publication from Snapshot Output Bundles. Orchestration also contains a credential-free local feed/parser, state normalization, storm identity, country threat, classifier, lifecycle, recipient suppression, and Product Facts composition with focused tests.
 
-Alert Product V2 readiness is implemented at the contract, vector, manifest, and independent-verification seams; runtime production and consumption are absent. See `docs/reference/alert-product-v2-readiness.qmd` for exact inventories and contract detail. HTML/PNG content privacy inspection, source licensing, approval, and publication enforcement are unimplemented and blocking. Other incomplete architecture includes typed official warning/rain/surge payloads, scheduled/monitored authoritative advisory retrieval, Snowflake classifier and persistence deployment, operational lifecycle/delivery, explicit repository/store interfaces, a fully typed Report Contract, complete file/blob adapters, broad public report publication, and removal of Snowflake coupling from the live dashboard or orchestration stack.
+Alert Product V2 readiness is implemented at the contract, vector, manifest, and independent-verification seams; runtime production and consumption are absent. See `docs/reference/alert-product-v2-readiness.qmd` for exact inventories and contract detail. The packaging consultation plan is documented, but its synthetic sources, generator, screenshots, review, and durable decision are not implemented. HTML/PNG content privacy inspection, source licensing, approval, and publication enforcement are unimplemented and blocking. Other incomplete architecture includes typed official warning/rain/surge payloads, scheduled/monitored authoritative advisory retrieval, Snowflake classifier and persistence deployment, operational lifecycle/delivery, explicit repository/store interfaces, a fully typed Report Contract, complete file/blob adapters, broad public report publication, and removal of Snowflake coupling from the live dashboard or orchestration stack.
 
 ## Change Locality
 

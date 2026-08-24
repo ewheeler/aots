@@ -22,7 +22,7 @@ This is the normative presentation reference for local `rendered-alert.html` out
 
 Product Facts contain no sections, headings, prose, visual placement, packaging, recipients, or delivery settings. Presentation Profiles select a closed set of renderer-owned component IDs with typed options, declared fact requirements, and explicit missing-fact behavior. A profile cannot execute expressions, query arbitrary fact paths, alter a Product Decision, or invent evidence.
 
-The first V2 profile is a compatibility profile for the current long product. Concise operational-email and technical report/link profiles require a later packaging decision. PDF and attachment delivery are outside this specification.
+The first V2 profile is a compatibility profile for the current long product. Concise operational-email and technical report/link profiles require the accepted outcome of the non-normative [Alert Packaging Consultation Plan](../project/alert-packaging-consultation.qmd). Consultation alternatives and screenshots are not profile definitions or conformance evidence. PDF and attachment delivery are outside this specification.
 
 ## Compatibility Layout
 

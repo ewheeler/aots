@@ -23,6 +23,7 @@ Ahead of the Storm produces portable, auditable tropical cyclone impact reports 
 | Exporting operational source evidence | [Export a Snowflake Baseline](how-to/export-a-snowflake-baseline.qmd) |
 | Reviewing whether output can be trusted | [Comparison and Certification](reference/comparison-and-certification.qmd) |
 | Reviewing current implementation readiness | [Project Status](project/status.qmd) |
+| Reviewing future Warning and Alert packaging | [Alert Packaging Consultation Plan](project/alert-packaging-consultation.qmd) |
 | Making an architecture decision | [ADR Index](adr/index.qmd) |
 | Contributing documentation or code | [Documentation Guide](contributor/documentation-guide.qmd) |
 
