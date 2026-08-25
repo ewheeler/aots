@@ -230,3 +230,4 @@ __marimo__/
 *.pfx
 credentials.json
 docs/_site/
+build/alert-packaging-consultation/
