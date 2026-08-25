@@ -2,7 +2,7 @@
 title: "Alert Packaging Consultation Plan"
 page-type: project
 audience: "Alert Product V2 stakeholders, implementers, and reviewers"
-status: "Implementation plan; non-normative consultation not yet approved"
+status: "Synthetic review pack implemented; consultation approval pending"
 ---
 
 <style>
@@ -10,11 +10,34 @@ main code {
   overflow-wrap: anywhere;
   white-space: normal;
 }
+
+.prototype-pair {
+  align-items: start;
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: minmax(0, 3fr) minmax(12rem, 1fr);
+}
+
+.prototype-pair img {
+  border: 1px solid #bdd5de;
+  box-shadow: 0 0.5rem 1.5rem rgb(7 82 111 / 12%);
+  width: 100%;
+}
+
+.prototype-pair figcaption {
+  color: #40535e;
+}
+
+@media (max-width: 720px) {
+  .prototype-pair {
+    grid-template-columns: 1fr;
+  }
+}
 </style>
 
 ## Purpose And Authority
 
-This plan defines a non-normative review pack for deciding how future Warning and Alert products should be packaged. It does not approve a PresentationProfile, change Product Decision policy, implement ProductFactSet consumption, authorize publication, or enable delivery.
+This page presents a non-normative synthetic review pack for deciding how future Warning and Alert products should be packaged. It does not approve a PresentationProfile, change Product Decision policy, implement ProductFactSet consumption, authorize publication, or enable delivery.
 
 The current machine-readable contracts intentionally freeze only the compatibility long-product profile. Concise email, technical-report/link, expanded email, attachment, and delivery profiles remain blocked until consultation produces a durable decision. The root repository owns this presentation consultation; Orchestration continues to own Product Decision and semantic facts. No submodule code, schema, canonical vector, profile ID, or current renderer changes belong in this work.
 
@@ -41,6 +64,132 @@ Three minimized synthetic evidence states are required:
 
 All four alternatives are reviewed for official Alert and official Warning. The recommended alternative is also reviewed for forecast-only Warning. If stakeholders decline that edge-case review, the decision record must explicitly exclude forecast-only Warning from the approved scope.
 
+## Review Instructions
+
+Review the desktop and mobile evidence together. For each alternative, record whether the email is self-contained, whether the distinction between official status and local threat is clear, which facts can be removed without changing meaning, and whether the hierarchy remains usable under time pressure. Do not evaluate typography or wording as an approved brand or action standard; those remain consultation inputs.
+
+The recommended starting point is Alternative 3: a concise self-contained email with a non-essential technical-report link. Link failure must leave all minimum decision facts in the email. The forecast-only Warning example tests the evidence state that cannot be represented as forecast-only Alert.
+
+::: {.callout-warning}
+These screenshots are synthetic review evidence. They are not expected output, Alert Parity, certification, approved design, publication approval, or permission to send.
+:::
+
+## Official Alert Prototypes
+
+::: {.panel-tabset}
+
+### 1. Existing Combined Long Product
+
+::: {.prototype-pair}
+![Desktop view of the synthetic official Alert combined long product.](../assets/alert-packaging-consultation/official-alert--combined-long--desktop.png){fig-alt="Desktop view of the synthetic official Alert combined long product."}
+
+![Mobile view of the synthetic official Alert combined long product.](../assets/alert-packaging-consultation/official-alert--combined-long--mobile.png){fig-alt="Mobile view of the synthetic official Alert combined long product."}
+:::
+
+### 2. Concise Operational Email
+
+::: {.prototype-pair}
+![Desktop view of the synthetic official Alert concise email.](../assets/alert-packaging-consultation/official-alert--concise-email--desktop.png){fig-alt="Desktop view of the synthetic official Alert concise email."}
+
+![Mobile view of the synthetic official Alert concise email.](../assets/alert-packaging-consultation/official-alert--concise-email--mobile.png){fig-alt="Mobile view of the synthetic official Alert concise email."}
+:::
+
+### 3. Concise Email Plus Report
+
+::: {.prototype-pair}
+![Desktop view of the synthetic official Alert concise linked-report email.](../assets/alert-packaging-consultation/official-alert--concise-linked-report--desktop.png){fig-alt="Desktop view of the synthetic official Alert concise linked-report email."}
+
+![Mobile view of the synthetic official Alert concise linked-report email.](../assets/alert-packaging-consultation/official-alert--concise-linked-report--mobile.png){fig-alt="Mobile view of the synthetic official Alert concise linked-report email."}
+:::
+
+### 4. Expanded Email-Only Briefing
+
+::: {.prototype-pair}
+![Desktop view of the synthetic official Alert expanded email.](../assets/alert-packaging-consultation/official-alert--expanded-email--desktop.png){fig-alt="Desktop view of the synthetic official Alert expanded email."}
+
+![Mobile view of the synthetic official Alert expanded email.](../assets/alert-packaging-consultation/official-alert--expanded-email--mobile.png){fig-alt="Mobile view of the synthetic official Alert expanded email."}
+:::
+
+:::
+
+## Official Warning Prototypes
+
+::: {.panel-tabset}
+
+### 1. Existing Combined Long Product
+
+::: {.prototype-pair}
+![Desktop view of the synthetic official Warning combined long product.](../assets/alert-packaging-consultation/official-warning--combined-long--desktop.png){fig-alt="Desktop view of the synthetic official Warning combined long product."}
+
+![Mobile view of the synthetic official Warning combined long product.](../assets/alert-packaging-consultation/official-warning--combined-long--mobile.png){fig-alt="Mobile view of the synthetic official Warning combined long product."}
+:::
+
+### 2. Concise Operational Email
+
+::: {.prototype-pair}
+![Desktop view of the synthetic official Warning concise email.](../assets/alert-packaging-consultation/official-warning--concise-email--desktop.png){fig-alt="Desktop view of the synthetic official Warning concise email."}
+
+![Mobile view of the synthetic official Warning concise email.](../assets/alert-packaging-consultation/official-warning--concise-email--mobile.png){fig-alt="Mobile view of the synthetic official Warning concise email."}
+:::
+
+### 3. Concise Email Plus Report
+
+::: {.prototype-pair}
+![Desktop view of the synthetic official Warning concise linked-report email.](../assets/alert-packaging-consultation/official-warning--concise-linked-report--desktop.png){fig-alt="Desktop view of the synthetic official Warning concise linked-report email."}
+
+![Mobile view of the synthetic official Warning concise linked-report email.](../assets/alert-packaging-consultation/official-warning--concise-linked-report--mobile.png){fig-alt="Mobile view of the synthetic official Warning concise linked-report email."}
+:::
+
+### 4. Expanded Email-Only Briefing
+
+::: {.prototype-pair}
+![Desktop view of the synthetic official Warning expanded email.](../assets/alert-packaging-consultation/official-warning--expanded-email--desktop.png){fig-alt="Desktop view of the synthetic official Warning expanded email."}
+
+![Mobile view of the synthetic official Warning expanded email.](../assets/alert-packaging-consultation/official-warning--expanded-email--mobile.png){fig-alt="Mobile view of the synthetic official Warning expanded email."}
+:::
+
+:::
+
+## Forecast-Only Warning Prototype
+
+This evidence state intentionally has no fabricated official current status. The supplied Product Decision remains Warning and the local threat remains complete cumulative 144-hour 34 kt evidence.
+
+::: {.prototype-pair}
+![Desktop view of the synthetic forecast-only Warning concise linked-report email.](../assets/alert-packaging-consultation/forecast-only-warning--concise-linked-report--desktop.png){fig-alt="Desktop view of the synthetic forecast-only Warning concise linked-report email."}
+
+![Mobile view of the synthetic forecast-only Warning concise linked-report email.](../assets/alert-packaging-consultation/forecast-only-warning--concise-linked-report--mobile.png){fig-alt="Mobile view of the synthetic forecast-only Warning concise linked-report email."}
+:::
+
+## Optional Technical Reports
+
+::: {.panel-tabset}
+
+### Official Alert
+
+::: {.prototype-pair}
+![Desktop view of the optional synthetic official Alert technical report.](../assets/alert-packaging-consultation/official-alert--technical-report--desktop.png){fig-alt="Desktop view of the optional synthetic official Alert technical report."}
+
+![Mobile view of the optional synthetic official Alert technical report.](../assets/alert-packaging-consultation/official-alert--technical-report--mobile.png){fig-alt="Mobile view of the optional synthetic official Alert technical report."}
+:::
+
+### Official Warning
+
+::: {.prototype-pair}
+![Desktop view of the optional synthetic official Warning technical report.](../assets/alert-packaging-consultation/official-warning--technical-report--desktop.png){fig-alt="Desktop view of the optional synthetic official Warning technical report."}
+
+![Mobile view of the optional synthetic official Warning technical report.](../assets/alert-packaging-consultation/official-warning--technical-report--mobile.png){fig-alt="Mobile view of the optional synthetic official Warning technical report."}
+:::
+
+### Forecast-Only Warning
+
+::: {.prototype-pair}
+![Desktop view of the optional synthetic forecast-only Warning technical report.](../assets/alert-packaging-consultation/forecast-only-warning--technical-report--desktop.png){fig-alt="Desktop view of the optional synthetic forecast-only Warning technical report."}
+
+![Mobile view of the optional synthetic forecast-only Warning technical report.](../assets/alert-packaging-consultation/forecast-only-warning--technical-report--mobile.png){fig-alt="Mobile view of the optional synthetic forecast-only Warning technical report."}
+:::
+
+:::
+
 ## Semantic And Safety Invariants
 
 Every prototype and technical report must visibly state:
@@ -63,24 +212,24 @@ The implementation must also preserve these invariants:
 - No prototype contains real baselines, recipients, private contacts, coordinates, facility detail, source URLs, raw provider identifiers, delivery state, inferred actions, operational recommendations, remote assets, or V2 profile IDs.
 - Alternative slugs are consultation labels only; they are not normative profile identifiers.
 
-## Planned Ownership And Files
+## Implemented Ownership And Files
 
-- `docs/project/alert-packaging-consultation.qmd`: canonical durable plan and decision questions.
+- `docs/project/alert-packaging-consultation.qmd`: canonical durable review pack, plan, and decision questions.
 - `docs/project/alert-packaging-consultation/scenarios/`: durable minimized synthetic display inputs, not ProductFactSet contracts.
 - `docs/project/alert-packaging-consultation/prototype-templates/`: durable non-normative email and technical-report template sources.
 - `docs/project/alert-packaging-consultation/prototype.css`: prototype-only styling that must not alter the compatibility renderer.
 - `scripts/build_alert_packaging_consultation.py`: deterministic offline root tooling with no classification or network access.
 - `tests/aots_portable_reports/test_alert_consultation_prototypes.py`: focused semantic, safety, and deterministic-generation checks.
 - `build/alert-packaging-consultation/`: ignored, reproducible HTML, QMD, and Quarto support output that is never committed.
-- `docs/assets/alert-packaging-consultation/`: approved screenshots and `provenance.json` retained as review evidence, never parity or calculation authority.
+- `docs/assets/alert-packaging-consultation/`: locally screened screenshots and `provenance.json` retained as review evidence, never parity or calculation authority.
 
-Implementation must add the generated build path to `.gitignore`. It must not modify `report_wrapper.py`, the current alert renderer, V2 contracts, canonical readiness fixtures, readiness counts, or any submodule merely to create the pack.
+The generated build path is ignored. The pack does not modify `report_wrapper.py`, the current alert renderer, V2 contracts, canonical readiness fixtures, readiness counts, or any submodule.
 
 ## Deterministic Build Contract
 
-The generator will accept an explicit input and output directory, run without network access, and use fixed timestamps and locale. It will sort scenarios and alternatives, escape display content, reject undeclared fields and unsafe HTML, and reject external URLs, contacts, coordinates, source paths, provider identifiers, profile IDs, and remote resources.
+The generator accepts explicit input and output directories, runs without network access, and uses fixed fixture timestamps and locale-independent formatting. It sorts scenarios and alternatives, escapes display content, rejects undeclared fields and unsafe HTML, and rejects external URLs, contacts, coordinates, source paths, provider identifiers, profile IDs, and remote resources.
 
-For identical inputs, generator-owned HTML, QMD, CSS copies, and manifests must be byte-identical. Tests will generate twice into temporary directories and compare those files. Quarto and browser output are version-bound review evidence; regenerated PNG bytes are not expected to match across browsers, fonts, operating systems, or Quarto versions.
+For identical inputs, generator-owned HTML, QMD, CSS copies, and manifests are byte-identical. Tests generate twice into temporary directories and compare those files. Quarto and browser output are version-bound review evidence; regenerated PNG bytes are not expected to match across browsers, fonts, operating systems, or Quarto versions.
 
 ## Screenshot And Review Evidence
 
@@ -94,22 +243,24 @@ The evidence set therefore contains 24 captures unless the consultation scope re
 
 Screenshots are visual review evidence only. Do not use pixel-diff tests or describe them as expected output, Alert Parity, certification, or approved design.
 
-## Ordered Implementation
+## Implementation Status And Remaining Workflow
 
-1. Record whether the consultation venue is internal, partner-restricted, or public and identify accountable reviewers.
-2. On the existing root readiness branch, refresh the Forecast PR gitlink in a dedicated commit before claiming current dependency-head verification. Do not mix the gitlink correction with prototype content.
-3. Create the three minimized synthetic evidence states with fixed invented names, times, aggregate values, and synthetic provenance.
-4. Implement deterministic template sources and the offline generator without importing or changing runtime presentation code.
-5. Generate the four email alternatives and linked technical reports under `build/alert-packaging-consultation/`.
-6. Add focused tests for semantics, prohibited content, deterministic source generation, and accessible HTML structure.
-7. Add the consultation page to Quarto navigation and link it from the roadmap, status, presentation reference, and repository map.
-8. Run local/private pre-publication screening on the exact generated outputs and proposed screenshots before pushing them to the public root branch.
-9. Commit deterministic sources, tests, and documentation separately from screenshot evidence and its provenance manifest.
-10. Run focused and full repository checks, render the documentation, and record desktop/mobile browser and accessibility evidence.
-11. Complete accountable privacy, accessibility, licensing, brand, dignity, and data-sharing review before merge or broad cross-link promotion.
-12. Comment on dependency PRs only after the exact pack is cleared for public circulation; state that it is non-normative and imposes no contract or runtime change.
-13. After dependency PRs merge, repin root gitlinks to verified default-branch-reachable commits and rerun root CI before marking the root readiness PR ready.
-14. Record the consultation result in an accepted ADR or equivalent durable decision before beginning normative profile work.
+Completed locally:
+
+1. The root readiness branch pins the reviewed Forecast PR head separately from prototype content.
+2. Three minimized synthetic evidence states use fixed invented names, times, aggregate values, and synthetic provenance.
+3. Deterministic template sources and an offline generator produce the four alternatives and optional technical reports without importing runtime presentation code.
+4. Focused tests cover semantics, prohibited content, deterministic generation, accessible structure, screenshot counts, source hashes, and provenance hashes.
+5. Twenty-four desktop/mobile screenshots are committed as review-only evidence with metadata stripped and provenance recorded.
+6. The pack is routed through Quarto navigation, the roadmap, status, presentation reference, and repository map.
+
+Still required before broader circulation or normative work:
+
+1. Name the consultation venue and accountable privacy, accessibility, licensing, brand, dignity, data-sharing, and product reviewers.
+2. Complete accountable review of the exact immutable pack before merge or broad cross-link promotion.
+3. Comment on dependency PRs only after the pack is cleared for public circulation; state that it is non-normative and imposes no contract or runtime change.
+4. After dependency PRs merge, repin root gitlinks to verified default-branch-reachable commits and rerun root CI before marking the root readiness PR ready.
+5. Record the consultation result in an accepted ADR or equivalent durable decision before beginning normative profile work.
 
 ## Verification
 
@@ -130,6 +281,19 @@ Run the focused prototype test first, then the documentation-structure, alert-re
 
 Browser review must cover each distinct template at desktop and mobile widths. Record an axe-compatible WCAG A/AA scan plus manual checks for keyboard order, visible focus, heading and landmark structure, contrast, color-independent meaning, zoom, reflow at 320-390 px, alternative text, low-bandwidth behavior, console errors, horizontal overflow, and unexpected network requests. Automated scans are baseline evidence, not accessibility approval. Browser tooling remains a separately recorded check until a dedicated change adds pinned dependencies and a lockfile.
 
+## Local Verification Evidence
+
+Local pre-publication screening on 2026-08-24 recorded:
+
+- Seven focused generator and evidence tests passed, including byte-deterministic source output, supplied-decision authority, semantic boundaries, prohibited input rejection, accessible structure, and screenshot/source provenance hashes.
+- Pa11y with axe and WCAG 2 A/AA tags reported no automatically detectable violations across all 12 generated HTML documents and this rendered consultation page after banner contrast and screenshot alternative text were corrected.
+- Playwright checked all 13 pages at 1440 by 900 and 390 by 844 CSS pixels: 26 page/viewport combinations had one primary heading, one main landmark, no broken images, no empty links, and no horizontal overflow.
+- Keyboard review confirmed that the visible skip link moves focus to `main` and that the optional technical-report link resolves locally.
+- Generated email and report documents made no external requests and emitted no console errors. The surrounding Quarto site retains its existing Google Fonts request and missing-favicon 404; these inherited site-level findings require consideration before broad public promotion but are not embedded in prototype HTML or screenshots.
+- Screenshot metadata was stripped. The machine-readable [screenshot provenance manifest](../assets/alert-packaging-consultation/provenance.json) binds every PNG to its generated HTML hash, viewport, browser, environment, and evidence role.
+
+This is automated and maintainer screening, not accountable accessibility, privacy, licensing, brand, dignity, data-sharing, product-owner, or Country Office approval.
+
 ## Stop And Go Gates
 
 | Gate | Go condition | What passing does not authorize |
@@ -139,6 +303,8 @@ Browser review must cover each distinct template at desktop and mobile widths. R
 | Merge and cross-link promotion | Exact immutable assets pass accountable privacy, accessibility, licensing, brand, dignity, and data-sharing review | Normative profile approval or operational publication. |
 | Normative profile work | An accepted durable decision records the complete consultation outcome and named owners for unresolved blockers | Publication, persistence, recipients, provider delivery, or sending. |
 | Publication and activation | All applicable [Publication Gates](publication-gates.qmd) and activation controls pass independently | Certification unless independent expected evidence also exists. |
+
+The local Build gate is satisfied. Public-branch, merge, normative-profile, publication, and activation gates remain open.
 
 ## Required Consultation Decision
 

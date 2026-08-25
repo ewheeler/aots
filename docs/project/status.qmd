@@ -23,10 +23,10 @@ status: "Current as of 2026-08-24"
 
 ## Active Consultation Planning
 
-- The [Alert Packaging Consultation Plan](alert-packaging-consultation.qmd) defines a root-owned, non-normative review pack for four email/report alternatives using minimized synthetic official Alert, official Warning, and forecast-only Warning evidence states.
+- The [Alert Packaging Consultation Pack](alert-packaging-consultation.qmd) implements four root-owned, non-normative email/report alternatives using minimized synthetic official Alert, official Warning, and forecast-only Warning evidence states.
 - The [Alert Subscription Service Plan](alert-subscription-service-plan.qmd) defines a proposed private, registration-only App Service with Entra workforce/B2B access. No service repository, Azure resources, recipient collection, eligibility interface, or send path has been implemented.
-- Prototype sources, generated HTML/QMD, screenshots, and stakeholder approval have not yet been implemented or completed.
-- The plan does not add PresentationProfile IDs or change Orchestration policy, V2 contracts, the compatibility renderer, publication approval, or delivery state.
+- Deterministic offline generation, focused semantic and privacy checks, ignored HTML/QMD build output, and 24 provenance-bound desktop/mobile screenshots are implemented. Accountable stakeholder review and approval remain incomplete.
+- The pack does not add PresentationProfile IDs or change Orchestration policy, V2 contracts, the compatibility renderer, publication approval, or delivery state.
 - The draft root readiness integration must verify the exact current dependency heads before claiming cross-repository current-head coverage, then repin to default-branch-reachable commits after dependency merges.
 
 ## Blocked Activation

@@ -12,7 +12,7 @@ Complete a non-sending, artifact-oriented path from operational Product Decision
 4. Add strict root consumption without re-running Orchestration policy.
 5. Render the compatibility profile from semantic facts and prove Alert Parity against independently sourced expected facts or output.
 6. Integrate composition and publication manifests with real output-content privacy enforcement.
-7. Implement the non-normative [Alert Packaging Consultation Plan](docs/project/alert-packaging-consultation.qmd), complete accountable review, and record the decision before adding concise email or technical-report profiles.
+7. Review the implemented non-normative [Alert Packaging Consultation Pack](docs/project/alert-packaging-consultation.qmd), complete accountable consultation, and record the decision before adding concise email or technical-report profiles.
 
 ## Blocked Decisions
 
