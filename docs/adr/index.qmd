@@ -1,0 +1,26 @@
+---
+title: "Architecture Decision Records"
+page-type: adr
+audience: "Contributors and technical reviewers"
+status: current
+---
+
+# Architecture Decision Records
+
+These accepted decisions define the durable boundaries of the portable report and alert product architecture.
+
+| ADR | Status | Outcome |
+|---|---|---|
+| [0001 - Root Portable Report Package](0001-root-portable-report-package.md) | Accepted | Keep cross-submodule portable report integration in a thin, artifact-oriented root package. |
+| [0002 - Include Read-Only Snowflake Baseline Exporter](0002-include-read-only-snowflake-baseline-exporter.md) | Accepted | Provide a safe read-only exporter while keeping snapshot generation as the command of record. |
+| [0003 - Baseline Artifact Formats](0003-baseline-artifact-formats.md) | Accepted | Use Parquet for typed source data and JSON or Markdown for auditable contracts and results. |
+| [0004 - Wrap Existing Report Generation First](0004-wrap-existing-report-generation-first.md) | Accepted | Preserve behavior by adapting the existing report function before extracting a new contract. |
+| [0005 - Use Hamilton For First Report Materialization Flow](0005-use-hamilton-for-first-report-materialization-flow.md) | Accepted | Express the first minimal report materialization flow as a small Hamilton DAG. |
+| [0006 - Baseline Provenance And Certification](0006-baseline-provenance-and-certification.md) | Accepted | Reserve certification for comparisons against independently trusted current output. |
+| [0007 - Publication Source Of Truth](0007-publication-source-of-truth.md) | Accepted | Publish Snapshot Output Bundles rather than raw Known-Good Baseline directories. |
+| [0008 - Separate Alert Classification From Country Threat](0008-separate-alert-classification-from-country-threat.md) | Accepted | Determine country threat separately from authoritative storm classification in the dry-run policy. |
+| [0009 - Build The Operational Alert Policy As A Non-Sending Dry-Run Engine](0009-dry-run-alert-policy-engine.md) | Accepted | Compose alert policy as a credential-free engine that cannot perform operational delivery. |
+| [0010 - Separate Semantic Alert Facts From Presentation](0010-separate-semantic-alert-facts-from-presentation.md) | Accepted | Exchange versioned semantic facts across repositories and keep presentation in the root package. |
+| [0011 - Use Raw Provider Identity For Provisional Storm Episodes](0011-use-provisional-storm-episode-identity.md) | Accepted | Base provisional episode candidates on normalized raw provider identity without rewriting history. |
+| [0012 - Use Canonical Content-Addressed Alert Artifacts](0012-use-canonical-content-addressed-alert-artifacts.md) | Accepted | Bind cross-repository semantics and stored bytes with strict canonical identities and checksums. |
+| [0013 - Keep Alert Publication Data Minimal](0013-keep-alert-publication-data-minimal.md) | Accepted | Publish only allowlisted minimal metadata and approved public outputs, failing closed otherwise. |

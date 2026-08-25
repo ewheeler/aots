@@ -1,0 +1,60 @@
+---
+title: "Regenerate the Hamilton DAG"
+page-type: how-to
+audience: "Portable report maintainers"
+status: current
+---
+
+## Prerequisites
+
+- A configured development environment with the development dependency group installed.
+- Graphviz available to Hamilton.
+- A reviewed dependency change in `src/aots_portable_reports/dag.py`.
+
+## Steps
+
+1. From the repository root, generate the architecture image from the implemented DAG:
+
+   ```bash
+   uv run python - <<'PY'
+   from pathlib import Path
+
+   from hamilton import driver
+
+   from aots_portable_reports import dag
+
+   out = Path("docs/assets/architecture/portable-report-hamilton-dag.png")
+   driver.Driver({}, dag).display_all_functions(
+       str(out), render_kwargs={"format": "png"}
+   )
+   PY
+   ```
+
+2. Confirm that the image changed only as intended:
+
+   ```bash
+   git diff --stat -- docs/assets/architecture/portable-report-hamilton-dag.png
+   ```
+
+3. Render the architecture page and inspect the graph in a browser:
+
+   ```bash
+   quarto render docs/explanation/architecture.qmd
+   ```
+
+## Expected Result
+
+`docs/assets/architecture/portable-report-hamilton-dag.png` reflects the current Hamilton node dependencies and the rendered architecture page displays a legible graph.
+
+## Safety Constraints
+
+- Regenerate the image from `dag.py`; never hand-edit generated graph pixels.
+- Review dependency meaning, not only image appearance.
+- Keep DAG source, focused DAG tests, architecture explanation, and generated image aligned in the same change.
+- Do not treat a successful image render as evidence that snapshot behavior passes.
+
+## Related Documentation
+
+- Reference: [Repository Map](../agents/repository-map.md)
+- Explanation: [Architecture](../explanation/architecture.qmd)
+- Contributor checks: [Documentation Guide](../contributor/documentation-guide.qmd#contributor-check-matrix)

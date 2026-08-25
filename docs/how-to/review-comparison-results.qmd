@@ -1,0 +1,54 @@
+---
+title: "Review Comparison Results"
+page-type: how-to
+audience: "Report reviewers and certifiers"
+status: current
+---
+
+## Prerequisites
+
+- A completed Snapshot Output Bundle.
+- Knowledge of the expected report's provenance.
+
+## Steps
+
+1. Set the bundle path:
+
+   ```bash
+   SNAPSHOT_OUT="<SNAPSHOT_OUTPUT_BUNDLE>"
+   ```
+
+2. Read the machine-readable result:
+
+   ```bash
+   python -m json.tool "$SNAPSHOT_OUT/comparison.json"
+   ```
+
+3. Check `status`, `certification_state`, and `certifying` together.
+
+4. Review every item in `failures` and `warnings`, then read the contextual summary:
+
+   ```bash
+   less "$SNAPSHOT_OUT/comparison.md"
+   ```
+
+5. Compare the result with the provenance recorded in `manifest.json` and inspect the rendered `site/index.html` for visible anomalies.
+
+## Expected Result
+
+- `failed` with `reproduction_ready` means regeneration reached comparison but material differences remain.
+- `passed` with `provisional_comparison` and `certifying: false` proves matching command output without independent certification.
+- `passed` with `certifying_comparison` and `certifying: true` is certifying only when the expected report is an independent trusted current output.
+
+## Safety Constraints
+
+- Do not promote provisional output as independently reproduced or certified.
+- Do not dismiss failures because the rendered page looks plausible.
+- Treat tie-order warnings as bounded comparison evidence, not permission to ignore unrelated differences.
+- Keep review evidence within its approved data-sharing boundary.
+
+## Related Documentation
+
+- Reference: [Comparison and Certification](../reference/comparison-and-certification.qmd)
+- Explanation: [Portable Report Trust Model](../explanation/portable-report-trust-model.qmd)
+- Evidence examples: [Comparison Case Studies](../explanation/comparison-case-studies.qmd)

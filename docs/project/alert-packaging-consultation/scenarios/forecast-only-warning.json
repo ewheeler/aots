@@ -1,0 +1,49 @@
+{
+  "classification": "synthetic_public",
+  "country_name": "Delta Sur",
+  "display_name": "System Cobalt",
+  "forecast_conditioned_need": {
+    "chin": 5100,
+    "pin": 14700
+  },
+  "forecast_evolution": [
+    {
+      "label": "Issue minus 48 hours",
+      "modeled_exposure": 38900
+    },
+    {
+      "label": "Issue minus 24 hours",
+      "modeled_exposure": 44700
+    },
+    {
+      "label": "Current synthetic issue",
+      "modeled_exposure": 51200
+    }
+  ],
+  "hazards": {
+    "rainfall": "unavailable",
+    "storm_surge": "unavailable",
+    "wind": "available"
+  },
+  "local_threat": {
+    "cumulative": true,
+    "expected_children": 18700,
+    "expected_population": 51200,
+    "horizon_hours": 144,
+    "maximum_probability": 0.16,
+    "nonzero_tile_count": 9,
+    "threshold_kt": 34
+  },
+  "official_status": {
+    "availability": "unavailable",
+    "classification": "Unavailable",
+    "valid_at": "2032-11-11T00:00:00Z"
+  },
+  "product_decision": "warning",
+  "provenance": {
+    "as_of": "2032-11-11T00:00:00Z",
+    "label": "Fixed synthetic consultation fixture"
+  },
+  "scenario_id": "forecast-only-warning",
+  "schema_version": "consultation-display-v1"
+}

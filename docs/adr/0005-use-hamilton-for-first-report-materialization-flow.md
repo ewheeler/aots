@@ -1,5 +1,7 @@
 # Use Hamilton For First Report Materialization Flow
 
+Status: Accepted.
+
 The first portable Report Snapshot implementation will use Hamilton for the materialization flow rather than starting with ad hoc Python orchestration. The initial DAG will stay small and explicit: baseline validation, source artifact loading, report wrapper, `ReportSnapshot` model, comparison, and Quarto source. This keeps the target stack visible from the first slice while avoiding an over-generalized pipeline design.
 
 ## Considered Options

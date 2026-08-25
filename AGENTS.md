@@ -13,7 +13,7 @@ This integration workspace was bootstrapped with `repo-familiar`.
 ## Repository Routing
 
 - Read `docs/agents/repository-map.md` before broad code search or architectural work.
-- Use `CONTEXT.md` for terminology, `docs/adr/` for durable decisions, `docs/architecture.qmd` for current architecture, and `plan.md` for mixed current status and proposed work.
+- Use `CONTEXT.md` for terminology, `docs/adr/` for durable decisions, `docs/explanation/architecture.qmd` for current architecture, `docs/project/status.qmd` for current status, and `plan.md` for open work.
 - Route changes through the owning root-package module, adjacent contracts or configuration, and nearest focused tests before widening the search.
 - Treat the four submodule directories as pinned upstream repositories, not root-package implementation authority.
 - Treat Snapshot Output Bundles, rendered sites, generated images, real baselines, and caches according to the durable/generated boundaries in the repository map.
@@ -29,8 +29,8 @@ This integration workspace was bootstrapped with `repo-familiar`.
 | Existing report integration change | Keep `report_wrapper.py` limited to adaptation and explicit normalization; put report calculations in their owning upstream repository. |
 | Hamilton DAG dependency or Snapshot Output Bundle change | Update DAG tests and architecture docs; regenerate the DAG image when graph structure changes. |
 | Comparison or certification change | Preserve independent expected-output provenance; update comparison tests and document trust-semantics changes. |
-| Alert facts, prose, HTML, visual assets, or parity change | Keep deterministic facts separate from bounded prose; run alert renderer tests and snapshot integration coverage. |
-| Visible report, alert, or documentation change | Render the affected output and verify visible behavior in a real browser at relevant viewport widths. |
+| Alert facts, prose, HTML, visual assets, or parity change | Keep deterministic facts separate from bounded prose; distinguish Alert Presentation Self-Check from independently sourced Alert Parity; run alert renderer tests and snapshot integration coverage. |
+| Visible report, alert, or documentation change | Follow the contributor check matrix in `docs/contributor/documentation-guide.qmd`. |
 | Python source, tests, or scripts | Run `uv run --frozen pre-commit run --all-files`; expand the Ruff and mypy ratchet rather than weakening it. |
 | Third-party API, SDK, or library integration | Use `get-api-docs` before implementation and keep credentials in the environment. |
 
@@ -52,9 +52,7 @@ This integration workspace was bootstrapped with `repo-familiar`.
 
 ## Documentation Defaults
 
-- Keep each Quarto page focused as a tutorial, how-to guide, reference, or explanation page.
-- Keep command and schema details in reference or usage documentation; keep architecture, tradeoffs, and ADR rationale in explanation documents.
-- Update `docs/index.qmd` and `docs/_quarto.yml` when adding a durable documentation entry point.
+- Follow `docs/contributor/documentation-guide.qmd` for page purpose, canonical ownership, front matter, navigation, legacy URLs, and contributor checks.
 
 ## Agent Skills And Guardrails
 

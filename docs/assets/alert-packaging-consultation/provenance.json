@@ -1,0 +1,428 @@
+{
+  "browser": "Chromium 151.0.0.0 via Playwright MCP",
+  "capture_date": "2026-08-24",
+  "classification": "synthetic_public",
+  "evidence_role": "durable_review_evidence_not_parity_or_certification",
+  "generator_base_commit": "2b78ad43e3f5b9ce359e82dbba329e78efd042f6",
+  "generator_sha256": "4e2536727d419c741ce9aa6b15586c952d56acaafb417ce4bfe54f5f0737c4cb",
+  "generator_source_state": "committed",
+  "notes": [
+    "Screenshots omit browser chrome and use synthetic public fixtures only.",
+    "PNG bytes are version-bound review evidence and are not deterministic goldens.",
+    "Accountable privacy, accessibility, licensing, brand, and data-sharing approval remains pending."
+  ],
+  "operating_system": "macOS-26.4.1-arm64-arm-64bit",
+  "quarto_version": "1.7.30",
+  "review_status": "local_prepublication_screening_only",
+  "schema_version": "alert-packaging-consultation-screenshot-provenance-v1",
+  "screenshots": [
+    {
+      "device_pixel_ratio": 1,
+      "embedded_metadata_keys": [],
+      "full_page": true,
+      "path": "forecast-only-warning--concise-linked-report--desktop.png",
+      "screenshot_pixels": {
+        "height": 1611,
+        "width": 1425
+      },
+      "sha256": "2fadd09d85de8d064b3498cdfe40cce10451fabff1813d67c987df81992437d0",
+      "source_path": "emails/forecast-only-warning--concise-linked-report.html",
+      "source_sha256": "92f85ae3f1f5eceb7cce91fcc3d356a7e61df9063a3e171d5161e0b0e05d6585",
+      "viewport_css_pixels": {
+        "height": 900,
+        "width": 1440
+      }
+    },
+    {
+      "device_pixel_ratio": 1,
+      "embedded_metadata_keys": [],
+      "full_page": true,
+      "path": "forecast-only-warning--concise-linked-report--mobile.png",
+      "screenshot_pixels": {
+        "height": 2001,
+        "width": 375
+      },
+      "sha256": "67350e3eba4d1d054e3745417bdfd6f89336d4ea0227fa07b5a09daa4c2a7eb3",
+      "source_path": "emails/forecast-only-warning--concise-linked-report.html",
+      "source_sha256": "92f85ae3f1f5eceb7cce91fcc3d356a7e61df9063a3e171d5161e0b0e05d6585",
+      "viewport_css_pixels": {
+        "height": 844,
+        "width": 390
+      }
+    },
+    {
+      "device_pixel_ratio": 1,
+      "embedded_metadata_keys": [],
+      "full_page": true,
+      "path": "forecast-only-warning--technical-report--desktop.png",
+      "screenshot_pixels": {
+        "height": 2048,
+        "width": 1425
+      },
+      "sha256": "b0ed97300bd51a520a6d5a5dbd56ad959e3ce3255152b32dba1adc7099dd43de",
+      "source_path": "reports/forecast-only-warning--technical-report.html",
+      "source_sha256": "9bf5ba078639fe489df2d4a98cfd6b5a7699af916edd8b1125af40989cb08ea9",
+      "viewport_css_pixels": {
+        "height": 900,
+        "width": 1440
+      }
+    },
+    {
+      "device_pixel_ratio": 1,
+      "embedded_metadata_keys": [],
+      "full_page": true,
+      "path": "forecast-only-warning--technical-report--mobile.png",
+      "screenshot_pixels": {
+        "height": 2458,
+        "width": 375
+      },
+      "sha256": "f32bf29f41b3dfdb44932d08f4bbd1fd123f8dfdc0da96a28d476871d60314f4",
+      "source_path": "reports/forecast-only-warning--technical-report.html",
+      "source_sha256": "9bf5ba078639fe489df2d4a98cfd6b5a7699af916edd8b1125af40989cb08ea9",
+      "viewport_css_pixels": {
+        "height": 844,
+        "width": 390
+      }
+    },
+    {
+      "device_pixel_ratio": 1,
+      "embedded_metadata_keys": [],
+      "full_page": true,
+      "path": "official-alert--combined-long--desktop.png",
+      "screenshot_pixels": {
+        "height": 1809,
+        "width": 1425
+      },
+      "sha256": "b5e71734c872ebfe5ce2b328929e9822cf56e21a9383f777cb85dffb2575d0cb",
+      "source_path": "emails/official-alert--combined-long.html",
+      "source_sha256": "8a3d54f549f955b823abaedbabf1d2dc136b7418ab70f497d90685a35eb26691",
+      "viewport_css_pixels": {
+        "height": 900,
+        "width": 1440
+      }
+    },
+    {
+      "device_pixel_ratio": 1,
+      "embedded_metadata_keys": [],
+      "full_page": true,
+      "path": "official-alert--combined-long--mobile.png",
+      "screenshot_pixels": {
+        "height": 2230,
+        "width": 375
+      },
+      "sha256": "c0dc4863757071f14128ebf708d721e240da9aa91caa3c92434f44dde4f480c3",
+      "source_path": "emails/official-alert--combined-long.html",
+      "source_sha256": "8a3d54f549f955b823abaedbabf1d2dc136b7418ab70f497d90685a35eb26691",
+      "viewport_css_pixels": {
+        "height": 844,
+        "width": 390
+      }
+    },
+    {
+      "device_pixel_ratio": 1,
+      "embedded_metadata_keys": [],
+      "full_page": true,
+      "path": "official-alert--concise-email--desktop.png",
+      "screenshot_pixels": {
+        "height": 1421,
+        "width": 1425
+      },
+      "sha256": "de52aac28f2903a307df7337a1ec2b7f7c9f8ca5478114512b2173753099ad79",
+      "source_path": "emails/official-alert--concise-email.html",
+      "source_sha256": "97f8ec46315db6780c2407cac278f15d4295b19d83ca4ff2cb0e92d01d7d80af",
+      "viewport_css_pixels": {
+        "height": 900,
+        "width": 1440
+      }
+    },
+    {
+      "device_pixel_ratio": 1,
+      "embedded_metadata_keys": [],
+      "full_page": true,
+      "path": "official-alert--concise-email--mobile.png",
+      "screenshot_pixels": {
+        "height": 1768,
+        "width": 375
+      },
+      "sha256": "883fc458dbc97e1fc5a3b25c71359a32883e384d74eab85d944b86748cc85b3e",
+      "source_path": "emails/official-alert--concise-email.html",
+      "source_sha256": "97f8ec46315db6780c2407cac278f15d4295b19d83ca4ff2cb0e92d01d7d80af",
+      "viewport_css_pixels": {
+        "height": 844,
+        "width": 390
+      }
+    },
+    {
+      "device_pixel_ratio": 1,
+      "embedded_metadata_keys": [],
+      "full_page": true,
+      "path": "official-alert--concise-linked-report--desktop.png",
+      "screenshot_pixels": {
+        "height": 1611,
+        "width": 1425
+      },
+      "sha256": "97c3b358ea61dc9afaa661e92a262edb2d3b8c6b056c7e9ef37991916d07e353",
+      "source_path": "emails/official-alert--concise-linked-report.html",
+      "source_sha256": "b38de85e2d90a98c97191fe7c3784001b77d319bea6738331f576c37b65dfeda",
+      "viewport_css_pixels": {
+        "height": 900,
+        "width": 1440
+      }
+    },
+    {
+      "device_pixel_ratio": 1,
+      "embedded_metadata_keys": [],
+      "full_page": true,
+      "path": "official-alert--concise-linked-report--mobile.png",
+      "screenshot_pixels": {
+        "height": 1976,
+        "width": 375
+      },
+      "sha256": "0d72f6b98de3a1bebc00c01979ad17bca613f1b1b9ab236c2d9599137366ffe1",
+      "source_path": "emails/official-alert--concise-linked-report.html",
+      "source_sha256": "b38de85e2d90a98c97191fe7c3784001b77d319bea6738331f576c37b65dfeda",
+      "viewport_css_pixels": {
+        "height": 844,
+        "width": 390
+      }
+    },
+    {
+      "device_pixel_ratio": 1,
+      "embedded_metadata_keys": [],
+      "full_page": true,
+      "path": "official-alert--expanded-email--desktop.png",
+      "screenshot_pixels": {
+        "height": 1809,
+        "width": 1425
+      },
+      "sha256": "34cd96f38faf0dac18c18a8250ca144dbe30f36c812fb3ab5396b35f49a3cadf",
+      "source_path": "emails/official-alert--expanded-email.html",
+      "source_sha256": "f5217d2b15af600613200d7c3b89e6551e7eb6e90c61860b186d33f3e0053af4",
+      "viewport_css_pixels": {
+        "height": 900,
+        "width": 1440
+      }
+    },
+    {
+      "device_pixel_ratio": 1,
+      "embedded_metadata_keys": [],
+      "full_page": true,
+      "path": "official-alert--expanded-email--mobile.png",
+      "screenshot_pixels": {
+        "height": 2230,
+        "width": 375
+      },
+      "sha256": "bdea0e030eed736c3461f193ec12f8ffa69e3df92344b808af1af2dec68df7f6",
+      "source_path": "emails/official-alert--expanded-email.html",
+      "source_sha256": "f5217d2b15af600613200d7c3b89e6551e7eb6e90c61860b186d33f3e0053af4",
+      "viewport_css_pixels": {
+        "height": 844,
+        "width": 390
+      }
+    },
+    {
+      "device_pixel_ratio": 1,
+      "embedded_metadata_keys": [],
+      "full_page": true,
+      "path": "official-alert--technical-report--desktop.png",
+      "screenshot_pixels": {
+        "height": 1977,
+        "width": 1425
+      },
+      "sha256": "3557033f8ec772d3b1b5859f6e82540d7ee482c4ff192417bd7b6241952411dd",
+      "source_path": "reports/official-alert--technical-report.html",
+      "source_sha256": "ad22311a2e031cbc3e7b92138521e5fee6bbbc96790cb03ec4d36eeb9d38aaac",
+      "viewport_css_pixels": {
+        "height": 900,
+        "width": 1440
+      }
+    },
+    {
+      "device_pixel_ratio": 1,
+      "embedded_metadata_keys": [],
+      "full_page": true,
+      "path": "official-alert--technical-report--mobile.png",
+      "screenshot_pixels": {
+        "height": 2433,
+        "width": 375
+      },
+      "sha256": "e1b7aaacaae87fbe80d87fef196085bbd8b7786cabad1ba6ef64b31c6b8ae5db",
+      "source_path": "reports/official-alert--technical-report.html",
+      "source_sha256": "ad22311a2e031cbc3e7b92138521e5fee6bbbc96790cb03ec4d36eeb9d38aaac",
+      "viewport_css_pixels": {
+        "height": 844,
+        "width": 390
+      }
+    },
+    {
+      "device_pixel_ratio": 1,
+      "embedded_metadata_keys": [],
+      "full_page": true,
+      "path": "official-warning--combined-long--desktop.png",
+      "screenshot_pixels": {
+        "height": 1881,
+        "width": 1425
+      },
+      "sha256": "d8b5a949f89350ed915754a1b57c7c0e796ea9cf79c80dba86dbd4e998909ddc",
+      "source_path": "emails/official-warning--combined-long.html",
+      "source_sha256": "022fca0c626da7e6bb7858cceb8b1245f44717eaf41c13a2e6630c832855f8b1",
+      "viewport_css_pixels": {
+        "height": 900,
+        "width": 1440
+      }
+    },
+    {
+      "device_pixel_ratio": 1,
+      "embedded_metadata_keys": [],
+      "full_page": true,
+      "path": "official-warning--combined-long--mobile.png",
+      "screenshot_pixels": {
+        "height": 2280,
+        "width": 375
+      },
+      "sha256": "eede16fafc831841f9f77179dedd449b750cef751fba1f2e6c42c43911a680a6",
+      "source_path": "emails/official-warning--combined-long.html",
+      "source_sha256": "022fca0c626da7e6bb7858cceb8b1245f44717eaf41c13a2e6630c832855f8b1",
+      "viewport_css_pixels": {
+        "height": 844,
+        "width": 390
+      }
+    },
+    {
+      "device_pixel_ratio": 1,
+      "embedded_metadata_keys": [],
+      "full_page": true,
+      "path": "official-warning--concise-email--desktop.png",
+      "screenshot_pixels": {
+        "height": 1421,
+        "width": 1425
+      },
+      "sha256": "4dcd1c62fc8efea145e040c05466cc47a123f9009f7066896e912f2fab5159b9",
+      "source_path": "emails/official-warning--concise-email.html",
+      "source_sha256": "64e051e06659d17c4052fb2cd07e3b0b5a16800d859928a3b54fb8ef74e33400",
+      "viewport_css_pixels": {
+        "height": 900,
+        "width": 1440
+      }
+    },
+    {
+      "device_pixel_ratio": 1,
+      "embedded_metadata_keys": [],
+      "full_page": true,
+      "path": "official-warning--concise-email--mobile.png",
+      "screenshot_pixels": {
+        "height": 1858,
+        "width": 375
+      },
+      "sha256": "caad8b32fd591f7d9300fd5fd10d71a5c61d8b97c6537acafaa006cdeb456c26",
+      "source_path": "emails/official-warning--concise-email.html",
+      "source_sha256": "64e051e06659d17c4052fb2cd07e3b0b5a16800d859928a3b54fb8ef74e33400",
+      "viewport_css_pixels": {
+        "height": 844,
+        "width": 390
+      }
+    },
+    {
+      "device_pixel_ratio": 1,
+      "embedded_metadata_keys": [],
+      "full_page": true,
+      "path": "official-warning--concise-linked-report--desktop.png",
+      "screenshot_pixels": {
+        "height": 1611,
+        "width": 1425
+      },
+      "sha256": "eae5404f09a9b86a4c713a8ec47e53ab7677aafff94f49f0493de8379239cab2",
+      "source_path": "emails/official-warning--concise-linked-report.html",
+      "source_sha256": "86c601bc1b79a6bac17b6b58adfe8e1ef966f87d268b96e7954a6a6e89122b81",
+      "viewport_css_pixels": {
+        "height": 900,
+        "width": 1440
+      }
+    },
+    {
+      "device_pixel_ratio": 1,
+      "embedded_metadata_keys": [],
+      "full_page": true,
+      "path": "official-warning--concise-linked-report--mobile.png",
+      "screenshot_pixels": {
+        "height": 2025,
+        "width": 375
+      },
+      "sha256": "38b008176484a2c881f007db1398a785faef0acf6e024baeab1646ebb2f1073a",
+      "source_path": "emails/official-warning--concise-linked-report.html",
+      "source_sha256": "86c601bc1b79a6bac17b6b58adfe8e1ef966f87d268b96e7954a6a6e89122b81",
+      "viewport_css_pixels": {
+        "height": 844,
+        "width": 390
+      }
+    },
+    {
+      "device_pixel_ratio": 1,
+      "embedded_metadata_keys": [],
+      "full_page": true,
+      "path": "official-warning--expanded-email--desktop.png",
+      "screenshot_pixels": {
+        "height": 1881,
+        "width": 1425
+      },
+      "sha256": "c77df8dff529904e8fa1944242e8c630cfffcdfa13856fc7b4dc1166c366af79",
+      "source_path": "emails/official-warning--expanded-email.html",
+      "source_sha256": "1b971f77c64b152bbee2c594d39b56f16f162f9adf6011f66a0750fe2a2b99f3",
+      "viewport_css_pixels": {
+        "height": 900,
+        "width": 1440
+      }
+    },
+    {
+      "device_pixel_ratio": 1,
+      "embedded_metadata_keys": [],
+      "full_page": true,
+      "path": "official-warning--expanded-email--mobile.png",
+      "screenshot_pixels": {
+        "height": 2280,
+        "width": 375
+      },
+      "sha256": "bec70d0a19555670005697322c1c468295f82515afd826652fbf4b30c35a0e63",
+      "source_path": "emails/official-warning--expanded-email.html",
+      "source_sha256": "1b971f77c64b152bbee2c594d39b56f16f162f9adf6011f66a0750fe2a2b99f3",
+      "viewport_css_pixels": {
+        "height": 844,
+        "width": 390
+      }
+    },
+    {
+      "device_pixel_ratio": 1,
+      "embedded_metadata_keys": [],
+      "full_page": true,
+      "path": "official-warning--technical-report--desktop.png",
+      "screenshot_pixels": {
+        "height": 2048,
+        "width": 1425
+      },
+      "sha256": "546e5d8f65ccbeae7f7bb8ecf18c156e2ad6688a9a7d5e9ef4e0ca04463945c6",
+      "source_path": "reports/official-warning--technical-report.html",
+      "source_sha256": "f41540dc7f9ce5d16d9d622a73ecc2ee2c4a977727dfca4e6abb33b5050b210f",
+      "viewport_css_pixels": {
+        "height": 900,
+        "width": 1440
+      }
+    },
+    {
+      "device_pixel_ratio": 1,
+      "embedded_metadata_keys": [],
+      "full_page": true,
+      "path": "official-warning--technical-report--mobile.png",
+      "screenshot_pixels": {
+        "height": 2482,
+        "width": 375
+      },
+      "sha256": "228d19c7791ea534988e35f6cb70d13f31855019ef138493315b200a8bac2994",
+      "source_path": "reports/official-warning--technical-report.html",
+      "source_sha256": "f41540dc7f9ce5d16d9d622a73ecc2ee2c4a977727dfca4e6abb33b5050b210f",
+      "viewport_css_pixels": {
+        "height": 844,
+        "width": 390
+      }
+    }
+  ]
+}

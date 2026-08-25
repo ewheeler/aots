@@ -101,11 +101,11 @@ A comparison warning for top-facility descriptor slots whose probabilities match
 _Avoid_: Failure, certified mismatch.
 
 **Alert HTML Artifact**:
-An HTML alert email artifact that can be independently reviewed in a browser. In the current portable path, the independent Expected Alert Email and the local Rendered Alert HTML are separate alert HTML artifacts.
+An HTML alert email artifact that can be reviewed in a browser. In the current portable path, the provenance-qualified Expected Alert Email and the local Rendered Alert HTML are separate alert HTML artifacts.
 _Avoid_: Dash impact report HTML, report JSON.
 
 **Expected Alert Email**:
-The independent Snowflake alert-agent email exported from `ALERT_SENT_LOG.EMAIL_BODY` and stored as `expected-alert.html` when available.
+The Snowflake alert-agent email exported from `ALERT_SENT_LOG.EMAIL_BODY` and stored as `expected-alert.html` when available. It is reference evidence whose independence depends on recorded provenance; the filename alone does not establish parity authority.
 _Avoid_: Locally rendered alert, audit bundle, report HTML.
 
 **Rendered Alert HTML**:
@@ -125,8 +125,12 @@ A non-default Alert Prose Provider retained for explicit parity experiments that
 _Avoid_: LLM provider, exact HTML replay, screenshot fixture.
 
 **Alert Parity**:
-A review standard for local alert output where content is substantially similar to the expected alert without significant factual differences or omissions; exact prose wording and pixel-perfect rendering are not required.
-_Avoid_: Pixel parity, byte-for-byte HTML equality, exact prose reproduction.
+A comparison standard for local alert output against independently sourced expected facts or output. Significant factual differences or omissions fail; exact prose wording and pixel-perfect rendering are not required.
+_Avoid_: Alert Presentation Self-Check, pixel parity, byte-for-byte HTML equality, exact prose reproduction.
+
+**Alert Presentation Self-Check**:
+A local consistency check that verifies Rendered Alert HTML contains and agrees with the Alert Claims generated from the same Alert Context. It is useful presentation evidence but is not Alert Parity because its expected claims are not independently sourced.
+_Avoid_: Alert Parity, certification, comparison with Expected Alert Email.
 
 **Alert Claim**:
 A structured fact that must be present and consistent in an Alert HTML Artifact, such as storm identity, forecast time, impact totals, top administrative areas, trend direction, caveats, and provenance labels.
@@ -185,23 +189,51 @@ A root-owned versioned contract that selects and orders a closed set of typed re
 _Avoid_: Classifier policy, arbitrary fact paths, expression language, plugin registry.
 
 **Composition Manifest**:
-A public manifest binding Product Fact Set, Product Decision, Presentation Profile, renderer version, produced artifact roles, omissions, and output checksums.
+A versioned manifest binding Product Fact Set, Product Decision, Presentation Profile, renderer version, produced artifact roles, omissions, and output checksums. It remains internal until the bound outputs pass publication approval.
 _Avoid_: Recipient directory, provider attempt, Product Fact Set itself.
+
+**Source-Ready Manifest**:
+A finalized, checksummed handoff from a read-only source Adapter that records source run identity, schema, watermarks, completion, content-addressed/version-bound artifact references, and controlled failure state before Azure policy work begins.
+_Avoid_: Blob-created event, schedule tick, mutable latest pointer, delivery trigger.
+
+**Activation Policy**:
+A versioned Orchestration fact stating which environment, Country Office, product, channel, and lifecycle state may progress toward delivery independently of any recipient preference.
+_Avoid_: Subscription status, provider credential, global feature flag alone.
+
+**Delivery Authorization**:
+An approved operational fact binding the exact Country Office, product, channel, lifecycle/content release, composition digest, provider route, validity window, routing epoch, and approvers that may create delivery intents.
+_Avoid_: Queue message, recipient list, provider attempt, publication approval.
+
+**Subscription Preference**:
+A private mutable fact recording one authenticated principal's consented Country Office/product choices, enabled or paused state, contact confirmation, and version.
+_Avoid_: Effective delivery eligibility, Country Office approval, provider suppression.
+
+**Effective Delivery Eligibility**:
+The fail-closed pre-send conjunction of Orchestration Activation Policy/Delivery Authorization, a current Subscription Preference and resolvable contact, and delivery-domain provider suppression/idempotency state. A pending Delivery Intent does not establish it.
+_Avoid_: One database flag, subscription alone, successful classification, queue presence.
+
+**Delivery Intent**:
+A durable operational record binding one opaque recipient reference to one Delivery Authorization and composition digest before queue dispatch, with deterministic identity and routing epoch but no contact address.
+_Avoid_: Queue message, provider attempt, recipient profile, email body.
+
+**Shared Release Plane**:
+The non-operational coordination of image digests, Bicep modules, contract manifests, and compatible environment releases across independently deployed alert workloads.
+_Avoid_: Global control plane, recipient store, dispatch authority, shared runtime identity.
 
 **Alert Decision Artifact**:
 The baseline artifact that carries Current Storm State, Country Threat Assessment, hazard availability, and Product Decision into the portable flow.
 _Avoid_: Expected Alert Email, inferred renderer setting, Alert Claims.
 
 **Hazard Availability**:
-A deterministic statement that wind, rainfall, or storm-surge evidence is validated, unavailable, unvalidated, or incomplete for a product.
-_Avoid_: Zero impact, unrestricted prose caveat, inferred hazard estimate.
+A deterministic statement that wind, rainfall, or storm-surge evidence is `validated`, `unavailable`, `unvalidated`, `incomplete`, `unsupported`, or `ambiguous` for a product. Availability describes the evidence condition; an independent review disposition states `no_review` or `manual_review_required` with controlled reasons.
+_Avoid_: Zero impact, unrestricted prose caveat, inferred hazard estimate, treating unsupported or ambiguous evidence as the review decision itself.
 
 **Alert Audit Bundle**:
 The alert-specific JSON files inside a Snapshot Output Bundle that make local alert generation auditable: alert context, alert claims, and alert comparison results.
 _Avoid_: Expected Alert Email, Rendered Alert HTML, publication bundle.
 
 **Alert Visual Asset**:
-A PNG image generated from portable alert inputs, written to `alert-assets/` for audit and embedded as a base64 data URI in Rendered Alert HTML for email portability.
+A PNG image generated from portable alert inputs and written to `alert-assets/` for audit. When Rendered Alert HTML is produced, included assets are also embedded as base64 data URIs for email portability; visual-only bundles need not contain HTML.
 _Avoid_: External image URL, expected alert screenshot, Dash map.
 
 **Alert Visual Context**:
@@ -242,11 +274,16 @@ _Avoid_: Pipeline, job, DAG when the user-facing report production concept is me
 - A **Vulnerability Artifact** supplies people-in-need fields required by independent current reports.
 - A **Tie-Order Warning** preserves certification when equal-probability top-facility descriptor order is unstable but compared probabilities match.
 - An **Alert HTML Artifact** can be visually reviewed with Playwright, but it is separate from the Dash-rendered **Impact Report** page.
-- The **Expected Alert Email** remains an independent Snowflake artifact while the **Rendered Alert HTML** is produced locally from portable inputs.
+- The **Expected Alert Email** remains separate provenance-qualified reference evidence while the **Rendered Alert HTML** is produced locally from portable inputs.
 - An **Alert Decision Artifact** supplies a **Product Decision** to the portable renderer; the renderer does not classify from forecast wind thresholds.
 - A **Product Fact Set** is the planned semantic cross-repository boundary between Orchestration policy/evidence and root presentation/publication.
 - A **Presentation Profile** composes a **Product Fact Set** without changing its **Product Decision** or evidence meaning.
-- A **Composition Manifest** records which profile produced which public artifacts from one fact-set version.
+- A **Composition Manifest** records which profile produced which presentation artifacts from one fact-set version; the artifacts are not public until publication approval passes.
+- A **Source-Ready Manifest** is authoritative input to Azure policy work; a schedule, Blob event, or queue notification is only a work hint.
+- An **Activation Policy** and **Delivery Authorization** are Orchestration-owned facts independent of any **Subscription Preference**.
+- **Effective Delivery Eligibility** combines Orchestration activation/authorization, the current **Subscription Preference** and resolvable contact, and delivery-domain suppression/idempotency.
+- A **Delivery Intent** carries an opaque recipient reference and exact composition identity into the durable outbox without carrying contact PII; the worker still establishes final **Effective Delivery Eligibility** immediately before provider invocation.
+- A **Shared Release Plane** can coordinate compatible releases while runtime identities, telemetry/configuration, queues, databases, and recipient data remain regional.
 - A **Storm Episode Link** can connect forecast-only history to later official identity without rewriting prior decisions.
 - A **Country Threat Assessment** determines whether a Country Office qualifies. Official Advisory Evidence may establish Warning or Alert; Forecast-Only Threat Evidence may establish Warning only.
 - The **LACRO Basin Authority Map** selects the proposed dry-run official provider or requires manual review before a **Current Storm State** can drive classification; operational approval remains separate.
@@ -256,12 +293,12 @@ _Avoid_: Pipeline, job, DAG when the user-facing report production concept is me
 - An **Alert Renderer** is the medium-term replacement path for the current Snowflake alert-agent email.
 - An **Alert Prose Provider** may use an LLM, but only for bounded prose slots; deterministic facts, tables, caveats, and layout remain owned by the **Alert Renderer**.
 - Portable generation defaults to empty bounded prose slots; a **Baseline Replay Prose Provider** may be selected only for an explicit non-certifying parity experiment.
-- **Alert Parity** blocks on significant factual differences or omissions, while exact prose wording and pixel-level rendering remain advisory.
-- **Alert Parity** is evaluated through **Alert Claims** rather than prose string equality.
+- **Alert Parity** requires independently sourced expected facts or output and blocks on significant factual differences or omissions, while exact prose wording and pixel-level rendering remain advisory.
+- The current `alert-comparison.json` is an **Alert Presentation Self-Check** over local **Alert Claims** and local HTML, not **Alert Parity**.
 - **Alert Provenance Labels** travel with **Alert Context**, **Alert Claims**, and **Rendered Alert HTML**, not with baseline-path metadata.
 - **Alert Claims** should be derived from **Alert Context** and report data first; rendered HTML is checked as presentation evidence, not as the source of truth.
 - An **Alert Audit Bundle** belongs inside a **Snapshot Output Bundle** so local alert rendering can be reviewed without treating raw baselines as publication inputs.
-- **Alert Visual Assets** are written as PNG files for audit/debug and embedded inline in **Rendered Alert HTML** so the email remains portable.
+- **Alert Visual Assets** are written as PNG files for audit/debug and, when **Rendered Alert HTML** is produced, included assets are embedded inline so the email remains portable.
 - **Alert Visual Context** is the source of truth for **Alert Visual Assets**; visual parity checks should not scrape expected alert HTML for map facts.
 - The **Alert Email Design Spec** aligns section order, hierarchy, visual placement, and styling tokens with the Snowflake alert-agent email while keeping exact pixels and exact prose out of scope.
 - An **Ignored Local Baseline Root** keeps real baselines out of git while letting the portable flow reuse them locally.
@@ -283,6 +320,7 @@ _Avoid_: Pipeline, job, DAG when the user-facing report production concept is me
 ## Flagged ambiguities
 
 - "Snowflake-agnostic" means the report publication path can run without Snowflake credentials when equivalent local or blob artifacts exist; it does not mean removing Snowflake support from the production system.
+- "Migrating execution to Azure" means Azure uses read-only Snowflake source/comparison access and writes only Azure-side handoff artifacts. It does not claim that every external Snowflake operation is read-only, and it does not imply dual-send or automatic Snowflake delivery fallback.
 - "First portable product" means one **Report Snapshot** for one country/storm/forecast tuple; a multi-report publication site comes later.
 - "Known-good" means exported artifacts from the current trusted Snowflake-backed path, not freshly regenerated local pipeline outputs.
 - A **Known-Good Baseline** includes the expected report output and the minimum source artifacts needed to regenerate it.

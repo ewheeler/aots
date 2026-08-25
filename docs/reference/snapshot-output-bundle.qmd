@@ -1,0 +1,75 @@
+---
+title: "Snapshot Output Bundle"
+page-type: reference
+audience: "developers, reviewers, and publication operators"
+status: current
+---
+
+A Snapshot Output Bundle is the generated handoff from one validated Known-Good Baseline. Publication consumes bundles, never raw baselines.
+
+## Always-Written Inventory
+
+| Path | Role |
+|---|---|
+| `manifest.json` | Relative-path inventory and snapshot identity. |
+| `report-snapshot.json` | Regenerated Report Snapshot. |
+| `comparison.json` | Machine-readable report comparison and certification state. |
+| `comparison.md` | Human-readable report comparison summary. |
+| `quarto/index.qmd` | Generated report audit source. |
+| `quarto/_quarto.yml` | Generated Quarto project configuration. |
+| `site/index.html` | Rendered audit page. |
+
+The materializer creates `quarto/` and `site/`; Quarto may add supporting files beneath `site/`.
+
+## Conditional Alert Inventory
+
+The conditions are independent unless stated otherwise:
+
+| Condition | Paths |
+|---|---|
+| A validated Alert Decision artifact exists, for any product decision | `alert-context.json`, `alert-claims.json` |
+| The Alert Decision product type is `warning` or `alert` | `rendered-alert.html`, `alert-comparison.json` |
+| Expected alert HTML exists in the baseline | `expected-alert.html`, regardless of whether an Alert Decision exists or renders a product |
+| Sufficient visual source data exists | zero or more `alert-assets/*.png`, independently of expected alert HTML |
+
+`none`, `withheld`, and `manual_review` decisions retain context and claims but do not emit rendered product HTML or an Alert Presentation Self-Check.
+
+`expected-alert.html` is copied as provenance-qualified reference evidence. It is not an input to local alert generation and does not by itself trigger rendering.
+
+## Current Visual Names
+
+The renderer can currently emit:
+
+- `alert-assets/population-composition-50kt.png`
+- `alert-assets/people-in-need-composition.png`
+- `alert-assets/impact-evolution-50kt.png`
+- `alert-assets/admin-choropleth-50kt.png`
+- `alert-assets/ensemble-probability-34kt.png`
+- `alert-assets/ensemble-probability-50kt.png`
+- `alert-assets/ensemble-probability-64kt.png`
+
+Only visuals supported by available source data are written. The same PNG bytes are embedded into `rendered-alert.html` as base64 data URIs.
+
+## Manifest Paths
+
+The bundle manifest always records report, comparison, Quarto, and site paths. It adds alert path fields only when those artifacts were emitted:
+
+```text
+expected_alert_html_path
+expected_alert_provenance
+rendered_alert_html_path
+alert_context_path
+alert_claims_path
+alert_comparison_json_path
+alert_visual_asset_paths
+```
+
+All recorded paths are relative to the bundle root. The local publication adapter recognizes a bundle by validating `report-snapshot.json` and `comparison.json` and requiring `manifest.json`, `comparison.md`, and `site/index.html`.
+
+## Comparison Boundary
+
+`comparison.json` compares the regenerated Impact Report with the expected report and carries certification semantics. `alert-comparison.json` is an Alert Presentation Self-Check over locally derived claims and rendered DOM presence. It is not Alert Parity and does not compare against independent expected alert facts or output.
+
+## Authority
+
+Materialization and conditional writes are defined in `src/aots_portable_reports/dag.py` and `src/aots_portable_reports/alert_contract.py`. Discovery is defined in `src/aots_portable_reports/local_adapter.py`.

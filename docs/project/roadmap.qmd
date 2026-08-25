@@ -1,0 +1,30 @@
+---
+title: "Roadmap"
+page-type: project
+audience: "Maintainers and project sponsors"
+status: "Open work only"
+aliases:
+  - /alert-product-flexibility-plan.html
+  - /snowflake-agnostic-report-publication.html
+---
+
+This page presents the open sequence from the concise root `plan.md`; blocked decisions and milestone history remain in that source roadmap.
+
+## Open Sequence
+
+1. Implement deterministic Storm Episode and link-event runtime while preserving existing V1 behavior; keep episode-dependent operations disabled until identity stability evidence is approved.
+2. Add ProductDecision v2 and complete ProductFactSet v2 production for official Warning/Alert and forecast-only Warning, with fail-closed review outcomes.
+3. Add the one-way supported V1 adapter and a checksummed cross-repository ProductFactSet artifact handshake.
+4. Add strict root loading and validation without duplicating Orchestration classification policy.
+5. Compose the compatibility product from the closed PresentationProfile and prove semantic claim parity against independent frozen V1 claims.
+6. Integrate CompositionManifest and PublicationManifest v2, including actual HTML/PNG privacy inspection and source approval enforcement.
+7. Exercise the implemented non-normative [Alert Packaging Consultation Pack](alert-packaging-consultation.qmd) through the manual, synthetic-only job in the [Azure Alert Execution Plan](azure-alert-execution-plan.qmd), without subscription, provider, queue, or send capability.
+8. Complete accountable consultation for official Alert, official Warning, and forecast-only Warning packaging, then record an accepted decision before adding concise email or technical-report profiles.
+9. Add typed official warning-zone, rainfall, and surge facts only after source and manual-review behavior are approved.
+10. Add versioned content and lifecycle releases before persistence, regional composition, recipients, or delivery.
+11. Run a non-sending multi-Country-Office shadow pilot over finalized source-ready manifests, V2 policy/composition, historical replay, and independent expected evidence.
+12. Launch the Entra-authenticated subscription registry independently with no queue, provider, or send path.
+13. Approve Delivery Authorization, Azure SQL operational state, outbox/inbox, Service Bus, resolver, provider feedback, suppression, reconciliation, and cutover contracts before a controlled live-send pilot.
+14. Expand through measured Country Office/product rings and SLO/residency-driven regional cells only after live-pilot and recovery gates pass.
+
+Current work through registration and the shadow pilot remains non-sending. The later controlled-send and global stages stay blocked until their explicit [Activation And Publication Gates](publication-gates.qmd) pass. A consultation pack, screenshot, pull-request approval, or accessibility scan is review evidence rather than profile, publication, or activation approval.

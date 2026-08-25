@@ -1,0 +1,49 @@
+{
+  "classification": "synthetic_public",
+  "country_name": "Isla Clara",
+  "display_name": "Cyclone Aurora",
+  "forecast_conditioned_need": {
+    "chin": 15800,
+    "pin": 42500
+  },
+  "forecast_evolution": [
+    {
+      "label": "Issue minus 48 hours",
+      "modeled_exposure": 88400
+    },
+    {
+      "label": "Issue minus 24 hours",
+      "modeled_exposure": 109700
+    },
+    {
+      "label": "Current synthetic issue",
+      "modeled_exposure": 128400
+    }
+  ],
+  "hazards": {
+    "rainfall": "unavailable",
+    "storm_surge": "unavailable",
+    "wind": "available"
+  },
+  "local_threat": {
+    "cumulative": true,
+    "expected_children": 47800,
+    "expected_population": 128400,
+    "horizon_hours": 144,
+    "maximum_probability": 0.37,
+    "nonzero_tile_count": 18,
+    "threshold_kt": 34
+  },
+  "official_status": {
+    "availability": "available",
+    "classification": "Hurricane",
+    "valid_at": "2032-09-18T12:00:00Z"
+  },
+  "product_decision": "alert",
+  "provenance": {
+    "as_of": "2032-09-18T12:00:00Z",
+    "label": "Fixed synthetic consultation fixture"
+  },
+  "scenario_id": "official-alert",
+  "schema_version": "consultation-display-v1"
+}

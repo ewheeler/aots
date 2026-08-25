@@ -1,0 +1,44 @@
+---
+title: "Semantic Facts And Presentation"
+page-type: explanation
+audience: "Product designers, policy owners, and maintainers"
+status: "Accepted boundary; runtime adoption pending"
+---
+
+## Why Separate Them
+
+Warning and Alert products may change section order, density, locale, packaging, visual treatment, and delivery channel. If those choices are embedded in the evidence artifact, every presentation change risks changing policy meaning and every new product duplicates validation logic.
+
+[ADR 0010](../adr/0010-separate-semantic-alert-facts-from-presentation.md) therefore separates a semantic `ProductFactSet` from root-owned presentation and composition.
+
+## ProductFactSet
+
+ProductFactSet is a versioned, checksummed artifact for one Country Office, Storm Episode, Forecast Run, and Product Decision. It carries identities, classification evidence, authoritative facts, threat facts, typed metrics, hazard availability, review disposition, and provenance.
+
+It does not carry Summary/Situation/Forecast sections, headings, prose, actions, contacts, visual placement, recipients, channels, or delivery state. Forecast-conditioned PiN/CHiN, modeled exposure, official classification, and unavailable hazards retain their distinct meanings independent of how a product is presented.
+
+Orchestration owns ProductFactSet production because it owns policy evidence and Product Decision. Root validates the artifact but does not re-run classification.
+
+## Presentation And Composition
+
+A `PresentationProfile` selects and orders a closed set of renderer-owned components, declares fact requirements, and specifies fail-closed missing-data behavior. It cannot contain arbitrary fact paths, expressions, executable hooks, or plugins.
+
+A `CompositionManifest` binds the ProductFactSet, Product Decision, profile, renderer, omissions, and output checksums. Presentation changes therefore create new presentation/composition identities without changing the Product Decision or semantic fact identity.
+
+```text
+ProductDecision + ProductFactSet
+  -> strict root validation
+  -> PresentationProfile
+  -> deterministic composition
+  -> CompositionManifest + publication-candidate artifacts
+```
+
+## Drift Guardrails
+
+- Semantic claims come from ProductFactSet, not generic report keys, expected HTML, or prose extraction.
+- Visuals consume only explicitly referenced, checksummed source artifacts.
+- Missing facts remain unavailable, omitted with a reason, or fail composition according to the profile.
+- Presentation never substitutes one threshold for another or promotes forecast-only evidence to Alert.
+- Publication-candidate artifacts exclude private recipients, source paths, raw identity, and delivery state; they become public only after the applicable Publication Gates pass.
+
+The exact machine-readable fields, canonicalization rules, controlled values, and readiness evidence remain canonical in the [Alert Product V2 Readiness Reference](../reference/alert-product-v2-readiness.qmd). Publication enforcement remains subject to the [Publication Gates](../project/publication-gates.qmd).

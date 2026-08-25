@@ -1,0 +1,18 @@
+---
+title: "Agent Environment"
+page-type: contributor
+audience: "Contributors using coding agents"
+status: current
+---
+
+The repository provides a generated, project-local agent environment so coding agents follow the same domain language, repository boundaries, checks, and non-secret tool conventions as human contributors. Treat it as working infrastructure, not application implementation authority.
+
+Use these canonical entry points rather than copying their inventories here:
+
+- [`AGENTS.md`](../../AGENTS.md) defines repository-wide working rules, routing, safety boundaries, and required checks.
+- [`.agents/`](../../.agents/) contains the selected runtime profiles, tool guidance, prompts, privacy and safety settings, repository-map configuration, and vendored skills.
+- [`.repo-familiar/bootstrap.yml`](../../.repo-familiar/bootstrap.yml) records generator provenance, selected options, and checksums for generated assets.
+
+Project-owned source, tests, `CONTEXT.md`, ADRs, and the [Repository Map](../agents/repository-map.md) remain authoritative for implemented behavior and semantic ownership. If generated agent configuration drifts, update it through its owning generator workflow rather than maintaining duplicated descriptions in documentation.
+
+For documentation-specific ownership and checks, use the [Documentation Guide](documentation-guide.qmd).

@@ -1,0 +1,49 @@
+{
+  "classification": "synthetic_public",
+  "country_name": "Costa Verde",
+  "display_name": "Storm Beacon",
+  "forecast_conditioned_need": {
+    "chin": 8600,
+    "pin": 24100
+  },
+  "forecast_evolution": [
+    {
+      "label": "Issue minus 48 hours",
+      "modeled_exposure": 69400
+    },
+    {
+      "label": "Issue minus 24 hours",
+      "modeled_exposure": 81200
+    },
+    {
+      "label": "Current synthetic issue",
+      "modeled_exposure": 76400
+    }
+  ],
+  "hazards": {
+    "rainfall": "unavailable",
+    "storm_surge": "unavailable",
+    "wind": "available"
+  },
+  "local_threat": {
+    "cumulative": true,
+    "expected_children": 28100,
+    "expected_population": 76400,
+    "horizon_hours": 144,
+    "maximum_probability": 0.22,
+    "nonzero_tile_count": 12,
+    "threshold_kt": 34
+  },
+  "official_status": {
+    "availability": "available",
+    "classification": "Tropical Storm",
+    "valid_at": "2032-10-03T06:00:00Z"
+  },
+  "product_decision": "warning",
+  "provenance": {
+    "as_of": "2032-10-03T06:00:00Z",
+    "label": "Fixed synthetic consultation fixture"
+  },
+  "scenario_id": "official-warning",
+  "schema_version": "consultation-display-v1"
+}

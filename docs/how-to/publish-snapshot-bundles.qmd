@@ -1,0 +1,50 @@
+---
+title: "Publish Snapshot Bundles"
+page-type: how-to
+audience: "Report publishers"
+status: current
+---
+
+## Prerequisites
+
+- One or more reviewed Snapshot Output Bundles beneath a common directory.
+- Quarto on `PATH`.
+- Publication approval appropriate to the data and audience.
+
+## Steps
+
+1. Set the source and a unique publication target:
+
+   ```bash
+   SNAPSHOTS_DIR="<DIRECTORY_CONTAINING_SNAPSHOT_BUNDLES>"
+   PUBLICATION_OUT="$(mktemp -d "${TMPDIR:-/tmp}/aots-publication.XXXXXX")"
+   ```
+
+2. Publish the index:
+
+   ```bash
+   uv run aots-report publish \
+     --snapshots-dir "$SNAPSHOTS_DIR" \
+     --out "$PUBLICATION_OUT"
+   ```
+
+3. Inspect `publication-manifest.json` and verify each case's comparison and certification state.
+
+4. Open `site/index.html` in a browser and review the visible index at relevant viewport widths.
+
+## Expected Result
+
+The output contains `publication-manifest.json`, generated Quarto source, and a rendered site indexing the valid Snapshot Output Bundles discovered under the source directory.
+
+## Safety Constraints
+
+- Publish from Snapshot Output Bundles, never raw Known-Good Baselines.
+- Publication does not grant privacy, accessibility, public-interest, or certification approval.
+- Exclude cases whose data classification, provenance, or comparison state is unsuitable for the audience.
+- Do not expose local filesystem paths or sensitive case data through an unreviewed publication surface.
+
+## Related Documentation
+
+- Reference: [Command-Line Interface](../reference/cli.qmd#publish)
+- Explanation: [Publication Gates](../project/publication-gates.qmd)
+- Review task: [Review Comparison Results](review-comparison-results.qmd)

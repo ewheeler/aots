@@ -1,0 +1,10 @@
+---
+title: "Glossary"
+page-type: reference
+audience: "all project contributors and reviewers"
+status: current
+---
+
+The canonical project vocabulary, preferred terms, relationships, and flagged ambiguities are maintained in the root `CONTEXT.md`. The content is included directly below so that file remains the single source.
+
+{{< include ../../CONTEXT.md >}}

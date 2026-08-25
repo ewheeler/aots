@@ -1,0 +1,58 @@
+---
+title: "Reproduce a Comparison Case"
+page-type: how-to
+audience: "Developers and comparison reviewers"
+status: current
+---
+
+## Prerequisites
+
+- A valid local baseline for the case, or authorization to create one with the Snowflake exporter.
+- A configured development environment with Quarto.
+- The case's country, storm, forecast time, and expected-output provenance.
+
+## Steps
+
+1. Choose a stable local baseline path and an ephemeral output path:
+
+   ```bash
+   CASE_NAME="<CASE_NAME>"
+   BASELINE="known-good-baselines/$CASE_NAME"
+   SNAPSHOT_OUT="$(mktemp -d "${TMPDIR:-/tmp}/aots-case-${CASE_NAME}.XXXXXX")"
+   ```
+
+2. If the baseline does not exist, create it by following [Export a Snowflake Baseline](export-a-snowflake-baseline.qmd). Do not substitute a historical hardcoded `/tmp` directory as evidence.
+
+3. Regenerate the case:
+
+   ```bash
+   uv run aots-report snapshot \
+     --baseline "$BASELINE" \
+     --out "$SNAPSHOT_OUT"
+   ```
+
+4. Record the newly printed `$SNAPSHOT_OUT` value in temporary review notes, then inspect:
+
+   ```bash
+   python -m json.tool "$SNAPSHOT_OUT/comparison.json"
+   less "$SNAPSHOT_OUT/comparison.md"
+   ```
+
+5. Review `manifest.json`, `report-snapshot.json`, optional alert audit artifacts, and `site/index.html` against the case description and provenance.
+
+## Expected Result
+
+The fresh bundle reproduces the case from its current baseline and reports its current failures, warnings, and certification state. A historical result is context only; the newly generated bundle is the evidence for this run.
+
+## Safety Constraints
+
+- Use placeholders in shared commands and `mktemp` for disposable outputs; fixed `/tmp` paths are ephemeral and must not become durable evidence.
+- Keep real baselines and generated real-case output ignored and local.
+- Do not add screenshots or exported data without an explicit data-sharing decision.
+- Do not change expected-output provenance merely to obtain a passing or certifying state.
+
+## Related Documentation
+
+- Reference: [Command-Line Interface](../reference/cli.qmd)
+- Explanation and prior evidence: [Comparison Case Studies](../explanation/comparison-case-studies.qmd)
+- Review task: [Review Comparison Results](review-comparison-results.qmd)

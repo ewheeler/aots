@@ -1,0 +1,57 @@
+---
+title: "Fixtures and Baselines"
+page-type: reference
+audience: "developers, testers, and baseline operators"
+status: current
+---
+
+## Artifact Classes
+
+| Class | Purpose | Commit policy |
+|---|---|---|
+| Synthetic Baseline Fixture | Small artificial input for deterministic tests. | Commit under `tests/fixtures/`. |
+| Known-Good Baseline | Trusted exported source artifacts, expected outputs, and manifest metadata for one Report Snapshot. | Keep real baselines local and ignored under `known-good-baselines/`. |
+| Snapshot Output Bundle | Generated report, comparisons, alert audit artifacts, Quarto source, and rendered output. | Treat as generated output and as the publication handoff. |
+
+Real baselines may include facility, beneficiary, geospatial, or operational data. Do not move them into fixtures merely because they pass validation.
+
+## Committed Fixtures
+
+| Fixture | Contract exercised | Evidence boundary |
+|---|---|---|
+| `tests/fixtures/synthetic_baseline/` | Minimal CLI, integrity, bundle-layout, and Quarto smoke path. | Does not prove independent report reproduction. |
+| `tests/fixtures/synthetic_report_baseline/` | Artifact grouping through the existing `do_report(...)` wrapper path. | Uses artificial values, not trusted current output. |
+| `tests/fixtures/synthetic_alert_present_baseline/` | Alert Decision rendering with optional expected alert evidence and visual sources. | Its expected alert provenance is a seed placeholder. |
+| `tests/fixtures/synthetic_alert_missing_baseline/` | Local alert rendering without `expected-alert.html`. | Demonstrates that expected alert evidence is not a rendering input. |
+| `tests/fixtures/synthetic_alert_sparse_baseline/` | Sparse optional alert inputs and bounded-prose fallback behavior. | Does not establish Alert Parity. |
+
+## Baseline Manifest
+
+`manifest.json` is validated as `BaselineManifest` and contains:
+
+- required identity: `baseline_version`, `country`, `storm`, and `forecast_time`;
+- required expected report reference: `expected_report_path`;
+- optional references: `expected_alert_path` and `previous_report_path`;
+- provenance: `expected_report_provenance` and `expected_alert_provenance`, defaulting to `unknown`;
+- optional `exported_at`;
+- an `artifacts` array.
+
+Each artifact records `name`, `role`, relative `path`, `required` (default `true`), SHA-256 checksum, schema hash, and non-negative row count. `source_table`, `query_filter`, and `geometry_encoding` preserve export provenance when available.
+
+Allowed current artifact roles are `admin`, `tiles`, `facilities`, `cci`, `tracks`, `envelopes`, `vulnerability`, `geometry`, `visualization`, `timing`, and `alert_decision`.
+
+## Integrity and Reproduction
+
+A Baseline Integrity Check verifies manifest shape, required files, safe relative paths, checksums, schema hashes, and row counts. Passing integrity does not certify reproduction.
+
+A Reproduction-Ready Baseline has enough source artifacts for the report wrapper. A Certifying Comparison additionally requires `expected_report_provenance: independent_current_output`. Wrapper-generated, seed, and unknown expected reports remain provisional.
+
+## Snowflake Export Inventory
+
+The exporter always specifies CCI, vulnerability, admin geometry, impact evolution, envelopes, and raw-track artifacts, plus admin, tile, school, health-center, shelter, WASH, and track artifacts for every selected wind threshold. It may also add alert timing data. `expected-alert.html` is exported only when `--include-alert-html` is set and matching email HTML is available.
+
+The exporter is read-only against Snowflake and writes through a validated temporary sibling directory before replacing the requested output. See [Command-Line Interface](cli.qmd) for options and defaults.
+
+## Authority
+
+The contracts in `src/aots_portable_reports/models.py`, validation in `src/aots_portable_reports/validation.py`, exporter in `src/aots_portable_reports/export_snowflake.py`, and committed fixture manifests are authoritative. Terminology remains canonical in the [Glossary](glossary.qmd), rendered from root `CONTEXT.md`.

@@ -1,0 +1,83 @@
+---
+title: "Create Your First Portable Snapshot"
+page-type: tutorial
+audience: "New contributors and report reviewers"
+status: current
+aliases:
+  - /usage.html
+---
+
+This tutorial creates and explores a credential-free Snapshot Output Bundle. You will use the committed Synthetic Baseline Fixture, so you do not need Snowflake access or real operational data.
+
+## Before You Begin
+
+Install Python 3.11, `uv`, and Quarto, then complete [Set Up Development](../how-to/set-up-development.qmd).
+
+## 1. Choose a Temporary Output Directory
+
+Create a unique directory and retain its path for the rest of the tutorial:
+
+```bash
+SNAPSHOT_OUT="$(mktemp -d "${TMPDIR:-/tmp}/aots-first-snapshot.XXXXXX")"
+printf '%s\n' "$SNAPSHOT_OUT"
+```
+
+Using `mktemp` avoids relying on historical evidence at a fixed temporary path.
+
+## 2. Run the Snapshot
+
+From the repository root, run:
+
+```bash
+uv run aots-report snapshot \
+  --baseline tests/fixtures/synthetic_alert_present_baseline \
+  --out "$SNAPSHOT_OUT"
+```
+
+The command validates the baseline, regenerates the report, compares it with the expected report, and renders an audit site.
+
+## 3. Inspect the Bundle Manifest
+
+```bash
+python -m json.tool "$SNAPSHOT_OUT/manifest.json"
+```
+
+Notice that artifact paths are relative to the bundle. The manifest describes generated outputs; it is not a certification decision.
+
+## 4. Inspect the Report Snapshot
+
+```bash
+python -m json.tool "$SNAPSHOT_OUT/report-snapshot.json"
+```
+
+Find the synthetic country `TST`, storm `ALPHA`, forecast time, and regenerated report payload. The values are artificial and safe for development.
+
+## 5. Inspect the Comparison
+
+```bash
+python -m json.tool "$SNAPSHOT_OUT/comparison.json"
+```
+
+The expected result is `status: passed`, `certification_state: provisional_comparison`, and `certifying: false`. This success is provisional, not certifying: the fixture does not contain an independent trusted-current expected report.
+
+Read the human-oriented account too:
+
+```bash
+less "$SNAPSHOT_OUT/comparison.md"
+```
+
+## 6. Open the Rendered Site
+
+Open the generated entry point in a browser:
+
+```bash
+open "$SNAPSHOT_OUT/site/index.html"
+```
+
+Review the visible report and comparison state. This site is audit output, not automatically approved public material.
+
+## What You Accomplished
+
+You created a portable, self-auditing Snapshot Output Bundle without credentials, inspected its manifest, report, comparison, and site, and distinguished a Provisional Comparison from a Certifying Comparison.
+
+Continue with [Run a Snapshot](../how-to/run-a-snapshot.qmd) or learn why the trust distinction matters in the [Portable Report Trust Model](../explanation/portable-report-trust-model.qmd).

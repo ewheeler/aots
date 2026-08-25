@@ -1,25 +1,34 @@
 ---
-title: "Ahead of the Storm"
-subtitle: "Generated with repo-familiar."
+title: "Ahead of the Storm Documentation"
+page-type: landing
+audience: "Developers, reviewers, operators, and contributors"
+status: current
+sidebar: false
 ---
 
-This documentation site was generated with `repo-familiar`.
+Ahead of the Storm produces portable, auditable tropical cyclone impact reports and alert artifacts. Choose a route by what you need to do or understand.
 
-## Start Here
+## Start by Task
 
-- Review `plan.md` for goals and first milestones.
-- Review `AGENTS.md` for agent-facing working instructions.
-- Review the [Repository Map](agents/repository-map.md) for semantic ownership, focused tests, and generated boundaries.
-- Review `.repo-familiar/bootstrap.yml` for generation provenance.
-- Review [Snowflake-Agnostic Report Publication](snowflake-agnostic-report-publication.qmd) for the current architecture track and planning questions.
-- Review the [Alert Email SOP Alignment Plan](alert-email-sop-alignment-plan.qmd) for proposed Warning/Alert classification and content changes.
-- Review the [Alert Product Flexibility Plan](alert-product-flexibility-plan.qmd) for the committee-approved next-stage ProductFactSet/Profile implementation sequence.
-- Review [ADR 0008](adr/0008-separate-alert-classification-from-country-threat.md), [ADR 0009](adr/0009-dry-run-alert-policy-engine.md), and [ADR 0010](adr/0010-separate-semantic-alert-facts-from-presentation.md) for classification, dry-run policy, and semantic-facts/presentation boundaries.
+- **First run:** complete the [credential-free portable snapshot tutorial](tutorials/first-portable-snapshot.qmd).
+- **Perform a task:** use the [development setup](how-to/set-up-development.qmd), [snapshot](how-to/run-a-snapshot.qmd), [Snowflake export](how-to/export-a-snowflake-baseline.qmd), [comparison review](how-to/review-comparison-results.qmd), or [publication](how-to/publish-snapshot-bundles.qmd) guides.
+- **Look up a contract:** start with the [CLI](reference/cli.qmd), [Snapshot Output Bundle](reference/snapshot-output-bundle.qmd), or [comparison and certification](reference/comparison-and-certification.qmd) reference.
+- **Understand the system:** read the [architecture](explanation/architecture.qmd), [trust model](explanation/portable-report-trust-model.qmd), and [semantic facts and presentation](explanation/semantic-facts-and-presentation.qmd).
 
-## Installed Agent Defaults
+## Start by Role
 
-This downstream repository is configured for `opencode` and `paseo` harnesses.
+| If you are... | Start here |
+|---|---|
+| Developing or reviewing the portable flow | [First Portable Snapshot](tutorials/first-portable-snapshot.qmd) |
+| Exporting operational source evidence | [Export a Snowflake Baseline](how-to/export-a-snowflake-baseline.qmd) |
+| Reviewing whether output can be trusted | [Comparison and Certification](reference/comparison-and-certification.qmd) |
+| Reviewing current implementation readiness | [Project Status](project/status.qmd) |
+| Reviewing future Warning and Alert packaging | [Alert Packaging Consultation Plan](project/alert-packaging-consultation.qmd) |
+| Making an architecture decision | [ADR Index](adr/index.qmd) |
+| Contributing documentation or code | [Documentation Guide](contributor/documentation-guide.qmd) |
 
-Vendored skills currently include repository mapping, Python guardrail setup, privacy review, Playwright browser automation, accessibility scanning, API documentation lookup, codebase architecture review, local document parsing, TDD, diagnosis, security audit, prompt migration/eval design, PRD and issue creation, CQ knowledge lookup, session focus, and zoom-out reviews.
+## Evidence Boundary
 
-Tool profiles currently include Python guardrails, CQ, accessibility scanning, browser automation, Headroom context compression/MCP/proxy guidance, OpenCode MCP entries for Context7, CQ, Headroom, and Playwright, plus Homebrew PATH guidance for OpenCode shells.
+A passing synthetic or wrapper-derived run is provisional. Certification requires independently produced, trusted-current expected output. Alert Presentation Self-Checks verify local claims against local HTML; they do not establish Alert Parity.
+
+Canonical terminology and evidence boundaries are rendered in the [Glossary](reference/glossary.qmd) from the root `CONTEXT.md` source.

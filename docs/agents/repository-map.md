@@ -10,10 +10,10 @@ Use these sources according to the question being answered:
 
 1. `AGENTS.md` defines repository working rules and required checks.
 2. `CONTEXT.md` defines canonical project terminology.
-3. `docs/adr/` records durable architecture decisions and their status.
+3. `docs/adr/` records durable architecture decisions and their status; `docs/reference/alert-product-v2-readiness.qmd` is the human-readable V2 readiness reference under those ADRs and the Orchestration manifest.
 4. `src/aots_portable_reports/`, `tests/aots_portable_reports/`, `pyproject.toml`, and `.github/workflows/ci.yml` establish implemented behavior.
-5. `docs/architecture.qmd` explains the current architecture.
-6. `plan.md` and `docs/snowflake-agnostic-report-publication.qmd` mix current status with future direction.
+5. `docs/explanation/architecture.qmd` explains the current architecture.
+6. `docs/project/status.qmd` records current implemented and blocked status; `plan.md` and `docs/project/roadmap.qmd` record open work; `docs/project/alert-packaging-consultation.qmd` owns the non-normative packaging consultation pack and decision plan.
 
 Treat target, candidate, and future language in plans as proposed until source and tests implement it.
 
@@ -45,9 +45,10 @@ The root package owns cross-submodule integration. It should remain artifact-ori
 | `src/aots_portable_reports/runner.py` | Hamilton driver execution boundary. | `tests/aots_portable_reports/test_snapshot_cli.py` |
 | `src/aots_portable_reports/comparison.py` | Report comparison and certification-state semantics. | `tests/aots_portable_reports/test_comparison.py` |
 | `src/aots_portable_reports/alert_contract.py` | Alert audit filenames and bundle persistence contracts. | `tests/aots_portable_reports/test_alert_renderer.py` |
-| `src/aots_portable_reports/alert_renderer.py` | Structured alert facts, bounded prose, HTML, visual assets, and claim-based parity. | `tests/aots_portable_reports/test_alert_renderer.py` |
+| `src/aots_portable_reports/alert_renderer.py` | Structured alert facts, bounded prose, HTML, visual assets, and the Alert Presentation Self-Check. | `tests/aots_portable_reports/test_alert_renderer.py` |
 | `src/aots_portable_reports/local_adapter.py` | Local Snapshot Output Bundle discovery. | `tests/aots_portable_reports/test_publication.py` |
 | `src/aots_portable_reports/publication.py` | Multi-snapshot publication manifest and Quarto index generation. | `tests/aots_portable_reports/test_publication.py` |
+| `src/aots_portable_reports/canonical_artifact.py` | Readiness-only independent verification of restricted V2 canonical bytes, null rejection, identity prefixes, safe manifest paths/checksums, provisional-track normalization, and frozen full-document bytes. It is not a runtime ProductFactSet/PublicationManifest consumer. | `tests/aots_portable_reports/test_alert_product_v2_readiness.py` |
 
 `report_wrapper.py` dynamically loads `Ahead-of-the-Storm-DATAPIPELINE/reports.py`. Report calculations remain owned by that submodule; the root wrapper owns adaptation and explicitly named normalization only.
 
@@ -75,6 +76,14 @@ Current Orchestration alert-policy routes:
 | `Ahead-of-the-Storm-ORCHESTRATION/07b_alert_agent/alert_lifecycle.py` | Country lifecycle transitions and recipient-aware dry-run attempts. | `Ahead-of-the-Storm-ORCHESTRATION/tests/test_alert_lifecycle.py` |
 | `Ahead-of-the-Storm-ORCHESTRATION/07b_alert_agent/product_facts.py` | Implemented V1 deterministic Summary/Situation/Forecast assembly; it is not the planned semantic ProductFactSet v2 shape. | `Ahead-of-the-Storm-ORCHESTRATION/tests/test_product_facts.py` |
 | `Ahead-of-the-Storm-ORCHESTRATION/04_data/09_alert_policy_tables.sql` | Registry, identity, official state, threat, decision, lifecycle-head, and recipient-delivery schema contracts; no writer is shipped. | `Ahead-of-the-Storm-ORCHESTRATION/tests/test_alert_policy_sql.py` |
+| `Ahead-of-the-Storm-ORCHESTRATION/contracts/alert_product_v2/` | Normative machine-readable readiness authority for strict schemas, vectors, canonical bytes, V1 freezes, and the checksummed manifest. No V2 runtime is implemented here. | `Ahead-of-the-Storm-ORCHESTRATION/tests/test_alert_product_v2_contracts.py` |
+
+Current forecast-identity readiness routes:
+
+| Path | Responsibility | Focused test |
+|---|---|---|
+| `TC-ECMWF-Forecast-Pipeline/ecmwf_tc_data_extractor.py` | Retains raw `storm_identifier` and separate `long_storm_name` while preserving existing `storm_id` fallback behavior. | `TC-ECMWF-Forecast-Pipeline/tests/test_ecmwf_tc_lineage.py` |
+| `TC-ECMWF-Forecast-Pipeline/ecmwf_tc_lineage.py` | NFKC-to-strict-ASCII normalization and candidate `(ecmwf-ifs-tc-track, basin, season, normalized_track_id)` construction; does not hash or persist an episode. | `TC-ECMWF-Forecast-Pipeline/tests/test_ecmwf_tc_lineage.py` |
 
 These modules are implemented and credential-free. Content-addressed classifier release SQL and read-only policy table schemas are authored and locally tested. No persistence writer is shipped; Snowflake identity-recomputing persistence, compile/deployment smoke coverage, scheduled ingestion, legacy-procedure cutover, actual delivery, and operational approval remain proposed.
 
@@ -88,7 +97,9 @@ Orchestration semantic ProductFactSet v2 artifact
   -> Snapshot Output Bundle publication artifacts
 ```
 
-The exact Orchestration producer path remains to be selected during the first tracer. Preserve `product_facts.py` V1 and add V2 alongside it rather than rewriting current dry-run fixtures.
+Readiness authority and independent verification are implemented at the contract, vector, and test seams above. Runtime additive seams remain proposed: Orchestration `storm_episode.py`, `product_decision_v2.py`, `product_fact_set_v2.py`, and `product_fact_set_v1_adapter.py`; root `presentation_profile.py`, `composition.py`, and `publication_privacy.py`, plus ProductFactSet loading in the owning models/validation/publication modules. Preserve `product_facts.py` V1 and add V2 alongside it rather than rewriting current dry-run fixtures.
+
+The current `TRACK_ID` audit failed because the forecast extractor prefers `longStormName` and falls back to raw ECMWF BUFR `stormIdentifier`. Raw `stormIdentifier` retention and strict candidate-key normalization are now implemented and tested. They are not evidence of historical/provider stability or non-reuse and cannot activate episode-dependent operations.
 
 ## Contracts And Test Routing
 
@@ -96,18 +107,14 @@ The exact Orchestration producer path remains to be selected during the first tr
 - Live exporter query or artifact changes: use the fake query runner in `test_export_snowflake_live_path.py`; tests must not require live credentials.
 - Contract-field or artifact-role changes: update `models.py`, producer, consumer, fixture manifests, and the nearest focused tests together.
 - Report behavior mismatches: first decide whether ownership is the upstream calculation or root adaptation; do not add new calculations to `report_wrapper.py`.
-- DAG dependency or bundle-layout changes: update `dag.py`, snapshot tests, architecture docs, and the generated DAG image together.
+- DAG dependency or bundle-layout changes: update `dag.py`, snapshot tests, `docs/explanation/architecture.qmd`, and the generated DAG image together.
 - Alert changes: keep structured facts, bounded prose, presentation, visual generation, and persistence as distinct review seams.
 - ProductFactSet/Profile changes: update the Orchestration producer or V1 adapter, root contract/validation, artifact-role fixture manifests, compatibility-profile renderer, claim-parity tests, architecture docs, and this map together.
+- Alert packaging consultation changes: start with `docs/project/alert-packaging-consultation.qmd`; keep minimized synthetic scenario and template sources root-owned, route generator behavior through `scripts/build_alert_packaging_consultation.py` and `tests/aots_portable_reports/test_alert_consultation_prototypes.py`, and do not change profile contracts or submodule runtime until an accepted consultation decision authorizes normative work.
+- V2 identity/canonicalization/privacy changes: the machine-readable Orchestration contract set is normative; update it, its manifest/vectors/tests, root independent verification, `docs/reference/alert-product-v2-readiness.qmd`, and ADRs 0011-0013 together. Do not infer runtime behavior from readiness scaffolding.
 - Certification changes: update comparison tests and architecture documentation or an ADR when trust semantics change.
 
-Run focused tests first:
-
-```bash
-uv run pytest tests/aots_portable_reports/<focused-test-file>.py
-```
-
-Run `uv run --frozen pre-commit run --all-files` and `uv run --frozen pytest` before handoff when shared behavior changes.
+Use the canonical contributor check matrix in `docs/contributor/documentation-guide.qmd` after selecting the focused test route above.
 
 ## Durable Inputs And Generated Boundaries
 
@@ -120,7 +127,7 @@ Generated or reproducible outputs include:
 - `docs/assets/architecture/portable-report-hamilton-dag.png`, generated from `dag.py`.
 - `docs/_site/`, `.quarto/`, caches, and temporary output directories.
 
-Comparison screenshots under `docs/assets/comparison-cases/` are deliberately committed review evidence, not calculation authority.
+Comparison screenshots under `docs/assets/comparison-cases/` are deliberately committed review evidence, not calculation authority. Consultation screenshots under `docs/assets/alert-packaging-consultation/` have the same review-only boundary and are bound to generated source hashes by `provenance.json`; generated prototype HTML and QMD belong under ignored `build/alert-packaging-consultation/` rather than documentation source.
 
 Real `known-good-baselines/`, `.env`, credentials, keys, and certificates are local-only. Real baselines may contain facility-level, beneficiary, geospatial, or operational data. Normal committed baseline data belongs under `tests/fixtures/` and must be synthetic.
 
@@ -130,7 +137,7 @@ Real `known-good-baselines/`, `.env`, credentials, keys, and certificates are lo
 
 Implemented behavior includes the three public commands, integrity validation, the Hamilton snapshot DAG, the thin existing-report wrapper, provisional and certifying comparison states, Alert Decision validation, decision-driven Warning/Alert rendering, non-renderable decision auditing, and publication from Snapshot Output Bundles. Orchestration also contains a credential-free local feed/parser, state normalization, storm identity, country threat, classifier, lifecycle, recipient suppression, and Product Facts composition with focused tests.
 
-Proposed or incomplete architecture includes semantic ProductFactSet v2 and V1 adapter, PresentationProfile/CompositionManifest contracts, forecast-only episode linkage, typed official warning/rain/surge facts, scheduled/monitored authoritative advisory retrieval, Snowflake classifier and persistence deployment, operational lifecycle/delivery, explicit repository/store interfaces, a fully typed Report Contract, complete file/blob adapters, extra-field allowlisting, broad public report publication, and removal of Snowflake coupling from the live dashboard or orchestration stack.
+Alert Product V2 readiness is implemented at the contract, vector, manifest, and independent-verification seams; runtime production and consumption are absent. See `docs/reference/alert-product-v2-readiness.qmd` for exact inventories and contract detail. The non-normative packaging consultation sources, deterministic generator, focused checks, and provenance-bound synthetic screenshots are implemented; accountable review and a durable packaging decision remain absent. Runtime HTML/PNG content privacy enforcement, source licensing, approval, and publication enforcement are unimplemented and blocking. Other incomplete architecture includes typed official warning/rain/surge payloads, scheduled/monitored authoritative advisory retrieval, Snowflake classifier and persistence deployment, operational lifecycle/delivery, explicit repository/store interfaces, a fully typed Report Contract, complete file/blob adapters, broad public report publication, and removal of Snowflake coupling from the live dashboard or orchestration stack.
 
 ## Change Locality
 
@@ -138,5 +145,5 @@ Proposed or incomplete architecture includes semantic ProductFactSet v2 and V1 a
 - Preserve Snapshot Output Bundles, not raw baselines, as the publication source of truth.
 - Keep independent expected output provenance separate from wrapper-generated or seed output.
 - Keep secrets out of CLI arguments, logs, fixtures, and committed artifacts.
-- Keep `cli.py`, `pyproject.toml`, usage documentation, and command tests aligned when public commands change.
+- Keep `cli.py`, `pyproject.toml`, `docs/reference/cli.qmd`, and command tests aligned when public commands change.
 - Update this map in the same change that moves ownership or adds a high-leverage seam.

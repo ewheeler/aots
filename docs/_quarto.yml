@@ -3,41 +3,103 @@ project:
   output-dir: _site
   render:
     - index.qmd
-    - usage.qmd
-    - architecture.qmd
-    - snowflake-agnostic-report-publication.qmd
-    - comparison-cases.qmd
-    - alert-email-design.qmd
-    - alert-email-sop-alignment-plan.qmd
-    - alert-product-flexibility-plan.qmd
-    - adr/0008-separate-alert-classification-from-country-threat.md
-    - adr/0009-dry-run-alert-policy-engine.md
-    - adr/0010-separate-semantic-alert-facts-from-presentation.md
+    - tutorials/*.qmd
+    - how-to/*.qmd
+    - reference/*.qmd
+    - explanation/*.qmd
+    - adr/index.qmd
+    - adr/*.md
+    - project/*.qmd
+    - contributor/*.qmd
     - agents/repository-map.md
 
 website:
   title: "Ahead of the Storm"
-  description: "Generated with repo-familiar."
+  description: "Portable impact report and alert documentation."
+  search: false
+  page-navigation: true
+  back-to-top-navigation: true
   navbar:
+    collapse-below: lg
     left:
       - href: index.qmd
         text: Home
-      - href: usage.qmd
-        text: Usage
-      - href: architecture.qmd
-        text: Architecture
-      - href: snowflake-agnostic-report-publication.qmd
-        text: Portable Reports
-      - href: comparison-cases.qmd
-        text: Comparison Cases
-      - href: alert-email-design.qmd
-        text: Alert Email Design
-      - href: alert-email-sop-alignment-plan.qmd
-        text: Alert SOP Plan
-      - href: alert-product-flexibility-plan.qmd
-        text: Alert Flexibility Plan
-      - href: adr/0009-dry-run-alert-policy-engine.md
-        text: Alert Policy ADR
+      - href: tutorials/first-portable-snapshot.qmd
+        text: Tutorials
+      - href: how-to/set-up-development.qmd
+        text: How-to Guides
+      - href: reference/cli.qmd
+        text: Reference
+      - href: explanation/architecture.qmd
+        text: Explanation
+      - text: More
+        menu:
+          - href: adr/index.qmd
+            text: Decisions
+          - href: project/status.qmd
+            text: Project
+          - href: contributor/documentation-guide.qmd
+            text: Contributor
+  sidebar:
+    - title: Tutorials
+      style: docked
+      background: light
+      contents:
+        - tutorials/first-portable-snapshot.qmd
+    - title: How-to Guides
+      contents:
+        - how-to/set-up-development.qmd
+        - how-to/run-a-snapshot.qmd
+        - how-to/export-a-snowflake-baseline.qmd
+        - how-to/review-comparison-results.qmd
+        - how-to/publish-snapshot-bundles.qmd
+        - how-to/reproduce-a-comparison-case.qmd
+        - how-to/regenerate-the-hamilton-dag.qmd
+    - title: Reference
+      contents:
+        - reference/cli.qmd
+        - reference/fixtures-and-baselines.qmd
+        - reference/snapshot-output-bundle.qmd
+        - reference/comparison-and-certification.qmd
+        - reference/alert-email-design.qmd
+        - reference/alert-product-v2-readiness.qmd
+        - reference/glossary.qmd
+    - title: Explanation
+      contents:
+        - explanation/architecture.qmd
+        - explanation/portable-report-trust-model.qmd
+        - explanation/warning-and-alert-policy.qmd
+        - explanation/comparison-case-studies.qmd
+        - explanation/semantic-facts-and-presentation.qmd
+    - title: Decisions
+      contents:
+        - adr/index.qmd
+        - adr/0001-root-portable-report-package.md
+        - adr/0002-include-read-only-snowflake-baseline-exporter.md
+        - adr/0003-baseline-artifact-formats.md
+        - adr/0004-wrap-existing-report-generation-first.md
+        - adr/0005-use-hamilton-for-first-report-materialization-flow.md
+        - adr/0006-baseline-provenance-and-certification.md
+        - adr/0007-publication-source-of-truth.md
+        - adr/0008-separate-alert-classification-from-country-threat.md
+        - adr/0009-dry-run-alert-policy-engine.md
+        - adr/0010-separate-semantic-alert-facts-from-presentation.md
+        - adr/0011-use-provisional-storm-episode-identity.md
+        - adr/0012-use-canonical-content-addressed-alert-artifacts.md
+        - adr/0013-keep-alert-publication-data-minimal.md
+    - title: Project
+      contents:
+        - project/status.qmd
+        - project/roadmap.qmd
+        - project/alert-packaging-consultation.qmd
+        - project/azure-alert-execution-plan.qmd
+        - project/alert-subscription-service-plan.qmd
+        - project/publication-gates.qmd
+    - title: Contributor
+      contents:
+        - contributor/documentation-guide.qmd
+        - contributor/agent-environment.qmd
+        - agents/repository-map.md
 
 format:
   html:
