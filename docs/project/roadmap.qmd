@@ -18,8 +18,9 @@ This page presents the open sequence only. The concise source roadmap, including
 4. Add strict root loading and validation without duplicating Orchestration classification policy.
 5. Compose the compatibility product from the closed PresentationProfile and prove semantic claim parity against independent frozen V1 claims.
 6. Integrate CompositionManifest and PublicationManifest v2, including actual HTML/PNG privacy inspection and source approval enforcement.
-7. Review the implemented non-normative [Alert Packaging Consultation Pack](alert-packaging-consultation.qmd) for official Alert, official Warning, and forecast-only Warning packaging, then record an accepted decision before adding concise email or technical-report profiles.
-8. Add typed official warning-zone, rainfall, and surge facts only after source and manual-review behavior are approved.
-9. Add versioned content and lifecycle releases before persistence, regional composition, recipients, or delivery.
+7. Exercise the implemented non-normative [Alert Packaging Consultation Pack](alert-packaging-consultation.qmd) through the manual, synthetic-only job in the [Azure Alert Execution Plan](azure-alert-execution-plan.qmd), without subscription, provider, queue, or send capability.
+8. Complete accountable consultation for official Alert, official Warning, and forecast-only Warning packaging, then record an accepted decision before adding concise email or technical-report profiles.
+9. Add typed official warning-zone, rainfall, and surge facts only after source and manual-review behavior are approved.
+10. Add versioned content and lifecycle releases before persistence, regional composition, recipients, or delivery.
 
 Every slice remains non-sending and must pass the relevant [Activation And Publication Gates](publication-gates.qmd). A consultation pack, screenshot, pull-request approval, or accessibility scan is review evidence rather than profile, publication, or activation approval.

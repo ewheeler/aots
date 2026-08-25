@@ -12,7 +12,8 @@ Complete a non-sending, artifact-oriented path from operational Product Decision
 4. Add strict root consumption without re-running Orchestration policy.
 5. Render the compatibility profile from semantic facts and prove Alert Parity against independently sourced expected facts or output.
 6. Integrate composition and publication manifests with real output-content privacy enforcement.
-7. Review the implemented non-normative [Alert Packaging Consultation Pack](docs/project/alert-packaging-consultation.qmd), complete accountable consultation, and record the decision before adding concise email or technical-report profiles.
+7. Exercise the implemented non-normative [Alert Packaging Consultation Pack](docs/project/alert-packaging-consultation.qmd) through the manual, synthetic-only job in the [Azure Alert Execution Plan](docs/project/azure-alert-execution-plan.qmd), without subscription, provider, queue, or send capability.
+8. Complete accountable consultation and record the packaging decision before adding concise email or technical-report profiles.
 
 ## Blocked Decisions
 

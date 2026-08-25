@@ -1,0 +1,361 @@
+---
+title: "Azure Alert Execution Plan"
+page-type: project
+audience: "Alert product owners, platform engineers, implementers, and operational reviewers"
+status: "Proposed non-sending execution plan; no Azure alert runtime is deployed"
+---
+
+<style>
+main table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+}
+</style>
+
+## Purpose And Authority
+
+This plan defines how to exercise alert formats on Azure now and how to evolve toward future operational task orchestration without recreating the coupled legacy Snowflake send procedure. It distinguishes a coordinated Azure application stack from a single process or deployable.
+
+The recommended design is **one Azure alert platform with multiple independently deployed Modules and managed identities**. Shared infrastructure and a release manifest provide deployment leverage. Separate execution, privileges, stores, and activation gates preserve locality, privacy, and failure isolation.
+
+This plan does not approve a PresentationProfile, implement ProductDecision v2 or ProductFactSet v2 production, authorize publication, collect recipients, select an email provider, or permit sending. Current authority remains with the [Architecture](../explanation/architecture.qmd), [Alert Product V2 Readiness Reference](../reference/alert-product-v2-readiness.qmd), [Alert Packaging Consultation Pack](alert-packaging-consultation.qmd), [Alert Subscription Service Plan](alert-subscription-service-plan.qmd), and applicable ADRs.
+
+## Recommended Decision
+
+Do not place format execution, scheduling, delivery planning, or provider calls inside the user-facing subscription deployable. Instead:
+
+1. Run current non-normative format experiments through a manually triggered, synthetic-only Azure Container Apps Job.
+2. Keep the proposed Entra-authenticated subscription registry on Azure App Service as a separate deployable.
+3. Coordinate both through one environment-level Bicep stack, ACR, monitoring workspace, and versioned release manifest while retaining separate images, identities, permissions, and rollback.
+4. Add event-driven policy, composition, and delivery deployables only after their independent contracts and activation gates pass.
+
+This retains most operational advantages of deploying "as one thing" without creating one shallow Module whose Interface includes identity, scheduling, rendering, recipient PII, provider credentials, retries, and delivery state.
+
+## Why A Single Deployable Is Rejected
+
+The legacy Snowflake procedure combines storm/country selection, impact queries, narrative generation, maps, HTML composition, deduplication, recipient fan-out, sending, and logging. The V2 direction deliberately separates those concerns through checksummed artifact Interfaces.
+
+A combined subscription-and-orchestration deployable would introduce these problems:
+
+| Concern | Consequence |
+|---|---|
+| Least privilege | The web runtime would gain artifact, queue, provider, and attempt-ledger access alongside recipient PII. |
+| No-send evidence | The registration MVP could no longer prove the technical absence of worker, provider, queue, and ledger code. |
+| Execution model | Interactive HTTP, finite rendering, scheduled policy evaluation, and queue retries have incompatible lifecycles. |
+| Availability | Renderer or provider failures could reduce signup, pause, or deletion availability. |
+| Release locality | Format experiments would require redeploying the recipient application; registry changes could restart delivery work. |
+| Scaling | Web request scaling does not provide durable, idempotent, queue-aware batch execution. |
+| Audit and rollback | One release and identity would obscure which policy, profile, recipient version, or provider Adapter caused an outcome. |
+
+The deletion test also fails: removing a combined deployable would redistribute its orchestration complexity across callers rather than eliminate it. Shared deployment plumbing is useful; shared runtime authority is not.
+
+## Module And Ownership Map
+
+| Module | Owning domain | Interface | Proposed Azure execution |
+|---|---|---|---|
+| Consultation Format Runner | Root presentation consultation | Minimized synthetic consultation scenario plus alternative slug | Manual Container Apps Job |
+| V2 Policy Producer | Orchestration | ProductDecision/ProductFactSet producer result | Future scheduled/event job |
+| V2 Composition Runner | Root presentation | Checksummed ProductFactSet plus PresentationProfile | Future event/manual job |
+| Subscription Registry | Private recipient domain | Entra principal, contact, preferences, consent, pause/delete | App Service web app |
+| Eligibility And Resolver | Private recipient domain | Opaque eligibility facts and just-in-time current contact | Future private workload Interface |
+| Delivery Planner And Worker | Orchestration delivery domain | Approved composition reference, opaque recipient reference, attempt result | Future queue-driven deployables |
+| Provider Adapter | Delivery domain | Bounded provider request/result | Future worker-only Adapter |
+
+The root package continues to own presentation and composition logic. Orchestration continues to own Product Decision, lifecycle, and future delivery planning. The subscription registry owns contact and consent. Physical deployment must not move these responsibilities by convenience.
+
+## Near-Term Azure Format Testing
+
+### Stage A: Consultation Pack Execution
+
+The implemented consultation pack contains deterministic, non-normative inputs, templates, generated review evidence, and focused tests. Those inputs are minimized synthetic display scenarios, not ProductFactSet contracts, and the resulting alternatives are not PresentationProfiles or CompositionManifests.
+
+Containerize the existing deterministic consultation generator and invoke it through a **manual** Azure Container Apps Job:
+
+```text
+Pinned consultation scenarios and templates
+                 |
+                 v
+Manual consultation-format job
+  -> deterministic HTML/QMD/CSS
+  -> safety and semantic checks
+  -> optional browser captures in a separate controlled step
+                 |
+                 v
+Private short-retention Blob review bundle
+```
+
+Required controls:
+
+- Use only the committed minimized synthetic scenarios.
+- Pin the source commit, container digest, generator version, and Quarto/browser versions where applicable.
+- Use no Snowflake, subscription-registry, Entra-recipient, or provider credentials.
+- Allow only manual execution by an approved reviewer or deployment identity.
+- Store outputs in a private container with bounded retention and no public URL.
+- Log only opaque run IDs, checksums, alternative slugs, tool versions, status, and duration.
+- Preserve every consultation disclaimer and evidence classification.
+- Treat Azure output as deployment/review evidence, not normative profile approval, Alert Parity, certification, or permission to send.
+
+### Stage B: V2 Composition Tracer
+
+After ProductDecision/ProductFactSet runtime and an accepted PresentationProfile exist, add a separate composition entrypoint:
+
+```text
+Checksummed ProductFactSet artifact
++ immutable PresentationProfile
++ renderer release
+              |
+              v
+V2 composition job
+  -> strict contract validation
+  -> deterministic components and omissions
+  -> HTML/PNG rendering
+  -> CompositionManifest
+  -> content privacy inspection
+              |
+              v
+Classified composition artifact store
+```
+
+Do not label Stage A output as Stage B output. The tracer must reject unknown schemas/profiles, digest mismatch, nulls, partial producer results, unsupported decisions, and private-content inspection failures.
+
+### Optional Test-Send Adapter
+
+Mailbox-client testing may eventually require a real transport. Add that only as a separate, manually approved test-send Adapter with:
+
+- Synthetic content and visible `TEST - NOT OPERATIONAL` labeling.
+- A fixed allowlist of organization-owned test mailboxes.
+- Separate provider credentials, identity, audit trail, and daily send limit.
+- No subscription-registry lookup, Country Office recipient fan-out, schedule, queue, or operational provider configuration.
+- A kill switch independent from format generation.
+
+Passing a test send proves transport compatibility only. It does not prove recipient consent, operational eligibility, provider readiness, or delivery approval.
+
+## Azure Topology
+
+### Shared Environment Resources
+
+The deployables may share these environment-level resources where landing-zone policy permits:
+
+| Azure resource | Shared purpose |
+|---|---|
+| Resource group per environment | Coordinated lifecycle, tags, budget, and policy. |
+| Azure Container Registry | Separate immutable images and rollback digests. |
+| VNet and private DNS | Common private connectivity without common identity. |
+| Log Analytics workspace | Central operations view with workload-specific tables and retention. |
+| Azure Monitor Action Group | Routed platform alerts. |
+| Bicep modules and release manifest | Compatible contract/image/config deployment. |
+| Budget and cost alerts | One environment cost envelope with per-resource tags. |
+
+Sharing does not imply shared credentials or data-plane permissions.
+
+### Format-Test Resources
+
+| Azure resource | Purpose |
+|---|---|
+| Container Apps environment | Hosts finite manual jobs and central job execution logs. |
+| Manual Container Apps Job | Runs the pinned consultation generator or later V2 composition entrypoint. |
+| Format-job user-assigned managed identity | Pulls its image and accesses only approved artifact containers. |
+| Private Storage account/Blob containers | Versioned inputs, run outputs, manifests, and bounded review evidence. |
+| Storage private endpoint and DNS | Required when public data-plane access is disabled. |
+| Job diagnostic settings and alerts | Execution failure, timeout, retry, and unexpected invocation monitoring. |
+
+Grant the job identity `AcrPull`, read access to the exact input container, and write access to the exact output container. It receives no Cosmos recipient role, Key Vault provider secret, Service Bus role, or delivery-ledger permission.
+
+Use a consumption-oriented Container Apps environment for the manual job unless private networking, workload profiles, or organizational policy require another configuration. Jobs support manual, scheduled, and event-driven triggers; only manual triggering belongs to Stage A.
+
+### Subscription Resources
+
+The subscription web app, Cosmos registry, Key Vault use, private endpoints, Entra objects, and browser controls remain defined by the [Alert Subscription Service Plan](alert-subscription-service-plan.qmd). They may share ACR, network foundations, and Log Analytics, but use a distinct image, managed identity, Cosmos data role, app registration, release, and rollback.
+
+### Resources Explicitly Deferred
+
+Do not provision for Stage A:
+
+- Service Bus, Event Grid, or an operational schedule.
+- Delivery planner, worker, outbox, dead-letter processor, or attempt writer.
+- Eligibility index or recipient resolver.
+- Email provider, SMTP, Azure Communication Services Email, or provider credentials.
+- Operational ProductFactSet or CompositionManifest stores presented as implemented authority.
+- Multi-region data, Front Door, APIM, Dapr, or Redis without a separate demonstrated need.
+
+## Share Versus Isolate
+
+| Share | Isolate |
+|---|---|
+| Azure subscription/resource group where appropriate | Runtime process and scaling policy |
+| ACR | Container image and dependency set |
+| VNet/private DNS | Managed identity and RBAC |
+| Log Analytics | Telemetry role, fields, and retention |
+| Bicep modules | Data stores and data-plane permissions |
+| Naming, tags, policy, and budgets | Secrets and provider credentials |
+| Release manifest | Deployment, rollback, and activation gate |
+| Contract compatibility checks | Failure domain |
+
+The desired unit of coordination is an **environment release**, not a common process. A release manifest should pin every included image digest, contract manifest digest, PresentationProfile digest when one exists, infrastructure revision, and activation state.
+
+## Execution Interfaces
+
+### Consultation Run Request
+
+The Stage A request contains:
+
+- Opaque run ID and idempotency key.
+- Exact source commit and container digest.
+- Scenario and alternative allowlists.
+- Output prefix and retention class.
+- Generator, Quarto, browser, locale, and fixed-time settings as applicable.
+- No recipient, provider, operational storm, or Snowflake fields.
+
+### Consultation Run Result
+
+The result contains:
+
+- Run status and categorized failure reason.
+- Input and generated-file checksums.
+- Tool and source versions.
+- Output artifact references classified as private review evidence.
+- Safety, deterministic-generation, browser, and accessibility check outcomes.
+
+### Future Composition Request
+
+The Stage B request contains:
+
+- ProductFactSet artifact identity, digest, and classified path/reference.
+- PresentationProfile ID and digest.
+- Renderer release and requested output kind.
+- Idempotency, causation, and correlation IDs.
+- No recipient or delivery fields.
+
+### Future Composition Result
+
+The Stage B result contains the CompositionManifest identity, exact input/profile/renderer releases, output references and checksums, component/omission outcomes, content-inspection disposition, and controlled failure reason. It does not contain recipient data or independently authorize publication/delivery.
+
+## Future Production Task Orchestration
+
+After separate persistence, scheduling, presentation, privacy, and delivery decisions, the intended flow is:
+
+```text
+Advisory and forecast readiness
+  -> Orchestration policy/evaluation job
+  -> ProductDecision/ProductFactSet artifact
+  -> composition request
+  -> root-owned composition job
+  -> inspected immutable composition
+  -> explicit delivery authorization
+  -> delivery planner/outbox
+  -> Service Bus work item with opaque recipient reference
+  -> delivery worker
+  -> current eligibility check
+  -> just-in-time recipient resolver
+  -> provider Adapter
+  -> private attempt ledger
+```
+
+Compose once per Country Office, product, profile, and release. Recipient fan-out references the immutable composition identity and checksum; it must not rerender content per recipient or reclassify the supplied Product Decision.
+
+The future delivery worker requires a separate identity from the planner and subscription web app. It receives queue-consume permission, resolver access, provider secret access, and bounded attempt-write permission. It does not receive unrestricted registry browsing or composition mutation access.
+
+## Source And Deployment Ownership
+
+- Consultation and future composition Implementation remains root-owned.
+- Product Decision, ProductFactSet production, lifecycle, and delivery planning Implementation remains Orchestration-owned.
+- Recipient contact, consent, preference, eligibility, and resolver Implementation remains subscription-owned.
+- An integration deployment repository or directory may own environment Bicep and release manifests, but it must reference owner-produced images/contracts rather than copy their logic.
+
+One repository may hold shared deployment modules and compatibility tests. If a single source repository is chosen for operational convenience, it must still build separate images with separate dependency groups and entrypoints. The subscription image must not contain dormant provider or send code.
+
+## CI/CD And Release Model
+
+1. Owner repositories test and publish immutable images or contract artifacts.
+2. The integration pipeline verifies contract and manifest compatibility.
+3. Bicep validation and `what-if` run for the target environment.
+4. Stage A deploys or updates only the manual format job and artifact permissions.
+5. A protected action starts the job with an explicit immutable request.
+6. The pipeline records job execution ID, image digest, output checksums, check results, and retention class.
+7. Reviewer access is granted to the exact output prefix rather than the whole storage account.
+8. Promotion to another environment references the same digests; it does not rebuild.
+9. Each deployable can roll back independently even when included in one environment release.
+
+Use GitHub OIDC and managed identity. Do not use publish profiles, storage keys, connection strings, or credentials in workflow inputs or job overrides.
+
+## Security And Privacy Controls
+
+- Treat ProductFactSet and visual sources as `internal_sensitive`; consultation scenarios remain minimized synthetic review data.
+- Keep recipient and Entra data out of format jobs, Blob paths, logs, screenshots, manifests, and CI output.
+- Disable public Blob access and use bounded reviewer authorization.
+- Reject remote assets, unsafe HTML, undeclared fields, source URLs, contacts, coordinates, and provider identifiers according to the applicable stage contract.
+- Use immutable image digests and scan dependencies, image layers, and generated output.
+- Alert on unexpected job invocation, retries, timeout, output-count drift, permission failures, or writes outside the run prefix.
+- Give every deployable a distinct managed identity and custom least-privilege data-plane role where built-in roles are broader than required.
+- Preserve pause/delete availability independently from every format or delivery failure.
+- Keep format output retention separate from recipient and delivery-attempt retention.
+
+## Verification Strategy
+
+### Stage A Checks
+
+- Existing consultation semantic, privacy, deterministic-generation, and accessible-structure tests pass in the image.
+- Local and Azure runs produce identical generator-owned text files for identical pinned inputs.
+- Output contains every required prototype disclaimer and no prohibited recipient/provider/source fields.
+- The job has no Snowflake, Cosmos-recipient, Service Bus, or provider access.
+- A duplicate run request is idempotent or writes to an isolated immutable run prefix.
+- Timeouts and failed checks produce a failed run without partial promotion.
+- Desktop/mobile browser, automated accessibility, keyboard/reflow, console, and network-request checks are recorded.
+
+### Platform Checks
+
+- Only approved identities can start a job or read a review bundle.
+- Managed identity can access only its image and exact Blob containers.
+- Logs contain no synthetic canary contact, identity, or content fields.
+- Bicep contains none of the explicitly deferred resources.
+- Budget, failed-job, timeout, and unauthorized-access alerts reach the action group.
+- Rollback restores the previous job definition/image digest without changing subscription resources.
+
+### Future Delivery Checks
+
+Before operational delivery, add contract tests for outbox atomicity, queue replay/duplicates, poison messages, recipient pause/delete races, resolver version checks, provider sandbox behavior, attempt idempotency, canary/shadow operation, legacy cutover, and independent kill switches.
+
+## Ordered Implementation
+
+1. Approve the one-platform/multiple-deployable topology and identify infrastructure ownership.
+2. Define Stage A run request/result records and retention classification without introducing normative V2 identities.
+3. Build a container entrypoint around the existing offline consultation generator and focused tests.
+4. Provision nonproduction ACR, Container Apps environment/job, private Blob storage, managed identity, diagnostics, alerts, and budget through Bicep.
+5. Run the exact committed synthetic consultation pack manually and compare generator-owned output with the local build.
+6. Complete browser, accessibility, privacy, and reviewer-access checks on the Azure output.
+7. Record consultation findings and accept a durable packaging decision before normative profile work.
+8. Implement ProductDecision/ProductFactSet runtime and strict root consumption at the existing artifact seam.
+9. Add the Stage B composition job only after a PresentationProfile and CompositionManifest runtime are approved.
+10. Implement the subscription registry independently according to its own plan and gates.
+11. Define persistence/scheduling and delivery in separate ADRs before adding queues, resolvers, providers, attempts, or sends.
+
+## Stop And Go Gates
+
+| Gate | Go condition | Passing does not authorize |
+|---|---|---|
+| Stage A infrastructure | Manual-only job, synthetic inputs, private output, least privilege, and no deferred resources verified. | Normative profiles, publication, recipients, or sending. |
+| Azure format evidence | Deterministic, semantic, privacy, browser, and accessibility checks pass for exact outputs. | Alert Parity, packaging approval, or operational runtime. |
+| Stage B composition | ProductFactSet producer/consumer runtime, accepted PresentationProfile, CompositionManifest, and content inspection pass. | Publication or delivery. |
+| Subscription launch | Independent subscription privacy/security/accessibility/operations gates pass with no send path. | Delivery eligibility or sending. |
+| Delivery design | Separate ADRs define schedule, stores, outbox, queue, resolver, provider, attempts, revocation, monitoring, and cutover. | Operational sending. |
+| Operational activation | Country Office, privacy, licensing, provider, canary, rollback, monitoring, and accountable approvals pass. | Certification without independent expected evidence. |
+
+## Open Decisions
+
+- Which repository or platform team owns the shared Bicep and release manifest.
+- Azure region, data residency, review-output retention, and nonproduction cost ceiling.
+- Whether the Stage A job requires private networking or can use identity-protected Azure endpoints without a VNet.
+- Whether browser capture runs in the same job execution or a second pinned browser job.
+- Exact reviewer authorization and evidence-distribution workflow.
+- Whether mailbox-client testing is required before a normative profile decision.
+- Future event source and store Adapters after ProductFactSet runtime exists.
+- Delivery provider, attempt store, retry policy, and legacy cutover, all explicitly deferred.
+
+Recommended defaults are a manual Container Apps Job, private short-retention Blob outputs, synthetic consultation inputs only, no test sends initially, one shared environment IaC/release manifest, and separate images/identities/deployments for subscription, composition, and future delivery.
+
+## Current Microsoft Reference
+
+- [Jobs in Azure Container Apps](https://learn.microsoft.com/azure/container-apps/jobs)
+
+Verify current trigger, networking, identity, and execution-history behavior before implementation; Azure capabilities can change independently of this repository.

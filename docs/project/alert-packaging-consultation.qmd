@@ -43,6 +43,8 @@ The current machine-readable contracts intentionally freeze only the compatibili
 
 Canonical boundaries remain in [ADR 0008](../adr/0008-separate-alert-classification-from-country-threat.md), [ADR 0009](../adr/0009-dry-run-alert-policy-engine.md), [ADR 0010](../adr/0010-separate-semantic-alert-facts-from-presentation.md), the [Alert Product V2 Readiness Reference](../reference/alert-product-v2-readiness.qmd), and the [Publication Gates](publication-gates.qmd).
 
+The [Azure Alert Execution Plan](azure-alert-execution-plan.qmd) proposes running this exact synthetic pack through a manual, non-sending Azure job. Azure execution remains review evidence and does not change the pack's authority or ownership.
+
 ## Review Scope
 
 The pack will compare four packaging alternatives:

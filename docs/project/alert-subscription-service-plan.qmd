@@ -29,6 +29,8 @@ The application should use server-rendered HTML and minimal progressive JavaScri
 
 Use Azure App Service rather than Azure Container Apps for the first implementation. App Service provides the required container hosting, server-directed authentication, stable availability, custom domains, managed identity, VNet integration, and deployment slots with less operational surface. Reconsider Container Apps only if measured cost or workload evidence shows a need for scale-to-zero or a separate elastic worker. A future worker belongs to Orchestration and is not a reason to add Dapr or Container Apps to the registry now.
 
+Coordinate the registry through the same environment-level infrastructure and release manifest as related Azure alert workloads where that reduces platform overhead, but do not combine their processes, images, identities, data permissions, or rollback. The [Azure Alert Execution Plan](azure-alert-execution-plan.qmd) defines the shared-stack/separate-deployable topology and the synthetic-only format job.
+
 ## Ownership And Repository Boundary
 
 The recommended physical boundary is a separate private repository, provisionally named `Ahead-of-the-Storm-SUBSCRIPTIONS`. If stakeholders instead place the service in an existing repository, its logical owner must still be the private recipient and delivery domain rather than `src/aots_portable_reports/`.
