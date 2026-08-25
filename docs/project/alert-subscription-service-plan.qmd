@@ -37,8 +37,9 @@ The recommended physical boundary is a separate private repository, provisionall
 
 | Owner | Responsibility |
 |---|---|
-| Subscription service | Entra principal association, delivery contact, preferences, consent, self-service deletion, and private audit events. |
-| Orchestration | Country Office operational approval, future delivery eligibility, delivery planning, outbox/provider behavior, and attempt persistence. |
+| Subscription service | Entra principal association, delivery contact, preferences, consent, self-service deletion, opaque candidate discovery, just-in-time resolution, and private audit events. |
+| Orchestration | Country Office operational approval, Activation Policy, Delivery Authorization, lifecycle, delivery planning, and outbox intent creation. |
+| Delivery domain | Provider suppression, attempts, feedback, reconciliation, and provider Adapter behavior. |
 | Root Portable Report Package | No recipient dependency. It continues to consume semantic alert artifacts and publish approved Snapshot Output Bundles. |
 | Microsoft Entra administrators | Workforce/B2B lifecycle, enterprise-application assignment, Conditional Access, MFA, and access reviews. |
 | Azure platform owners | Landing zone, identities, networking, policy, monitoring, backup, cost, and incident response. |
@@ -67,17 +68,21 @@ FastAPI + Jinja subscription service
 Nothing in the first deployment publishes a recipient projection or can send email. After separate delivery approval, the preferred integration is:
 
 ```text
-Orchestration delivery worker
+Orchestration delivery planner
        |
-       +--> internal-sensitive active-eligibility index
+       `--> subscription-owned opaque candidate index
+
+Delivery worker
        |
-       +--> private just-in-time recipient resolver
+       `--> private just-in-time recipient resolver
                 |
-                +--> current plaintext address returned only to
+                `--> current plaintext address returned only to
                      the delivery-worker managed identity
 ```
 
-The eligibility index contains opaque recipient references, Country Office IDs, product types, and status/version facts. It contains no email address or Entra identifier. The resolver rechecks current preference and approval state before returning contact data. Both interfaces remain private operational data and never become report or publication inputs.
+The candidate index contains opaque recipient references, Country Office IDs, product types, and preference/version facts. It contains no email address or Entra identifier. The resolver rechecks current preference, consent, deletion, contact, and version before returning contact data.
+
+The subscription service does not decide effective delivery eligibility. Orchestration owns Activation Policy and Delivery Authorization; the delivery domain owns provider suppression and idempotency. The planner uses opaque subscription candidates to create pending intents, not final eligibility. The worker rechecks all three domains immediately before provider invocation. Both subscription Interfaces remain private operational data and never become report or publication inputs.
 
 ## User Interface
 
@@ -138,7 +143,7 @@ Validation must provide an error summary linked to field-level errors. Require a
 ### Edit, Pause, And Delete
 
 - **Edit** changes product selections and records a new consent version when reviewed text or purpose changes.
-- **Pause** immediately excludes the preference from any future eligibility interface while retaining it for easy resumption under the approved retention policy.
+- **Pause** immediately excludes the preference from the future opaque candidate Interface while retaining it for easy resumption under the approved retention policy.
 - **Delete** uses a dedicated confirmation page rather than a modal. It explains immediate operational removal, PII purge timing, and backup expiry.
 - Every update carries the current Cosmos `_etag`. A stale update renders a conflict page with **Reload current preference** and **Cancel**.
 
@@ -231,7 +236,7 @@ Keeping profile and preference documents in one partition permits deterministic 
 | Field | Purpose |
 |---|---|
 | `id = "subscription:<country-office-id>"` | Deterministic uniqueness inside the principal partition. |
-| `subscriptionId` | Opaque public/support reference. |
+| `subscriptionId` | Opaque private support reference; still treated as pseudonymous personal data. |
 | `countryOfficeId` | Versioned catalog identifier. |
 | `productTypes` | Closed Warning/Alert set. |
 | `preferenceStatus` | `enabled` or `paused`; never delivery eligibility. |
@@ -250,7 +255,7 @@ Store append-only, retention-limited audit events in the same private partition 
 
 Privacy and legal owners must approve exact periods before production. The safe default is:
 
-- Pause affects eligibility immediately.
+- Pause removes the preference from opaque candidate results immediately.
 - Delete removes current contact data immediately and completes primary-store purge within a short documented period.
 - Retain only minimal non-identifying audit facts for the approved audit period.
 - Let backup copies expire through the declared Cosmos continuous-backup window.
@@ -296,11 +301,11 @@ Health routes expose only status and no configuration or dependency details. Bro
 These future internal routes are reserved design seams, not MVP endpoints:
 
 ```text
-GET /internal/v1/eligibility
+GET /internal/v1/candidates
 GET /internal/v1/recipients/{opaque-reference}
 ```
 
-The first returns no direct identity or contact. The second returns current contact details only to a `DeliveryResolver` workload identity after rechecking preference version, Country Office approval, and delivery activation. Both require a separate delivery ADR, threat/privacy review, and activation approval.
+The first returns opaque, currently enabled candidate references and preference versions without direct identity or contact. The second returns current contact details only to a `DeliveryResolver` workload identity after rechecking preference, consent, deletion, contact, and version. Orchestration and delivery state are checked outside the subscription service. Both Interfaces require a separate delivery ADR, threat/privacy review, staleness/revocation contract, and activation approval.
 
 ## Azure Resource Inventory
 
@@ -438,7 +443,7 @@ The registry MVP must not provision:
 - API Management, Service Bus, Event Grid, Redis, or a delivery worker.
 - Azure Communication Services, SendGrid, SMTP credentials, or another provider.
 - A recipient outbox, delivery-attempt writer, or ledger mutation path.
-- The future eligibility index or recipient resolver.
+- The future opaque candidate index or recipient resolver.
 - Front Door/WAF unless an explicit trigger above applies.
 - Multi-region Cosmos.
 - Recipient CSV/export storage or bulk admin download.
@@ -519,7 +524,7 @@ Personal data categories are Entra tenant/object IDs, delivery address, selected
 - CSRF, XSS, IDOR, open-redirect, mass-assignment, and rate-control tests.
 - Dependency, secret, IaC, and container vulnerability scans.
 - Synthetic email/tenant/object ID cannot be found in logs, traces, CI output, image layers, or generated artifacts.
-- IaC contains no email provider, queue, worker, outbox, eligibility index, resolver, or delivery-ledger writer.
+- IaC contains no email provider, queue, worker, outbox, opaque candidate index, resolver, or delivery-ledger writer.
 - Bicep lint/validation/`what-if`, Azure Policy compliance, and least-privilege role verification.
 - Staging deployment, real Entra employee/B2B smoke, managed-identity data access, slot swap, rollback, and Cosmos restore exercises.
 
@@ -538,7 +543,7 @@ Automated accessibility and security scans are baseline evidence rather than app
 9. Add private production data paths, observability, alerts, budgets, policy checks, backup/restore evidence, staging deployment, and rollback.
 10. Complete privacy, security, accessibility, platform, Country Office, and operations review.
 11. Launch registration-only with the non-operational banner and technical evidence that no send path exists.
-12. Treat any future eligibility index, resolver, worker, provider, outbox, attempt writer, or real send as a separate approved delivery program.
+12. Treat any future opaque candidate index, resolver, worker, provider, outbox, attempt writer, or real send as a separate approved delivery program.
 
 ## Stop And Go Gates
 
@@ -547,7 +552,7 @@ Automated accessibility and security scans are baseline evidence rather than app
 | Plan approval | Named owners approve boundary, data classification, retention, region, and consent scope. | Implementation, deployment, or recipient collection. |
 | Nonproduction build | Tests pass; Easy Auth/B2B behavior proven; synthetic data only; no delivery resources. | Production collection or delivery. |
 | Production registration | Privacy, security, accessibility, operations, restore, monitoring, and support reviews pass; no-send evidence recorded. | Country Office approval, delivery eligibility, or email sending. |
-| Delivery design | Separate ADR defines eligibility, resolver, outbox, provider, revocation, and attempts; threat/privacy review passes. | Real sending. |
+| Delivery design | Separate ADRs define Activation Policy, Delivery Authorization, opaque candidates, resolver, SQL outbox/inbox, queue, provider feedback, suppression, revocation, attempts, reconciliation, and cutover; threat/privacy review passes. | Real sending. |
 | Operational activation | All applicable [Publication Gates](publication-gates.qmd), Country Office approvals, provider controls, monitoring, rollback, and accountable approval pass. | Certification unless independent expected evidence also exists. |
 
 ## Open Stakeholder Decisions

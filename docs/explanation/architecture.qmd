@@ -11,7 +11,7 @@ aliases:
 
 Ahead of the Storm turns forecast evidence into impact artifacts and decision-support products while keeping operational policy, report calculations, presentation, and publication independently reviewable. The root Portable Report Package coordinates artifacts across four pinned upstream repositories; it does not absorb their forecast, impact, dashboard, or orchestration responsibilities.
 
-The portability goal is narrow: report generation and publication can run from local or blob-backed artifacts without Snowflake credentials. Snowflake remains a supported operational backend.
+The portability goal is narrow: report generation and publication can run from local or blob-backed artifacts without Snowflake credentials. During incremental migration, Azure uses read-only Snowflake source/comparison access while writing only Azure-side handoff artifacts; moving execution to Azure does not require moving all source data and calculations at once.
 
 ## Ownership Boundaries
 
@@ -47,7 +47,7 @@ Orchestration Product Decision + semantic ProductFactSet
   -> checksummed artifact boundary
   -> root PresentationProfile
   -> CompositionManifest
-  -> publication artifacts
+  -> publication-candidate artifacts
 ```
 
 ProductFactSet carries evidence meaning and provenance without headings, prose, layout, recipients, or delivery state. Presentation can change without changing classification identity. See [Semantic Facts and Presentation](semantic-facts-and-presentation.qmd) for the rationale.
@@ -55,6 +55,25 @@ ProductFactSet carries evidence meaning and provenance without headings, prose, 
 Contract and verification readiness exists, but the V2 runtime path does not. Exact readiness counts and contract details belong to the [Alert Product V2 Readiness Reference](../reference/alert-product-v2-readiness.qmd), not this architecture explanation. Future packaging remains a separate root-owned decision governed by the non-normative [Alert Packaging Consultation Plan](../project/alert-packaging-consultation.qmd).
 
 The proposed [Azure Alert Execution Plan](../project/azure-alert-execution-plan.qmd) keeps this ownership model while coordinating shared infrastructure: format execution, subscription management, and future delivery remain separate deployables and managed identities rather than one combined runtime.
+
+## Proposed Azure Execution Topology
+
+The proposed migration has four gated stages: synthetic format proof of concept, non-sending multi-Country-Office shadow pilot, controlled live-send pilot, and SLO/residency-driven regional production cells.
+
+```text
+shared release plane: ACR + Bicep + release manifests
+                  |
+                  +--> finite policy/composition Jobs
+                  +--> App Service/Cosmos subscription registry
+                  `--> regional delivery cell
+                       Azure SQL -> Service Bus -> worker -> provider
+```
+
+ACR, Bicep, and release manifests coordinate compatible releases but do not own operational state. Runtime identities, telemetry/configuration, databases, queues, and recipient data remain regional unless an approved design states otherwise.
+
+Effective delivery eligibility is a conjunction rather than one flag: Orchestration-owned Activation Policy and Delivery Authorization, subscription-owned current preference/contact, and delivery-owned provider suppression/idempotency. Azure SQL is the proposed authority for future operational delivery state; Service Bus remains transient transport; recipient PII remains in the subscription registry.
+
+An Azure read-only Source Adapter can produce finalized manifests and historical comparison evidence from Snowflake while Azure shadows policy/composition. Azure and Snowflake must never dual-send. Normal rollback pauses or restores Azure delivery rather than automatically reactivating the legacy send procedure.
 
 ## Trust Boundaries
 
@@ -64,5 +83,8 @@ The proposed [Azure Alert Execution Plan](../project/azure-alert-execution-plan.
 - Alert rendering consumes a supplied Product Decision and must not infer Warning or Alert from wind thresholds.
 - Deterministic facts, tables, caveats, provenance, and layout remain outside unrestricted prose generation.
 - Privacy, accessibility, certification, and approval are separate [Publication Gates](../project/publication-gates.qmd).
+- A Blob/Event Grid/queue notification is a work hint; the finalized checksummed source manifest remains authority.
+- A queue message is not delivery authority; recoverable intent, outbox, inbox, attempt, and suppression state remains in the operational store.
+- Independent expected evidence, non-independent legacy comparison, and Azure self-checks remain separately labeled during migration. Provenance, not platform, determines whether legacy expected output is independent.
 
 These boundaries make policy, calculation, presentation, and publication drift visible at their owning seams rather than hiding it in one end-to-end procedure.

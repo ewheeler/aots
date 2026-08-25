@@ -46,4 +46,15 @@ No report or alert becomes publishable merely because it renders, validates agai
 
 Operational Warning/Alert activation additionally requires approved identity evidence, policy and registry releases, monitored authoritative retrieval, persistence/concurrency validation, recipient and provider controls, shadow/canary evidence, rollback procedures, and explicit send approval.
 
+Before any controlled live send, require:
+
+- One active dispatch authority and explicit fencing of every legacy or alternate sender; never dual-send.
+- Versioned Activation Policy and Delivery Authorization for the exact environment, Country Office, product, channel, composition digest, provider route, validity window, routing epoch, and approvers.
+- A transactional intent/outbox authority, queue/inbox idempotency, just-in-time recipient resolution, provider feedback, suppression, reconciliation, and manual-review path.
+- Global, Country Office/product, planner, queue, worker, provider, credential, and routing-epoch kill switches with named owners and exercised runbooks.
+- SPF, DKIM, DMARC, bounce/complaint/unsubscribe handling, sender reputation, rate limits, provider quotas, and ambiguous-result behavior.
+- Quantitative pilot gates, capacity evidence, incident/support ownership, recovery rehearsal, and accountable approval for the exact recipient cohort.
+
+Global expansion additionally requires approved data residency, regional routing, RTO/RPO/SLO, provider regionality, capacity/FinOps, regional recovery, and reconciliation evidence. Service Bus, provider acceptance, rendering, or a self-check never independently authorizes delivery.
+
 Failure of any applicable gate blocks circulation, publication, or activation at that stage. Passing one gate never implies another.

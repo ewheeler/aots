@@ -8,7 +8,7 @@ aliases:
   - /snowflake-agnostic-report-publication.html
 ---
 
-This page presents the open sequence only. The concise source roadmap, including blocked decisions and milestone history, is [root `plan.md`](../../plan.md).
+This page presents the open sequence from the concise root `plan.md`; blocked decisions and milestone history remain in that source roadmap.
 
 ## Open Sequence
 
@@ -22,5 +22,9 @@ This page presents the open sequence only. The concise source roadmap, including
 8. Complete accountable consultation for official Alert, official Warning, and forecast-only Warning packaging, then record an accepted decision before adding concise email or technical-report profiles.
 9. Add typed official warning-zone, rainfall, and surge facts only after source and manual-review behavior are approved.
 10. Add versioned content and lifecycle releases before persistence, regional composition, recipients, or delivery.
+11. Run a non-sending multi-Country-Office shadow pilot over finalized source-ready manifests, V2 policy/composition, historical replay, and independent expected evidence.
+12. Launch the Entra-authenticated subscription registry independently with no queue, provider, or send path.
+13. Approve Delivery Authorization, Azure SQL operational state, outbox/inbox, Service Bus, resolver, provider feedback, suppression, reconciliation, and cutover contracts before a controlled live-send pilot.
+14. Expand through measured Country Office/product rings and SLO/residency-driven regional cells only after live-pilot and recovery gates pass.
 
-Every slice remains non-sending and must pass the relevant [Activation And Publication Gates](publication-gates.qmd). A consultation pack, screenshot, pull-request approval, or accessibility scan is review evidence rather than profile, publication, or activation approval.
+Current work through registration and the shadow pilot remains non-sending. The later controlled-send and global stages stay blocked until their explicit [Activation And Publication Gates](publication-gates.qmd) pass. A consultation pack, screenshot, pull-request approval, or accessibility scan is review evidence rather than profile, publication, or activation approval.

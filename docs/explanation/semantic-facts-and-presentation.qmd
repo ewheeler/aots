@@ -30,7 +30,7 @@ ProductDecision + ProductFactSet
   -> strict root validation
   -> PresentationProfile
   -> deterministic composition
-  -> CompositionManifest + public artifacts
+  -> CompositionManifest + publication-candidate artifacts
 ```
 
 ## Drift Guardrails
@@ -39,6 +39,6 @@ ProductDecision + ProductFactSet
 - Visuals consume only explicitly referenced, checksummed source artifacts.
 - Missing facts remain unavailable, omitted with a reason, or fail composition according to the profile.
 - Presentation never substitutes one threshold for another or promotes forecast-only evidence to Alert.
-- Public artifacts exclude private recipients, source paths, raw identity, and delivery state.
+- Publication-candidate artifacts exclude private recipients, source paths, raw identity, and delivery state; they become public only after the applicable Publication Gates pass.
 
 The exact machine-readable fields, canonicalization rules, controlled values, and readiness evidence remain canonical in the [Alert Product V2 Readiness Reference](../reference/alert-product-v2-readiness.qmd). Publication enforcement remains subject to the [Publication Gates](../project/publication-gates.qmd).

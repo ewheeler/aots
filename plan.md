@@ -15,6 +15,13 @@ Complete a non-sending, artifact-oriented path from operational Product Decision
 7. Exercise the implemented non-normative [Alert Packaging Consultation Pack](docs/project/alert-packaging-consultation.qmd) through the manual, synthetic-only job in the [Azure Alert Execution Plan](docs/project/azure-alert-execution-plan.qmd), without subscription, provider, queue, or send capability.
 8. Complete accountable consultation and record the packaging decision before adding concise email or technical-report profiles.
 
+## Later Gated Azure Stages
+
+9. Run a non-sending multi-Country-Office shadow pilot over finalized source-ready manifests, V2 policy/composition, historical replay, and independent expected evidence.
+10. Launch the Entra-authenticated subscription registry independently with no queue, provider, or send path.
+11. Define and approve Delivery Authorization, Azure SQL operational state, outbox/inbox, Service Bus, resolver, provider feedback, suppression, reconciliation, and cutover contracts before a controlled live-send pilot.
+12. Expand through measured Country Office/product rings and SLO/residency-driven regional cells only after live-pilot and recovery gates pass.
+
 ## Blocked Decisions
 
 - Approve historical/provider evidence for forecast identity stability and non-reuse.
@@ -24,10 +31,11 @@ Complete a non-sending, artifact-oriented path from operational Product Decision
 - Approve whether a linked report is optional, its failure fallback, and the owner of any future secure hosting; attachments and delivery remain separate decisions.
 - Approve lifecycle update, downgrade, closure, all-clear, and regional-composition policy.
 - Select delivery and attachment mechanisms only after focused reproducibility and provider review.
+- Approve pilot Country Offices/recipients, Azure regions, data residency, delivery SLO/RTO/RPO, SQL/Service Bus operating model, provider/sending domains, and legacy retirement authority.
 
 ## Gates
 
-All runtime slices remain non-sending. Operational activation and external publication require the privacy, accessibility, certification, licensing, consultation, and accountable-approval checks in [Publication Gates](docs/project/publication-gates.qmd). Readiness contracts, integrity checks, self-checks, and rendered output do not satisfy those gates.
+All current slices through registration and the non-sending shadow pilot remain non-sending. The later controlled-send and global stages stay blocked until their explicit activation gates pass. Operational activation and external publication require the privacy, accessibility, certification, licensing, consultation, and accountable-approval checks in [Publication Gates](docs/project/publication-gates.qmd). Readiness contracts, integrity checks, self-checks, and rendered output do not satisfy those gates.
 
 The consultation pack is itself publication-sensitive review evidence. Exact synthetic assets require local/private screening before they are pushed to a public branch and accountable review before merge or broad cross-link promotion. A merged pack or stakeholder feedback does not approve a normative profile; that requires an accepted durable decision.
 

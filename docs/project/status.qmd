@@ -22,11 +22,12 @@ status: "Current as of 2026-08-25"
 - No operational persistence writer, scheduled ingestion, recipient outbox, provider delivery, real send, or legacy cutover is active.
 - No Azure format-test job, shared alert-platform stack, subscription deployment, or delivery workload is provisioned.
 
-## Active Consultation Planning
+## Active Planning
 
 - The [Alert Packaging Consultation Pack](alert-packaging-consultation.qmd) implements four root-owned, non-normative email/report alternatives using minimized synthetic official Alert, official Warning, and forecast-only Warning evidence states.
 - The [Azure Alert Execution Plan](azure-alert-execution-plan.qmd) proposes one coordinated Azure stack with separate format, subscription, and future delivery deployables. Its first stage is a manual synthetic-only format job with no recipient or send capability.
-- The [Alert Subscription Service Plan](alert-subscription-service-plan.qmd) defines a proposed private, registration-only App Service with Entra workforce/B2B access. No service repository, Azure resources, recipient collection, eligibility interface, or send path has been implemented.
+- The committee-reviewed Azure sequence now distinguishes a synthetic proof of concept, non-sending multi-Country-Office shadow pilot, controlled live-send pilot, and SLO/residency-driven regional production cells. Operational delivery-state Azure SQL, Service Bus Premium, provider feedback, suppression, and reconciliation belong only to the separately approved live-send stage; Stage B may use non-delivery SQL for comparison/checkpoints.
+- The [Alert Subscription Service Plan](alert-subscription-service-plan.qmd) defines a proposed private, registration-only App Service with Entra workforce/B2B access. No service repository, Azure resources, recipient collection, opaque candidate/resolver Interface, or send path has been implemented.
 - Deterministic offline generation, focused semantic and privacy checks, ignored HTML/QMD build output, and 24 provenance-bound desktop/mobile screenshots are implemented. Accountable stakeholder review and approval remain incomplete.
 - The pack does not add PresentationProfile IDs or change Orchestration policy, V2 contracts, the compatibility renderer, publication approval, or delivery state.
 - The draft root readiness integration must verify the exact current dependency heads before claiming cross-repository current-head coverage, then repin to default-branch-reachable commits after dependency merges.

@@ -189,8 +189,36 @@ A root-owned versioned contract that selects and orders a closed set of typed re
 _Avoid_: Classifier policy, arbitrary fact paths, expression language, plugin registry.
 
 **Composition Manifest**:
-A public manifest binding Product Fact Set, Product Decision, Presentation Profile, renderer version, produced artifact roles, omissions, and output checksums.
+A versioned manifest binding Product Fact Set, Product Decision, Presentation Profile, renderer version, produced artifact roles, omissions, and output checksums. It remains internal until the bound outputs pass publication approval.
 _Avoid_: Recipient directory, provider attempt, Product Fact Set itself.
+
+**Source-Ready Manifest**:
+A finalized, checksummed handoff from a read-only source Adapter that records source run identity, schema, watermarks, completion, content-addressed/version-bound artifact references, and controlled failure state before Azure policy work begins.
+_Avoid_: Blob-created event, schedule tick, mutable latest pointer, delivery trigger.
+
+**Activation Policy**:
+A versioned Orchestration fact stating which environment, Country Office, product, channel, and lifecycle state may progress toward delivery independently of any recipient preference.
+_Avoid_: Subscription status, provider credential, global feature flag alone.
+
+**Delivery Authorization**:
+An approved operational fact binding the exact Country Office, product, channel, lifecycle/content release, composition digest, provider route, validity window, routing epoch, and approvers that may create delivery intents.
+_Avoid_: Queue message, recipient list, provider attempt, publication approval.
+
+**Subscription Preference**:
+A private mutable fact recording one authenticated principal's consented Country Office/product choices, enabled or paused state, contact confirmation, and version.
+_Avoid_: Effective delivery eligibility, Country Office approval, provider suppression.
+
+**Effective Delivery Eligibility**:
+The fail-closed pre-send conjunction of Orchestration Activation Policy/Delivery Authorization, a current Subscription Preference and resolvable contact, and delivery-domain provider suppression/idempotency state. A pending Delivery Intent does not establish it.
+_Avoid_: One database flag, subscription alone, successful classification, queue presence.
+
+**Delivery Intent**:
+A durable operational record binding one opaque recipient reference to one Delivery Authorization and composition digest before queue dispatch, with deterministic identity and routing epoch but no contact address.
+_Avoid_: Queue message, provider attempt, recipient profile, email body.
+
+**Shared Release Plane**:
+The non-operational coordination of image digests, Bicep modules, contract manifests, and compatible environment releases across independently deployed alert workloads.
+_Avoid_: Global control plane, recipient store, dispatch authority, shared runtime identity.
 
 **Alert Decision Artifact**:
 The baseline artifact that carries Current Storm State, Country Threat Assessment, hazard availability, and Product Decision into the portable flow.
@@ -250,7 +278,12 @@ _Avoid_: Pipeline, job, DAG when the user-facing report production concept is me
 - An **Alert Decision Artifact** supplies a **Product Decision** to the portable renderer; the renderer does not classify from forecast wind thresholds.
 - A **Product Fact Set** is the planned semantic cross-repository boundary between Orchestration policy/evidence and root presentation/publication.
 - A **Presentation Profile** composes a **Product Fact Set** without changing its **Product Decision** or evidence meaning.
-- A **Composition Manifest** records which profile produced which public artifacts from one fact-set version.
+- A **Composition Manifest** records which profile produced which presentation artifacts from one fact-set version; the artifacts are not public until publication approval passes.
+- A **Source-Ready Manifest** is authoritative input to Azure policy work; a schedule, Blob event, or queue notification is only a work hint.
+- An **Activation Policy** and **Delivery Authorization** are Orchestration-owned facts independent of any **Subscription Preference**.
+- **Effective Delivery Eligibility** combines Orchestration activation/authorization, the current **Subscription Preference** and resolvable contact, and delivery-domain suppression/idempotency.
+- A **Delivery Intent** carries an opaque recipient reference and exact composition identity into the durable outbox without carrying contact PII; the worker still establishes final **Effective Delivery Eligibility** immediately before provider invocation.
+- A **Shared Release Plane** can coordinate compatible releases while runtime identities, telemetry/configuration, queues, databases, and recipient data remain regional.
 - A **Storm Episode Link** can connect forecast-only history to later official identity without rewriting prior decisions.
 - A **Country Threat Assessment** determines whether a Country Office qualifies. Official Advisory Evidence may establish Warning or Alert; Forecast-Only Threat Evidence may establish Warning only.
 - The **LACRO Basin Authority Map** selects the proposed dry-run official provider or requires manual review before a **Current Storm State** can drive classification; operational approval remains separate.
@@ -287,6 +320,7 @@ _Avoid_: Pipeline, job, DAG when the user-facing report production concept is me
 ## Flagged ambiguities
 
 - "Snowflake-agnostic" means the report publication path can run without Snowflake credentials when equivalent local or blob artifacts exist; it does not mean removing Snowflake support from the production system.
+- "Migrating execution to Azure" means Azure uses read-only Snowflake source/comparison access and writes only Azure-side handoff artifacts. It does not claim that every external Snowflake operation is read-only, and it does not imply dual-send or automatic Snowflake delivery fallback.
 - "First portable product" means one **Report Snapshot** for one country/storm/forecast tuple; a multi-report publication site comes later.
 - "Known-good" means exported artifacts from the current trusted Snowflake-backed path, not freshly regenerated local pipeline outputs.
 - A **Known-Good Baseline** includes the expected report output and the minimum source artifacts needed to regenerate it.
