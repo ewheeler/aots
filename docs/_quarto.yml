@@ -16,6 +16,7 @@ project:
 website:
   title: "Ahead of the Storm"
   description: "Portable impact report and alert documentation."
+  site-url: "https://ewheeler.github.io/aots/"
   search: false
   page-navigation: true
   back-to-top-navigation: true
@@ -104,5 +105,7 @@ website:
 format:
   html:
     theme: cosmo
+    css: styles.css
     toc: true
     code-copy: true
+    include-after-body: _includes/navbar-accessibility.html

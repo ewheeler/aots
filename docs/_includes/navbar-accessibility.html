@@ -1,0 +1,13 @@
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  document.querySelectorAll('.navbar-toggler[role="menu"]').forEach((toggle) => {
+    toggle.removeAttribute("role");
+  });
+
+  document.querySelectorAll("main table").forEach((table) => {
+    if (table.scrollWidth > table.clientWidth) {
+      table.setAttribute("tabindex", "0");
+    }
+  });
+});
+</script>

@@ -9,9 +9,9 @@ The repository provides a generated, project-local agent environment so coding a
 
 Use these canonical entry points rather than copying their inventories here:
 
-- [`AGENTS.md`](../../AGENTS.md) defines repository-wide working rules, routing, safety boundaries, and required checks.
-- [`.agents/`](../../.agents/) contains the selected runtime profiles, tool guidance, prompts, privacy and safety settings, repository-map configuration, and vendored skills.
-- [`.repo-familiar/bootstrap.yml`](../../.repo-familiar/bootstrap.yml) records generator provenance, selected options, and checksums for generated assets.
+- [`AGENTS.md`](https://github.com/ewheeler/aots/blob/main/AGENTS.md) defines repository-wide working rules, routing, safety boundaries, and required checks.
+- [`.agents/`](https://github.com/ewheeler/aots/tree/main/.agents) contains the selected runtime profiles, tool guidance, prompts, privacy and safety settings, repository-map configuration, and vendored skills.
+- [`.repo-familiar/bootstrap.yml`](https://github.com/ewheeler/aots/blob/main/.repo-familiar/bootstrap.yml) records generator provenance, selected options, and checksums for generated assets.
 
 Project-owned source, tests, `CONTEXT.md`, ADRs, and the [Repository Map](../agents/repository-map.md) remain authoritative for implemented behavior and semantic ownership. If generated agent configuration drifts, update it through its owning generator workflow rather than maintaining duplicated descriptions in documentation.
 

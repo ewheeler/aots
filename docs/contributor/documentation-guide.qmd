@@ -69,6 +69,10 @@ Allowed reader-facing `page-type` values are `tutorial`, `how-to`, `reference`, 
 - Preserve legacy URLs as links or redirects, never parallel maintained copies.
 - Reject pages whose sections cross multiple Diátaxis purposes without links to their owners.
 
+## GitHub Pages Deployment
+
+The [Docs Pages workflow](https://github.com/ewheeler/aots/blob/main/.github/workflows/docs-pages.yml) renders this Quarto project and deploys `docs/_site` to `https://ewheeler.github.io/aots/`. It runs for relevant pushes to `main` and can be dispatched manually from `main`. The repository's Pages source must be set to **GitHub Actions** before the first deployment. Keep `docs/_site` ignored; the workflow deploys the generated artifact without committing rendered output.
+
 ## Contributor Check Matrix
 
 This matrix is the sole canonical owner of documentation contributor checks. Other pages link here instead of copying it.
