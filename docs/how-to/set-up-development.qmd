@@ -9,6 +9,7 @@ status: current
 
 - A checkout of this repository.
 - Python 3.11 or 3.12, `uv`, Git, and Quarto on `PATH`.
+- GitHub/SSH access to the private `Ahead-of-the-Storm-DataAPI` submodule. The synthetic workflow needs no API key.
 - No Snowflake credentials unless you plan to export a real baseline.
 
 ## Steps
@@ -16,8 +17,12 @@ status: current
 1. Initialize the pinned upstream repositories:
 
    ```bash
-   git submodule update --init --recursive
+   git submodule update --init --recursive --depth 1
    ```
+
+The API submodule is private, so configure SSH access before initializing all submodules. In GitHub Actions, `SUBMODULES_TOKEN` must have read access to this repository for the existing recursive checkout to succeed.
+
+The shallow checkout retrieves the pinned submodule revisions without their full upstream histories.
 
 2. Create the project environment, including development dependencies:
 
@@ -46,11 +51,12 @@ The CLI lists `snapshot`, `export-snowflake`, and `publish`; the checks and Quar
 ## Safety Constraints
 
 - Keep `.env`, real Known-Good Baselines, credentials, and generated sites out of commits.
-- Treat the four submodule directories as pinned upstream repositories, not root-package implementation authority.
+- Treat all five submodule directories as pinned upstream repositories, not root-package implementation authority. The Data API is a separate service, not a dependency of the synthetic report workflow.
 - Do not weaken Ruff, mypy, test, privacy, or accessibility guardrails to make setup pass.
 
 ## Related Documentation
 
 - Reference: [Command-Line Interface](../reference/cli.qmd)
 - Explanation: [Architecture](../explanation/architecture.qmd)
+- Reference: [Data API endpoints, authentication, and query semantics](../reference/data-api.qmd)
 - Contributor policy: [Documentation Guide](../contributor/documentation-guide.qmd)

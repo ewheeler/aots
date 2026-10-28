@@ -84,6 +84,10 @@ _Avoid_: Snowflake-free rewrite, local dashboard.
 The root-level package that owns the portable report flow across submodule boundaries.
 _Avoid_: Data pipeline extension, dashboard plugin, orchestration module.
 
+**Data API**:
+A standalone, read-only REST service for querying forecast, hazard, exposure, and reference data in Azure Blob Storage by semantic parameters.
+_Avoid_: Portable Report Flow, dashboard, data pipeline, alert policy.
+
 **Report Contract**:
 The typed shape of a report snapshot that the portable report flow can validate and publish.
 _Avoid_: JSON schema, report template, function signature.
@@ -311,6 +315,7 @@ _Avoid_: Pipeline, job, DAG when the user-facing report production concept is me
 - A **Baseline Catalog** may list source baselines, but a **Publication Manifest** lists **Snapshot Output Bundles**.
 - The **Portable Report Flow** publishes **Impact Reports** while keeping Snowflake as an optional backend.
 - The **Portable Report Package** implements the **Portable Report Flow** without assigning ownership to a single submodule.
+- The **Data API** is a separate read-only query interface over existing Azure Blob data; it does not own the **Portable Report Flow**, report calculations, or alert decisions.
 
 ## Example dialogue
 

@@ -10,3 +10,6 @@
 [submodule "Ahead-of-the-Storm"]
 	path = Ahead-of-the-Storm
 	url = https://github.com/unicef-drp/Ahead-of-the-Storm
+[submodule "Ahead-of-the-Storm-DataAPI"]
+	path = Ahead-of-the-Storm-DataAPI
+	url = git@github.com:felixschwebel/Ahead-of-the-Storm-DataAPI.git

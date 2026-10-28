@@ -1,15 +1,15 @@
 # Ahead of the Storm Workspace
 
-Ahead of the Storm turns tropical cyclone forecasts into impact information for preparedness decisions. This integration workspace pins the application, forecast, impact, and orchestration repositories and provides the root `aots_portable_reports` package for reproducible report and alert artifacts.
+Ahead of the Storm turns tropical cyclone forecasts into impact information for preparedness decisions. This integration workspace pins five upstream repositories: the forecast, impact, dashboard, orchestration, and standalone Data API services. The root `aots_portable_reports` package owns reproducible report and alert artifacts; the Data API is a separate read-only Azure Blob query service.
 
 The portable path publishes from Snapshot Output Bundles rather than querying Snowflake at publication time. Snowflake remains a supported read-only baseline source.
 
 ## Safe Quick Start
 
-Prerequisites are Python 3.11, `uv`, Quarto, and initialized submodules. No credentials are needed for the synthetic workflow.
+Prerequisites are Python 3.11, `uv`, Quarto, initialized submodules, and GitHub/SSH access to the private Data API submodule. The synthetic workflow needs no Snowflake or API credentials; API requests do require a separate `X-API-Key`.
 
 ```bash
-git submodule update --init --recursive
+git submodule update --init --recursive --depth 1
 uv sync --dev
 uv run aots-report snapshot \
   --baseline tests/fixtures/synthetic_alert_present_baseline \
@@ -35,6 +35,7 @@ Follow the [first portable snapshot tutorial](docs/tutorials/first-portable-snap
 - [How-to guides](docs/how-to/set-up-development.qmd)
 - [Reference](docs/reference/cli.qmd)
 - [Explanation](docs/explanation/architecture.qmd)
+- [Data API endpoint and query reference](docs/reference/data-api.qmd)
 - [Decisions](docs/adr/index.qmd)
 - [Project status and roadmap](docs/project/status.qmd)
 - [Contributor guide and checks](docs/contributor/documentation-guide.qmd)
