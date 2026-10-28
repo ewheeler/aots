@@ -95,6 +95,7 @@ website:
         - project/roadmap.qmd
         - project/alert-packaging-consultation.qmd
         - project/azure-alert-execution-plan.qmd
+        - project/aws-alert-execution-plan.qmd
         - project/alert-subscription-service-plan.qmd
         - project/publication-gates.qmd
     - title: Contributor

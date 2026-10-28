@@ -2,7 +2,7 @@
 title: "Project Status"
 page-type: project
 audience: "Maintainers, reviewers, and project sponsors"
-status: "Current as of 2026-08-25"
+status: "Current as of 2026-10-28"
 ---
 
 ## Implemented
@@ -27,6 +27,7 @@ status: "Current as of 2026-08-25"
 
 - The [Alert Packaging Consultation Pack](alert-packaging-consultation.qmd) implements four root-owned, non-normative email/report alternatives using minimized synthetic official Alert, official Warning, and forecast-only Warning evidence states.
 - The [Azure Alert Execution Plan](azure-alert-execution-plan.qmd) proposes one coordinated Azure stack with separate format, subscription, and future delivery deployables. Its first stage is a manual synthetic-only format job with no recipient or send capability.
+- The [AWS Alert Execution Plan](aws-alert-execution-plan.qmd) is a separate review-only alternative; it does not replace the committee-reviewed Azure recommendation or authorize AWS provisioning, multi-cloud operation, recipient collection, or sending.
 - The committee-reviewed Azure sequence now distinguishes a synthetic proof of concept, non-sending multi-Country-Office shadow pilot, controlled live-send pilot, and SLO/residency-driven regional production cells. Operational delivery-state Azure SQL, Service Bus Premium, provider feedback, suppression, and reconciliation belong only to the separately approved live-send stage; Stage B may use non-delivery SQL for comparison/checkpoints.
 - The [Alert Subscription Service Plan](alert-subscription-service-plan.qmd) defines a proposed private, registration-only App Service with Entra workforce/B2B access. No service repository, Azure resources, recipient collection, opaque candidate/resolver Interface, or send path has been implemented.
 - Deterministic offline generation, focused semantic and privacy checks, ignored HTML/QMD build output, and 24 provenance-bound desktop/mobile screenshots are implemented. Accountable stakeholder review and approval remain incomplete.

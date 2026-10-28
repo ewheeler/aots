@@ -21,6 +21,8 @@ The recommended design is **one coordinated Azure alert platform with independen
 
 This plan does not approve a PresentationProfile, implement ProductDecision v2 or ProductFactSet v2 production, authorize publication, collect recipients, select an email provider, or permit sending. Current authority remains with the [Architecture](../explanation/architecture.qmd), [Alert Product V2 Readiness Reference](../reference/alert-product-v2-readiness.qmd), [Alert Packaging Consultation Pack](alert-packaging-consultation.qmd), [Alert Subscription Service Plan](alert-subscription-service-plan.qmd), [Publication Gates](publication-gates.qmd), and applicable ADRs.
 
+The separate [AWS Alert Execution Plan](aws-alert-execution-plan.qmd) remains review-only and does not supersede this committee-reviewed Azure sequence or authorize a multi-cloud deployment.
+
 ::: {.callout-warning}
 ## No-send status
 

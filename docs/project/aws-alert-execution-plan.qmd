@@ -1,0 +1,391 @@
+---
+title: "AWS Alert Execution Plan"
+page-type: project
+audience: "Alert product owners, platform engineers, security reviewers, and implementers"
+status: "Review-only AWS alternative; no AWS deployment or sending approved"
+---
+
+<style>
+main table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+}
+</style>
+
+## Context
+Draft a separate AWS-hosted alternative for both alert execution and subscription management while retaining Microsoft Entra employee/B2B SSO. The committee-reviewed [Azure Alert Execution Plan](azure-alert-execution-plan.qmd) remains the current deployment recommendation, and the [Alert Subscription Service Plan](alert-subscription-service-plan.qmd) remains Azure-specific. This is a reviewable staged proposal—not a platform decision, permission to provision infrastructure, collect recipients, or send email. It does not change the ordered Azure sequence in the [Project Roadmap](roadmap.qmd).
+
+## Proposed AWS Design And Boundaries
+
+The existing plans describe proposed Azure infrastructure, not deployed systems. The AWS account, region, organizational controls, tenant objects, and quotas have not been inspected. This AWS alternative preserves domain requirements and approval gates without replacing the committee-reviewed Azure recommendation or implying a multi-cloud deployment has been approved.
+
+For this AWS alternative, propose AWS CDK v2 in Python and CloudFormation as the infrastructure-as-code convention; this is not an approved platform decision. Keep Entra registration, assignment, Conditional Access and guest lifecycle under approved directory administration; CDK is not a directory-administration permission.
+
+Retain parallel synthetic-format and registration-only streams. Local V2 runtime work can proceed independently; cloud shadow execution follows finalized-source and V2 readiness. Registration launch and shadow acceptance are independent prerequisites that converge only before delivery.
+
+| Capability | AWS alternative | Behavior to preserve or explicitly replace |
+|---|---|---|
+| Finite consultation/policy/composition work | One-off ECS Fargate tasks, manually invoked initially | No inbound web endpoint; committed/pinned inputs, checksummed output, durable checkpoints for shadow work. |
+| Container distribution | ECR, immutable image digests | Separate owner-built images; shared release manifest does not merge task permissions. |
+| Private source/results | S3 general-purpose buckets, versioning and explicit SHA-256 | Pin object version IDs; conditional writes prevent current-key overwrites, not all deletion/recreation scenarios. ETag is not the content checksum. |
+| Registry web runtime | Separate ECS Fargate service behind HTTPS ALB | Server-rendered FastAPI/Jinja, private task subnets, no public task IP, only ALB security group can reach the container. |
+| Subscriber SSO | Tenant-specific Entra OIDC in the server application | App Service Easy Auth headers/logout are replaced, not emulated or trusted on AWS. No Cognito user pool or IAM console login is needed for subscribers. |
+| Private profiles/preferences/audits | DynamoDB on-demand with conditional and transactional writes | Preserve principal ownership and deterministic uniqueness; replace Cosmos `_etag` with explicit optimistic `version`. |
+| Browser sessions/login transactions | Separate DynamoDB table, expiry enforced by code | Opaque cookie only; no tokens/claims in browser cookie, no reliance on eventual TTL deletion for authorization. |
+| Runtime credentials | Scoped ECS task IAM roles | Separate execution role for image pulls/log delivery; neither subscriber login nor deployment role becomes runtime identity. |
+| App credentials | Secrets Manager and KMS | Runtime-only read; no secret material in CDK context, CloudFormation templates, logs, or images. |
+| Deployment credentials | GitHub OIDC → narrowly scoped IAM roles | No AWS access keys; protect production environment and constrain exact subject/audience. |
+| Metrics/audit/cost | CloudWatch, CloudTrail, AWS Budgets | PII-minimized application logs; evaluate infrastructure log payloads separately. |
+| Later operational state | Private RDS PostgreSQL | Transactions, unique constraints, compare-and-set, intent/outbox/inbox/attempt state; not a drop-in Azure SQL SQL dialect. |
+| Later dispatch work hints | SQS Standard plus DLQ and ECS Fargate worker | At-least-once delivery; database inbox and provider outcome handling remain authority. |
+| Later email provider | SES is the proposed AWS-native candidate, subject to procurement/security/send approval | Per-region sandbox/production access, domain/DNS verification, quotas, feedback, suppression; no SES permission in no-send tasks. |
+
+Existing Snowflake producers, Azure Blob datasets and the separate Azure-hosted DataAPI are not moved by this alternative. The AWS Source Adapter may read approved existing sources and materialize version-bound handoffs to S3. Cross-cloud egress, licensing and credentials remain real dependencies. The registry does not query Snowflake or use the DataAPI as identity/recipient/authorization authority.
+
+Sources already checked: Entra auth-code/PKCE and ID-token guidance, ECS Fargate/task-role guidance, DynamoDB transactions/TTL/PITR, S3 conditional writes, SQS duplicate delivery, CDK bootstrap, GitHub→AWS OIDC, and SES sandbox/feedback guidance. Detailed links are retained below; none is evidence that the target tenant or account has been provisioned.
+
+The main tradeoff is operational, not an assumed price advantage. AWS keeps Entra SSO but replaces managed Easy Auth and Cosmos adapters with application-owned OIDC/session handling and DynamoDB concurrency. Fargate service/ALB/NAT have standing costs even with little signup traffic; RDS adds standing cost only in the separately approved delivery phase. Cost review must price the actual approved region, tasks, network/endpoint design, logs, backup and retention before choosing this instead of Azure.
+
+## Approach
+
+### Stage 0 — request tenant and AWS prerequisites immediately
+
+Create a private readiness register listing each blocker below, accountable owner, request/ticket, environment, required evidence, and status. Use only administrator-supplied account/tenant/region/domain values; an unknown approval remains blocked, never inferred from developer access.
+
+Choose one approved AWS region per initial environment. Use separate production/nonproduction accounts when permitted; otherwise distinct stacks, roles, keys, tables and secrets. Retain the root workspace as release coordinator, with proposed new AWS CDK source under `infra/aws/`; this is a new path, not a claimed existing deployment. Keep the proposed private `Ahead-of-the-Storm-SUBSCRIPTIONS` codebase separate, subject to repository-owner authorization.
+
+Have the AWS platform administrator approve/bootstrap the CDK environment, including CloudFormation execution policy, bootstrap asset buckets/repositories, deployment/publishing roles, permissions boundary and `iam:PassRole` scope. Do not grant the ordinary GitHub job blanket administrator or tenant-admin permissions. Deny direct application-deployment access to runtime secrets and subscriber records; reviewed code/deployment authority is still a privileged indirect path and is not a substitute for release approval.
+
+Configure GitHub OIDC with `aud=sts.amazonaws.com` and exact repository/environment subject restrictions using the actual repository subject format, including immutable IDs where applicable. Grant `id-token: write` only to the deployment job. Require protected production-environment approval; do not grant fork PR jobs cloud roles or private credentials.
+
+Start Entra workforce app registration, enterprise-app `Subscriber` assignment, B2B/Conditional Access/MFA, directory-contact claims, Web callback hostname and credential-rotation requests in parallel. AWS hosting removes Azure resource requirements, not these tenant activities.
+
+Exit: named owners and evidence-backed deployment/auth requests exist. Local synthetic work is unblocked even if cloud permissions or tenant tasks are pending.
+
+### Stage 1A — synthetic AWS format proof, parallel with 1B
+
+Reuse `scripts/build_alert_packaging_consultation.py` and `build_consultation_pack(scenario_dir: Path, template_dir: Path, stylesheet_path: Path, output_dir: Path) -> dict[str, Any]`. The implemented generator is local-only and removes an existing output directory; wrap it with a fresh task-local scratch path, never a mounted input/evidence directory.
+
+Provision only ECR, a manual ECS Fargate task definition/cluster, private encrypted versioned S3 inputs/results, IAM task/execution roles, CloudWatch diagnostics, budget and approved network/egress. Use an approved private-subnet deployment with the needed AWS endpoints/NAT path; there is no ALB, subscriber table, SES permission, dispatch queue or operational ledger in this task's capability set.
+
+Build the new S3 result adapter around the existing manifest. Upload generator outputs first and finalize the run manifest last. Use content-addressed run keys, `If-None-Match: *` writes, explicit SHA-256 verification and recorded version IDs. Deny the task delete permissions; conditional current-key protection is not WORM, and versioning alone is not authorization to publish or retain forever. Existing-key conflict fails rather than overwrites. Failure/partial upload must never create a finalized-success manifest.
+
+Exit: all output checksums pass and generator-owned files are byte-identical across three identical-input local/AWS runs with pinned tools. Review private output in desktop/mobile browsers; prove task roles cannot access recipient/SES/dispatch resources. Consultation output is not a normative profile, certification or send authorization.
+
+### Stage 1B — AWS registry, Entra SSO and synthetic lifecycle
+
+Build a separate FastAPI/Jinja registry with the existing domain/UI/route requirements, adapting authentication and persistence rather than forking the dashboard or DataAPI. No existing AWS registry implementation is identified in the reviewed repository map. The detailed auth/session boundary below is required before deployment and replaces every reliance on `X-MS-CLIENT-*` and `/.auth/logout`.
+
+Store registry data with partition key `principalKey="<tid>:<oid>"` derived solely from the authenticated server principal and sort key `id`, including `"profile"` and `"subscription:<country-office-id>"`. Keep the existing consent/catalog versions, product selection, contact confirmation and `enabled`/`paused` states. Add integer `version` starting at 1; every update/delete compares the submitted expected version in a DynamoDB condition, and successful updates increment it atomically. Stale conditions produce a conflict/reload page, not last-write-wins. Never retain a fake Cosmos `_etag` layer.
+
+Use `TransactWriteItems` for changes requiring atomic profile/preference/audit effects. Do not substitute `BatchWriteItem` for a transaction. Preserve deterministic creation uniqueness and persisted application idempotency; DynamoDB's request-token deduplication lasts only ten minutes and is not durable repeated-form protection. Use strongly consistent base-table reads for current preference state and transactional reads when a coherent profile/preference snapshot is required; no GSI/stream is final authorization.
+
+Apply conditions to the actual Put/Update/Delete action rather than targeting one item twice in the same transaction. Reject a multi-office submission exceeding DynamoDB's 100-action/4-MB transaction limit without partial writes; do not split an atomic user submission into independent batches. Exclude expired session/login state at application read time even if its TTL row remains.
+
+Package the versioned Country Office catalog; separate `registrationOpen` from `operationalApproved`. Catalog failure blocks create/expand, not pause/delete. Keep the existing documented browser routes and lifecycle semantics; no candidate/resolver/export/provider endpoints in registration-only deployment.
+
+Provision nonproduction ALB/ACM, Fargate service, registry/session tables and scoped Secrets Manager access after their owners authorize them. The ALB terminates HTTPS and forwards only to private tasks; application-side OIDC authenticates users. Untrusted principal/proxy headers never create a user. Test employees and invited guests using designated tenant test identities with approved nonproduction handling; directory test identities themselves can be personal data.
+
+Exit: deployed Entra allow/deny tests and synthetic lifecycle/concurrency tests pass, local fake auth cannot start under deployed configuration, and the service cannot send email.
+
+### Stage 2 — registration-only launch and recovery
+
+Finish the specified empty/add/review/confirmation/edit/pause/delete/conflict/denied/missing-email/catalog-failure/session-expiry/address-change states. Keep the persistent registration-only banner, `Saved`/`Paused` wording, WCAG 2.2 AA review, 320 CSS-pixel reflow, secure cookies, CSRF checks and directory-only contact. Obtain consent, privacy, retention/purge/backup, eligible-office and support approvals before real enrollment.
+
+Enable DynamoDB PITR with the approved recovery window; restore to a new table and rehearse an explicit table-configuration promotion. Do not back up session/login-transaction data for subscriber recovery: restored old sessions are invalid. Expiry is checked on every read; TTL is asynchronous housekeeping, not immediate deletion/revocation. Explicitly delete/revoke current records as required by the approved deletion policy and document backup expiry/restored-data deletion replay before reopening writes.
+
+Privacy approval must account for DynamoDB's automatic system backup when a PITR-enabled table is deleted: AWS documents 35-day retention for that system backup. Primary deletion and a shorter configured recovery window do not prove all historical copies are immediately gone.
+
+Production uses at least two tasks across two Availability Zones behind ALB, encrypted regional data, restrictive endpoint policies/security groups, workload alarms, secret rotation, and the approved NAT/egress/DNS design. Stage and production use independent Entra registrations, callback hostnames and data/roles; there are no App Service slots. Promote the same tested digest to production with an ECS rolling deployment, health checks and deployment circuit-breaker rollback. Revert by redeploying the prior compatible digest, not by copying Azure slot commands.
+
+Exit: real Entra employee/B2B smoke, no cross-principal access, private data-path checks, restore/rollback, operational response, privacy/security/accessibility review, and absence of email-send/queue/outbox/resolver capability. Production registry launch need not wait for shadow alerts and does not activate them.
+
+### Stage 3 — V2 and finalized sources; then non-sending AWS shadow
+
+Local runtime work may proceed alongside the two initial tracks. Preserve `plan.md` ordering and ownership: Orchestration episode/link, ProductDecision/ProductFactSet v2 and supported V1 adapter; root strict consumption, compatibility composition and output-content privacy enforcement. Preserve frozen V1 output and independent expected-output provenance. New normative concise/linked-report profiles remain blocked on accepted consultation decisions.
+
+After the synthetic AWS release path passes, package policy/composition/replay as separate finite Fargate tasks. The read-only Source Adapter materializes finalized source-ready manifests and immutable objects in S3; introduce an explicitly versioned AWS storage-reference adapter for bucket/key/version/checksum rather than putting S3 identifiers into Azure Blob-specific fields. Do not change semantic decision identity to encode cloud location. Use a dedicated DynamoDB checkpoint table for durable acceptance/claims; do not use the registry table, S3 notifications or a mutable latest pointer as source authority.
+
+Start with manual or bounded scheduled source polling; EventBridge Scheduler is a later scheduling adapter only if needed, not a new policy engine. Reject incomplete/schema-invalid/checksum-invalid manifests before policy work; repeated/restarted input must not create duplicate effective outcomes. Keep source, comparison and recipient stores separate.
+
+Shadow acceptance remains the existing proposed gate: 30 consecutive Forecast Runs, 10 historical episodes, at least two approved Country Offices; complete accounting/replay idempotency; no unresolved material discrepancy or PII leakage. No candidate lookup, provider calls or send-capable roles exist in this stage. Identity stability, licensing and external source access remain independent blockers.
+
+### Stage 4 — separately approved delivery control and provider proof
+
+Only after registry and shadow gates pass, accept AWS-specific delivery ADRs/contracts that preserve the same domain authorities: Activation Policy and Delivery Authorization, routing epochs, opaque candidates/JIT resolution, transactional intents/outbox, inbox/attempt/suppression, reconciliation and legacy fencing. Choose private RDS PostgreSQL for operational state; DynamoDB remains the subscription authority, not an operational outbox substitute.
+
+Create SQL transactions/unique constraints and compare-and-set state transitions before connecting SQS. Use SQS Standard with DLQ, bounded visibility timeout/extensions, redrive policy and long polling; a Fargate service worker uses durable SQL inbox claims before side effects. Do not promise Service Bus duplicate detection, ordering or exactly-once behavior. Delete messages only after a recoverable terminal/explicitly ambiguous database outcome.
+
+Add subscription-owned private candidate/resolver APIs under AWS workload authentication, not browser Entra tokens. Use a private API Gateway REST API with IAM/SigV4 authorization and resource policy restricted to the planner/worker roles; subscription-owned Lambda adapters reuse the same domain/storage package with separate execution roles. Expose the documented `/internal/v1/candidates` and `/internal/v1/recipients/{opaque-reference}` only on this internal deployment, never on the public registry ALB. Resolver reads current authoritative preference/profile versions; eventual candidate discovery is a hint, not final authorization.
+
+Use SES v2 as the provider candidate, but create no sender permissions until procurement/privacy/security/domain and test-send approval exists. Region-specific sandbox access is sufficient only for approved verified test addresses or the SES mailbox simulator; external pilot delivery requires production access and approved quotas. SES send acceptance is not inbox delivery and must not be assumed to support arbitrary provider-idempotency keys: uncertain calls become durable ambiguous attempts, not blind resends.
+
+Use SES configuration-set event publishing to a restricted SNS topic and a separate Lambda feedback handler, not the human registry service. Apply the configuration set on every send. Validate permitted source resources, deduplicate events and correlate provider IDs to attempts; persist minimized suppression/reconciliation facts. Raw feedback can contain recipient addresses: classify this provider-private ingress and its retries/dead-letter storage separately, encrypt/restrict/retain it under approved policy, and never forward raw payloads to the opaque dispatch queue or ordinary logs.
+
+Exit: authorized sandbox/mailbox proof plus duplicate-message, pause/delete/version-race, suppression, feedback-replay and ambiguous-outcome recovery checks pass. No external cohort is authorized merely by successful SES production-access approval.
+
+### Stage 5 — controlled live pilot, then regional expansion
+
+Fence every active legacy Snowflake sender before any AWS live dispatch. Never enable Azure and AWS as parallel senders; these are alternative hosting plans, not a dual-cloud sending strategy. Authorize exact cohort, environment, Country Office/product/channel, composition digest, route, epoch, validity and approvers.
+
+Begin with organization-owned test mailboxes, then the consented cohort. Retain existing proposed gates: zero unauthorized/cross-office/duplicate effective sends; all intents/provider events terminal, explicitly ambiguous or reviewed; pause/delete races fail closed; 2× expected peak; all global/office/product/planner/relay/queue/worker/provider/epoch kill switches exercised; global disable within five minutes. Kill-switch propagation must be checked by a worker-side pre-send authorization read, not inferred from IAM revocation timing or stopping scaling.
+
+Expand by single-active-region Country Office/product/channel rings only after approved residency/SLO/RTO/RPO and measured evidence. Use regional RDS, SQS, worker, resolver/data and telemetry. Two successful recovery exercises must demonstrate fencing, outbox replay, complete reconciliation, zero duplicate effective sends and approved capacity headroom. S3 replication, DynamoDB replication or RDS standby does not replicate SQS work or prove safe dispatch failover.
+
+Normal rollback disables/fences AWS dispatch or restores a previous approved AWS release; it never automatically restores Snowflake/Azure sending. Retire legacy sending only with accountable retention/reconciliation/retirement approval.
+
+## Authentication boundary required for Stage 1B
+
+Use direct server-side Entra OIDC with MSAL Python for authorization-code flow and PyJWT with cryptographic support for explicit ID-token verification. Use the documented `ConfidentialClientApplication`, `initiate_auth_code_flow` and `acquire_token_by_auth_code_flow` methods; do not handcraft token acquisition or treat decoded claims alone as verified identity. This is new application auth work because AWS does not supply App Service Easy Auth.
+
+Do not use ALB `authenticate-oidc` as the sole claims/authorization layer: ALB does not forward the Entra ID token, and Entra UserInfo cannot supply the required custom `tid`/`oid`/application-role contract. The ALB is HTTPS ingress only in this alternative.
+
+Register a single-tenant confidential **Web** app per deployed environment. Use tenant-specific discovery/authority, never `common`/`organizations`, and exact HTTPS redirect `https://<approved-registry-host>/auth/callback`. Define these new authentication routes:
+- `GET /auth/login`: generate a library-managed auth-code/PKCE S256 flow with state and nonce; persist the flow server-side, bound to a random short-lived login cookie. Redirect to Entra.
+- `POST /auth/callback`: use `response_mode=form_post` so authorization codes do not enter ALB URL logs. Retrieve the exact unexpired flow bound to the login cookie, verify state/nonce/PKCE through MSAL, and atomically consume it so callbacks cannot be replayed. Only this login callback uses protocol state rather than the ordinary authenticated-form synchronizer CSRF token.
+- `POST /auth/logout`: require the ordinary CSRF/origin checks, invalidate the server session, expire cookies and redirect to the configured tenant discovery `end_session_endpoint` with an allowlisted registered `/logged-out` destination. Do not promise this signs the user out of every Microsoft app.
+
+Before creating any authenticated session, verify the returned ID token's cryptographic signature from the configured tenant discovery/JWKS with PyJWT; enforce `RS256`, exact issuer, audience/client ID, required validity timestamps and expected tenant; require `oid` and the app's `Subscriber` role. Use MSAL's flow validation for nonce/state instead of inventing a second incompatible nonce transform. Reject missing claims, unknown/unverifiable signing keys, wrong audience/tenant, expired tokens and invalid roles. Do not trust unverified `id_token_claims`, arbitrary JWT `jku` URLs, `X-MS-CLIENT-*`, `X-Amzn-Oidc-*`, email/UPN identity or raw inbound bearer ID tokens. This session authenticates the browser to its own web application; it is not an API access token for other services.
+
+Request the `email` scope through MSAL's authorization-code flow, let MSAL add its standard `openid`/`profile` scopes, and set `exclude_scopes=["offline_access"]`. Do not request Graph/`User.Read`, persist refresh tokens or add a Cognito broker. Use `(tid, oid)` as durable identity; contact comes from validated directory claims, is never identity, and must be confirmed before changes redirect future email. Missing usable contact blocks enrollment, not authenticated pause/delete of existing preferences.
+
+A signed ID token authenticates the claim's source, not ownership or accuracy of its email value. Treat `email` as a proposed contact: require explicit user confirmation of the displayed address plus tenant-owner approval of its directory source before real enrollment; do not label it a verified mailbox merely because login succeeded. Tenant administrators must configure/prove the optional email claim for managed users where needed. Only use `preferred_username` as contact when the approved directory-source contract explicitly allows it, it is a plausible email address and it is not a guest `#EXT#` UPN. Otherwise block enrollment and direct directory correction through support; do not add arbitrary address entry or an unapproved Graph lookup. Live delivery additionally requires current consent/contact resolution and its own activation checks.
+
+Store the confidential-client certificate/private material in Secrets Manager; register only its public certificate with Entra and give the registry task runtime read access. Prefer a tenant-approved certificate with SHA-256-capable library configuration and overlapping rotation. If tenant policy permits only an expiring client secret, use that documented MSAL credential option from Secrets Manager with a named rotation owner; if neither is authorized, deployed login stays blocked. No Azure managed identity or Easy Auth token store exists in this design.
+
+Use an opaque random `__Host-aots_session` cookie (`Secure`, `HttpOnly`, `SameSite=Lax`, `Path=/`, no Domain) pointing to server-side session state. Store only required principal/contact/role facts and CSRF state, not provider tokens. Set absolute session lifetime to the earlier of ID-token expiry and 15 minutes, with no sliding extension; require a new Entra flow afterward. Use a separate `__Host-aots_login` correlation cookie (`Secure`, `HttpOnly`, `SameSite=None`, `Path=/`, no Domain) limited to a 10-minute, single-use login transaction so it survives Entra's cross-site form POST. Expiry/consumption is enforced in application/conditional writes, not DynamoDB TTL. Failed/missing browser binding denies the callback; no login fallback bypasses it.
+
+Entra assignment removal/CA changes do not instantly revoke an issued local session. A 15-minute absolute lifetime limits local reuse without a new Entra evaluation; it is not an end-to-end 15-minute revocation SLA because tenant propagation and existing Entra SSO sessions have separate behavior. Obtain security-owner acceptance and test actual offboarding. For emergency service-wide invalidation, store `sessionEpoch` in each session and compare it on every authenticated request with a strongly consistent read of a subscription-owned session-control epoch; an approved administrator increments the control epoch to invalidate prior sessions. Do not rely on task restart while sessions remain in DynamoDB. If immediate per-user revocation is mandated, hold production for a separately reviewed revocation integration.
+
+Allow only ALB ingress to private tasks and use trusted proxy configuration for the exact approved host/scheme. Keep login/session/claims/tokens/form bodies/query strings out of application telemetry. ALB/WAF raw access logging is disabled for this initial design unless security/privacy approves redacted handling; never enable raw body/header capture to debug SSO. Login/callback failure evidence uses controlled categories and random correlation IDs, not raw Entra error descriptions.
+
+## External provisioning and approval blockers
+
+No administrator permissions, accounts, tenant objects, connectivity or approvals below are assumed present. Record evidence, not secrets, in the private Stage 0 readiness register.
+
+| Owner/dependency | Required evidence | Blocks | Work that proceeds independently |
+|---|---|---|---|
+| AWS sponsor/account administrator | Approved account/region, organization SCPs, service quotas, billing/budget and data-residency owner | All AWS provisioning | Local synthetic generation and service tests |
+| AWS security/bootstrap administrator | Approved CDK bootstrap execution/publishing policies, IAM permission boundaries, exact `PassRole`, GitHub OIDC trust and protected environments | CDK deployment pipeline | CDK authoring without cloud lookup/deployment |
+| Entra application administrator/delegated owner | Per-environment confidential Web registration, service principal, exact callback/logout URIs, public certificate or approved secret, named owners/rotation | Deployed subscriber SSO | Format task and local synthetic registry |
+| Enterprise-app/group administrators | Assignment required, approved employee/B2B groups assigned to `Subscriber`, actual role issuance proof | Authorized enrollment | Local auth-denial tests |
+| Tenant security/external collaboration owners | Guest invitation/redemption/cross-tenant rules, CA/MFA policy, feature licensing, test users, access reviews/offboarding, local-session lifetime and actual revocation-behavior approval | B2B proof and production auth approval | Employee test proof where authorized; no guest-support claim |
+| Tenant claims/consent owner | Actual employee/B2B `tid`/`oid`/role/contact evidence; permitted minimal OIDC scopes and any required tenant consent | Real contact enrollment | Missing-contact and synthetic principal scenarios |
+| Network/DNS/PKI owners | ALB HTTPS hostname, ACM validation DNS, private subnet routes/security groups, S3/DynamoDB endpoints, outbound TLS to tenant discovery/token/JWKS/logout-related services | Deployed SSO, image pulls and private storage | Local application tests |
+| Network/cost owners | Explicit NAT/egress/endpoint design and baseline ALB/Fargate costs; production multi-AZ connectivity and approved deployment-agent access | Production and secret refresh/redeployment | Non-cloud test work |
+| Privacy/legal/product/support owners | Cross-provider Entra→AWS personal-data processing approval, consent/retention/purge/backup periods, support/deletion process, approved office/cohort catalog | Real enrollment and production registry | Synthetic-only registry |
+| Source/Snowflake/Azure-data owners | Read-only source credentials, cross-cloud network allowlist, egress budget, reuse licensing, immutable source manifests and checkpoint owner | Real-source shadow | Consultation/registry and synthetic V2 runtime |
+| Orchestration/product/packaging reviewers | Identity stability evidence, accepted policy/profile decisions and independent expected evidence | Operational qualification/new normative profiles | Clearly labeled dry-run/compatibility work |
+| AWS data/operations owners | DynamoDB PITR/restore/purge proof and deletion replay; later RDS version/Multi-AZ/backups/TLS, migration and recovery approval | Registry launch; later durable delivery | Local adapter/control tests |
+| Procurement/security/SES administrator/domain owner | SES provider approval, regional verified identities, DKIM/SPF/DMARC/MAIL FROM policy, approved sandbox tests, production-access request, quotas and feedback/suppression configuration | Provider proof and external send pilot | Non-sending control-path tests |
+| Country Office/operations/legacy sender owner | Exact cohort send authorization, one-active-route fencing, kill-switch owners, SLO/RTO/RPO and support coverage | Live pilot/expansion | Registration and no-send shadow |
+
+AWS hosting does not require Azure App Service/Cosmos resources or a new Azure subscription for the proposed services, but the Entra workforce tenant, its licensing/policies and any existing Azure source systems remain. AWS console administration may use the organization's existing IAM Identity Center federation; that is separate from the subscription application's Entra Web registration and is not provisioned by this plan.
+
+Baseline networking is private tasks with approved NAT egress to Entra plus S3/DynamoDB gateway endpoints. If organizational policy forbids that path, require the network team to supply an approved outbound proxy/private service-endpoint design before deployment; do not assign public task IPs or disable TLS validation. Private AWS data paths do not provide a private Entra token endpoint.
+
+## Critical files and anchors
+
+1. `docs/project/alert-subscription-service-plan.qmd` — Authentication, data, browser routes and no-send gates: preserve requirements while explicitly replacing Easy Auth/Cosmos assumptions.
+2. `docs/project/azure-alert-execution-plan.qmd` — ownership, execution interfaces and stage gates: retain semantics, not Azure service-specific features or implicit permissions.
+3. `docs/agents/repository-map.md` — root/Orchestration/submodule ownership and proposed V2 seams: no new policy or recipient logic in the root wrapper/DataAPI.
+4. `scripts/build_alert_packaging_consultation.py` — `build_consultation_pack` and CLI: implemented reuse point and destructive local output-directory behavior.
+5. `plan.md` — ordered V2 slices and identity/packaging/source blockers: cloud portability cannot bypass runtime readiness.
+
+## Verification
+
+No builds, installs, cloud commands or deployments run during this planning review. These are future acceptance scenarios and prerequisites, not claims that AWS or Entra has been verified.
+
+### Local synthetic proof
+
+From the workspace root with the frozen Python environment available:
+
+```sh
+OUTPUT_ROOT="$(mktemp -d)"
+uv run --frozen python scripts/build_alert_packaging_consultation.py \
+  --scenario-dir docs/project/alert-packaging-consultation/scenarios \
+  --template-dir docs/project/alert-packaging-consultation/prototype-templates \
+  --stylesheet docs/project/alert-packaging-consultation/prototype.css \
+  --output-dir "$OUTPUT_ROOT/generated"
+uv run --frozen pytest tests/aots_portable_reports/test_alert_consultation_prototypes.py
+```
+
+Expected: 15 listed generator outputs, 12 HTML documents, synthetic/non-operational disclaimers, correct supplied decisions and no prohibited content. For three identical-input local/Fargate runs compare all generator-owned checksums, not browser PNG bytes. A conflicting S3 finalization key must fail without overwriting; a partial upload must never be consumed as finalized. Role-negative tests prove denied registry/SES/dispatch access.
+
+### Registry and Entra proof
+
+The new registry repository must provide its full-suite and browser-smoke commands when implemented; there is no existing AWS registry test command to reuse. Run complete domain, DynamoDB-adapter and authentication modules, not only one happy-path test.
+
+- Two synthetic principals: repeated same-principal/office creation produces one preference; concurrent version-1 updates permit one version-2 commit and one conflict, with consistent audit; the second principal cannot read/mutate the first's records.
+- After ten-minute DynamoDB transaction-token expiry, repeated identical form submission remains idempotent through the persisted application mechanism. Oversized or invalid transaction input fails without partial mutation.
+- Missing catalog blocks add/expansion while pause/delete work; missing directory address blocks creation; changed contact requires confirmation; approved deletion/purge removes current access without waiting for TTL cleanup.
+- Real nonproduction Entra employee and B2B accounts: exact tenant/audience/role assignment permits login; unassigned/wrong-tenant/missing-role users fail. Forged `X-MS-CLIENT-*`/`X-Amzn-Oidc-*` headers do not create a session. Invalid signature, algorithm, expiry, state, nonce, callback binding or replay fails closed. Sign-out invalidates the local session; changing replicas does not lose state or revive it.
+- Deploy form-POST callbacks and inspect sanitized ALB/application evidence: no code/token/claims/contact in URL logs or telemetry. A blocked JWKS/token endpoint gives a controlled sign-in failure, not trusted unverified claims. Certificate rotation is exercised with overlap and a rollback path.
+- Expired sessions are rejected even while DynamoDB TTL rows remain. At session expiry require a fresh Entra evaluation and measure actual assignment-removal propagation; do not claim a fixed end-to-end revocation SLA. Incrementing `sessionEpoch` denies all older sessions across both task replicas; an unavailable session/control store fails closed.
+- Inspect 1440×900, 390×844 and 320-CSS-pixel reflow; perform automated WCAG A/AA and manual keyboard/focus/error/announcement review. Confirm no browser token storage, no open redirect, CSRF/IDOR resistance, and no synthetic PII canaries in screenshots/logs/images/CI.
+- Restore a private backup to a new table, replay deletions/disable old sessions, explicitly promote configuration and roll back the container digest. Verify IAM runtime access but deployment-secret/recipient-data denial.
+
+### Shadow and delivery proof
+
+Shadow: reject incomplete/bad-digest manifest, replay across worker restart and account for every source run exactly as the existing no-send acceptance gate requires. Current expected-evidence provenance remains distinct from AWS self-checks.
+
+Delivery: inject duplicate SQS work, crash after outbox enqueue, expire visibility while processing, pause/delete/change-version before resolver call, revoke authorization/routing epoch, suppress a bounced recipient, and simulate SES timeout after possible acceptance. Expect no unauthorized effective send, no blind resend of an ambiguous attempt, durable inbox/intent accounting, and explicit manual review. AWS/SQS/SES services do not alone guarantee end-to-end exactly-once mail.
+
+Feed duplicate and unauthorized provider events: reject unauthorized sources, deduplicate allowed events, apply suppression, account for unmatched events, and prove provider-private payloads never enter opaque dispatch artifacts/logs. Observe actual approved mailbox outcomes and feedback separately from provider acceptance.
+
+Only an explicitly approved pilot may exercise provider side effects, 2× expected peak, global dispatch disable ≤5 minutes and regional recovery. Publication and send approvals remain distinct from passing tests.
+
+## Cost model — Frankfurt pricing reference
+
+### Basis and accuracy
+
+Reference region: **Europe (Frankfurt), `eu-central-1`**. Public prices retrieved for this estimate on 2026-10-28; the regional catalog snapshots have September/October 2026 publication dates. All amounts are **USD/month**, using **730 hours**, Linux/x86 on-demand compute, before VAT, foreign exchange, credits, Savings Plans or negotiated discounts. This is a planning model, not an AWS quote or measured workload.
+
+Availability and usage are separate axes. Availability determines standing task/network/database cost; usage adds task duration, requests, logs, retained bytes and sends. Registered subscriber count is not a billing meter. The below profiles are explicit examples, not forecasts or approved operational cohorts.
+
+The `us-east-1` hostname of the AWS public price-list service is its distribution endpoint; the `/eu-central-1/` path and product attributes identify the Frankfurt rates. Do not substitute the cheaper US-region pricing examples from AWS marketing pages.
+
+### Unit prices used
+
+| Component | Frankfurt on-demand rate used | Evidence |
+|---|---|---|
+| Fargate Linux/x86 | $0.04656/vCPU-hour + $0.00511/GB-hour; default 20-GB scratch included | [Regional ECS catalog](https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonECS/current/eu-central-1/index.json), published 2026-10-19; [billing terms](https://aws.amazon.com/fargate/pricing/) |
+| ALB | $0.027/hour + $0.008/LCU-hour | [Regional ELB catalog](https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AWSELB/current/eu-central-1/index.json); LCU is the maximum of the metered dimensions, not their sum |
+| NAT | $0.052/gateway-hour + $0.052/GB processed | [AWS regional NAT rate map](https://b0.p.awsstatic.com/pricing/2.0/meteredUnitMaps/ec2/USD/current/natgateway.json), EC2 manifest published 2026-10-27 |
+| Public IPv4 | $0.005/address-hour | [Frankfurt VPC catalog](https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonVPC/current/eu-central-1/index.json); model two ALB addresses plus one per NAT, no public task IP |
+| Interface endpoint | $0.012/endpoint-AZ-hour + $0.01/GB at first tier | Same VPC catalog; S3/DynamoDB gateway endpoints have no hourly/processing charge |
+| DynamoDB Standard on-demand | $0.1525/million RRUs; $0.7625/million WRUs | [Frankfurt DynamoDB catalog](https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonDynamoDB/current/eu-central-1/index.json), published 2026-09-11 |
+| DynamoDB storage/PITR | $0.306/GB-month marginal Standard storage + $0.2448/GB-month PITR | Same catalog; conservative model assumes shared/account-level zero-price storage allowance is unavailable |
+| S3 Standard | $0.0245/GB-month; PUT $0.0054/1,000; GET $0.00043/1,000 | [Frankfurt S3 catalog](https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonS3/current/eu-central-1/index.json), published 2026-10-15 |
+| ECR storage | $0.10/GB-month | [Frankfurt ECR catalog](https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonECR/current/eu-central-1/index.json) |
+| Standard application logs | $0.63/GB ingestion + $0.0324/GB-month retained | [Frankfurt CloudWatch catalog](https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonCloudWatch/current/eu-central-1/index.json), effective 2026-10-01 |
+| RDS PostgreSQL traditional Multi-AZ | `db.t4g.small` $0.074/hour; `db.t4g.medium` $0.149/hour; non-burstable `db.m7g.large` $0.401/hour | [Frankfurt RDS catalog](https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonRDS/current/eu-central-1/index.json), published 2026-10-26 |
+| RDS gp3 traditional Multi-AZ | $0.274/GB-month, already covering primary/standby storage | Same catalog; do not double this rate again |
+| Private REST resolver API | $3.70/million calls, plus interface endpoint | [Frankfurt API Gateway catalog](https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonApiGateway/current/eu-central-1/index.json) |
+| SQS Standard | $0.40/million metered requests at first tier | [AWS SQS regional rate map](https://b0.p.awsstatic.com/pricing/2.0/meteredUnitMaps/queueservice/USD/current/queueservice.json); API payload chunks, empty receives and retries also count |
+| SES Essentials | $0.16/1,000 recipient-emails, plus $0.12/GB billable mail/attachment data | [Current SES plans/pricing](https://aws.amazon.com/ses/pricing/); new account/region defaults can be Essentials, not the older $0.10/1,000 assumption |
+| SES à-la-carte option | $0.10/1,000 recipient-emails plus data; not the default assumed below | Same SES page; opt-in/plan selection must be confirmed |
+
+Internet egress is a **budget allowance at $0.09/GB**, not a retrieved exact SKU quote. It conservatively assumes no shared account-level data-transfer allowance remains. Actual routing, free aggregate allowance and service-specific transfer treatment can lower or increase the bill.
+
+Minor-service allowances below cover Secrets Manager, customer-managed KMS keys/API, DNS, log alarms/dashboards/metrics, small S3 request counts and later SNS/Lambda feedback work. Checked reference rates include Secrets Manager $0.40/secret-month and $0.05/10,000 API requests; KMS $1/key-month and $0.03/10,000 symmetric requests; Route 53 $0.50/zone-month and $0.40/million standard queries. These are **allowances, not measured service subtotals**. Sources: [Secrets Manager regional catalog](https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AWSSecretsManager/current/eu-central-1/index.json), [KMS](https://aws.amazon.com/kms/pricing/), [Route 53](https://aws.amazon.com/route53/pricing/).
+
+### Availability and capacity profiles
+
+| Profile | Explicit deployment footprint | Availability meaning |
+|---|---|---|
+| A — synthetic only | No web service/ALB/registry/RDS/sending; finite 1-vCPU/2-GB tasks; three single-AZ interface endpoints (`ecr.api`, `ecr.dkr`, logs), S3 gateway endpoint, no NAT | Jobs can be rerun; no always-on user-facing availability commitment. Images/dependencies are bundled, with no runtime internet dependency. |
+| B — registration evaluation | One 0.25-vCPU/0.5-GB web task, one NAT, one two-AZ ALB; DynamoDB | Task recreation or loss of the task/NAT AZ can interrupt registration. Evaluation only, not the plan's production availability posture. |
+| C — production registration | Two 0.5-vCPU/1-GB web tasks in separate AZs, NAT per AZ, one two-AZ ALB; DynamoDB | Removes a single task/NAT-AZ dependency, subject to tested surviving capacity. Still a single-region service and dependent on Entra. No dispatch/provider resources. |
+| D — controlled live pilot | C + one 0.25-vCPU/0.5-GB worker, `db.t4g.small` traditional Multi-AZ, 20-GB gp3, two-AZ private resolver endpoint, SQS/SES | Registry/database have AZ redundancy; the single worker has restart downtime. Delivery latency/peak capacity and burstable DB CPU need validation. Not full worker redundancy or regional DR. |
+| E — busier regional delivery cell | Four 1-vCPU/2-GB web tasks, two average 0.5-vCPU/1-GB workers, two NATs/one ALB, `db.m7g.large` traditional Multi-AZ, 100-GB gp3, private resolver endpoint | More worker capacity and non-burstable DB, but no measured throughput/SLO guarantee and no automatic regional failover. |
+
+The production floor in the architecture remains profile C. Profile B is a deliberately reduced evaluation option, not an implicit approval to launch real-user production on a single task.
+
+### Example usage inputs
+
+| Monthly input | A | B | C | D | E |
+|---|---:|---:|---:|---:|---:|
+| HTTP application requests | 0 | 20,000 | 200,000 | 200,000 | 1,000,000 |
+| Recipient-emails | 0 | 0 | 0 | 10,000 | 1,000,000 |
+| Finite jobs and duration | 30 × 10 min | 30 × 10 min | 300 × 10 min | 1,000 × 10 min | 10,000 × 15 min |
+| Total 1-vCPU/2-GB job-hours | 5 | 5 | 50 | 166.67 | 2,500 |
+| Metered DynamoDB RRUs / WRUs, millions | 0 / 0 | 0.10 / 0.02 | 1.0 / 0.10 | 2.0 / 0.20 | 10 / 1 |
+| DynamoDB retained GB, conservatively all PITR-charged | 0 | 1 | 2 | 2 | 20 |
+| S3 retained GB, including retained object versions | 5 | 5 | 50 | 100 | 500 |
+| ECR retained GB | 2 | 2 | 5 | 5 | 10 |
+| Standard logs GB ingested / retained for one month | 1 / 1 | 1 / 1 | 5 / 5 | 10 / 10 | 50 / 50 |
+| NAT-processed GB | 0 | 5 | 20 | 30 | 300 |
+| Internet-out GB allowance | 1 | 5 | 20 | 30 | 200 |
+| Average metered ALB LCUs | 0 | 0.05 | 0.10 | 0.10 | 0.50 |
+| Private resolver API calls, millions | 0 | 0 | 0 | 0.05 | 2.0 |
+
+D/E assume approximately 0.0002 billable GB per recipient-email (~200 KB after encoding), six metered SQS requests per email as a planning allowance, and 1/10 GB respectively through the private API endpoint. D/E NAT volumes already include mail submission payloads; internet-out allowance is other/browser/artifact traffic, not an extra charge on the same regional SES submission. A includes 2 GB of endpoint data processing. Actual rendering duration/memory, session reads, transaction doubling and retries must be measured; the tables specify metered RRUs/WRUs, not raw API-call counts.
+
+### Modeled monthly costs
+
+These are full example-environment costs, not per-user prices. Totals use unrounded arithmetic; displayed component rounding may differ by a cent.
+
+| Monthly component, USD | A | B | C | D | E |
+|---|---:|---:|---:|---:|---:|
+| Always-on web/worker Fargate | 0.00 | 10.36 | 41.45 | 51.81 | 207.25 |
+| Finite Fargate jobs | 0.28 | 0.28 | 2.84 | 9.46 | 141.95 |
+| ALB hourly + metered LCUs | 0.00 | 20.00 | 20.29 | 20.29 | 22.63 |
+| Baseline networking + IPv4 + processing | 26.30 | 49.17 | 91.56 | 92.08 | 106.12 |
+| DynamoDB requests/storage/PITR | 0.00 | 0.58 | 1.33 | 1.56 | 13.30 |
+| S3 + ECR + log ingestion/storage | 0.98 | 0.98 | 5.04 | 9.57 | 46.37 |
+| RDS compute + gp3 | 0.00 | 0.00 | 0.00 | 59.50 | 320.13 |
+| Private resolver API/endpoint + SQS | 0.00 | 0.00 | 0.00 | 17.74 | 27.42 |
+| SES Essentials + modeled mail data | 0.00 | 0.00 | 0.00 | 1.84 | 184.00 |
+| Internet transfer allowance | 0.09 | 0.45 | 1.80 | 2.70 | 18.00 |
+| Minor services/operations allowance | 5.00 | 10.00 | 15.00 | 20.00 | 50.00 |
+| **Modeled monthly total** | **32.66** | **91.83** | **179.31** | **286.56** | **1,137.17** |
+| **Initial budget envelope, ≥30% contingency rounded upward** | **45** | **120** | **235** | **375** | **1,480** |
+
+A's baseline network row is its three single-AZ interface endpoints; B–E's is NAT hours, NAT bytes and minimum ALB/NAT public IPv4. D/E's additional two-AZ private resolver endpoint is counted only in the resolver row. Traditional Multi-AZ RDS rates already include the standby; neither compute nor storage has been doubled again.
+
+### Recalculation rules and sensitivities
+
+Use these rules when replacing the illustrative loads with measurements:
+- Fargate = task-hours × (requested vCPU × 0.04656 + requested GB × 0.00511), billed including image-download/startup time and minimum duration. A 1-vCPU/2-GB job costs $0.05678/task-hour; 100 such hours add $5.68.
+- Adding one always-on 0.5-vCPU/1-GB task adds $20.72/month. This is requested capacity, not proof it can handle a particular audience.
+- An additional always-on NAT plus its public IPv4 adds $41.61/month before processing. An extra 100 processed GB adds $5.20. Cross-AZ NAT routing/data charges are not included: B keeps the single task with its NAT, C–E use AZ-local NAT.
+- At B's same usage, changing only to C's two-task/two-NAT footprint adds about $73/month; higher availability costs persist even if traffic stays low.
+- One interface endpoint across two AZs adds $17.52/month before bytes. Do not add unnecessary ECR/logs/secrets endpoints on top of NAT and silently count them as free. S3/DynamoDB gateway endpoints do not replace internet egress to Entra.
+- A can instead use one dedicated always-on NAT: the same synthetic usage models at $48.07/month. If an already approved network supplies existing egress with no new hourly resource, incremental synthetic cost is about $6.46/month; the shared network still costs money and needs allocation/isolation approval.
+- Moving D's RDS compute from `db.t4g.small` to `db.t4g.medium` Multi-AZ adds $54.75/month before any other usage change. T-class surplus CPU credits can add charges; `db.m7g.large` avoids that burst-credit assumption. Extra gp3 IOPS/throughput/snapshots are not included.
+- At the assumed billable message size, each 100,000 recipient-emails adds $18.40 in Essentials sending/mail-data fees, plus queue/feedback/compute/transfer. Selecting à-la-carte instead gives $12.40 for that same direct-email component. Do not assume the lower plan is selected automatically.
+- Each 100 GB of other internet-out traffic adds a conservative $9 allowance; each 100 GB of retained S3 versions adds $2.45/month before requests. Cross-cloud source-provider egress is a separate bill.
+- Each Standard log GB ingested and retained one month adds about $0.66 before query/custom-metric charges. Redaction and bounded retention are safety requirements as well as cost controls.
+
+Monthly email volume = eligible recipients × products/updates actually sent; e.g. 1,000 recipients × 10 messages is D's volume, whereas 100,000 × 10 is E's. This is arithmetic only, not a product/lifecycle send policy. Burst rates, deadlines, peak simultaneous rendering and provider quotas must be tested separately from monthly volume.
+
+### Regional recovery and environmental overhead
+
+Profiles C–E cover single-region AZ resilience, not a region outage. Backup/restore DR has relatively little idle compute but needs separately priced cross-region backups, replication, recovery storage and a tested restore time. A warm/full-capacity standby adds persistent compute/network/database charges.
+
+As a **Frankfurt-rate sizing proxy only**, duplicating E's complete footprint would roughly double its modeled infrastructure/usage budget to $2,274.34/month before replication/recovery traffic and regional price differences; a roughly $3,000 envelope is a preliminary comparison, **not a quote for an identified second region or permission for two senders**. A normally idle standby should have less duplicated email/job usage than this conservative full-duplication proxy. Obtain a second-region inventory/rate calculation and approved RTO/RPO/residency before selecting it. Merely paying for a second cell does not prove safe failover.
+
+The tables describe one environment. A continuously running separate B-sized test/staging environment adds its own infrastructure bill; production does not automatically include it. A staging service can be scheduled down, but leaving ALB/NAT/endpoints provisioned still incurs their hourly charges. Account CDK-bootstrap repositories/assets, retained rollback images and transient rolling-deployment overlap against the allowances.
+
+Excluded and to be explicitly quoted when applicable: Entra workforce/B2B/Conditional Access/access-review licensing; engineering/on-call effort; premium AWS support; WAF/extra security tooling; custom domain registration; cross-region/AZ replication; Azure/Snowflake/source licensing and egress; long-term backups/snapshots or mandated WORM; unmodeled data transfer; expensive log queries; larger payload/transaction sizes; and additional endpoint AZs/public IPv4 as services scale. The contingency is not a cap and does not cover a newly mandated service automatically.
+
+### Cost-based staging recommendation
+
+Start with A for the format proof and B only for the separate subscription evaluation. Prefer shared approved infrastructure or A's endpoint-only setup rather than carrying a dedicated NAT for a few minutes of rendering. Move to C for actual registration production; do not buy RDS/SQS/SES while no-send gates still apply. Add D only after the separate delivery approval, and choose E or regional standby from measured load/recovery requirements.
+
+Before any infrastructure approval, replace the scenario inputs with measured render/runtime/storage/traffic data and an AWS Pricing Calculator estimate for the exact account/region/SKUs/endpoint counts. Validate the selected Entra licenses and source-provider charges separately. A 30% monetary contingency is not 50% spare processing capacity, an SLA, or evidence that the proposed task/database sizes meet the acceptance gates.
+
+## Assumptions & contingencies
+
+- This file is a separate review-only AWS alternative covering both alert execution and subscriptions; the Azure draft remains unchanged and neither plan is authorization to deploy/send. Both initial no-send tracks proceed in parallel. IaC is AWS CDK v2 in Python.
+- Proposed new AWS infrastructure belongs under root `infra/aws/`; the registry remains a separately authorized private `Ahead-of-the-Storm-SUBSCRIPTIONS` repository. If creation or ownership is unavailable, do not put recipient code in root or DataAPI; continue the format track and record the blocker.
+- Exact AWS account IDs, region, hostname, tenant/client IDs, groups, retention periods, budgets and approvers are external inputs to Stage 0. Missing evidence has the explicit blocking behavior in the register; a coding agent must not invent these values.
+- Certificate-backed Entra client authentication is preferred. If tenant policy approves only an expiring client secret, use Secrets Manager with rotation ownership; without an approved client-auth method leave deployed login blocked. Do not assume ECS IAM credentials are an Entra confidential-client credential.
+- If AWS/Entra residency, cross-provider PII processing, the 15-minute local-session lifetime, consent or retention policy is not approved, keep real enrollment closed and continue synthetic-only work. Immediate per-user revocation requirements block launch until their separate implementation is accepted.
+- DynamoDB is the selected registry store and RDS PostgreSQL is the later operational store. If organization policy disallows either, this alternative needs review rather than an unplanned change to storage/transaction semantics.
+- SES is a proposed provider to obtain approval for, not a selected/procured service already available. If production access, sender DNS, quotas or feedback/terms review fails, hold provider/live stages; do not silently switch to SMTP or reuse an Azure/Snowflake sender.
+- If production security policy requires AWS WAF or private registry ingress, implement that policy branch before production and verify callback/browser reachability. Do not add CloudFront, WAF, Step Functions, Kubernetes, Cognito or multi-region data replication merely to translate service names.
+- IAM authorization removal, Entra session revocation, queue deletion, provider acceptance and cross-region replication each have independent semantics. Retain durable fencing/reconciliation and fail closed; do not claim immediate effect from configuration alone.
+
+## Primary references checked
+
+- Entra authorization-code/PKCE: https://learn.microsoft.com/en-us/entra/identity-platform/v2-oauth2-auth-code-flow
+- MSAL Python web flow: https://learn.microsoft.com/en-us/entra/msal/python/getting-started/acquiring-tokens
+- MSAL confidential-client credential/scope configuration: https://learn.microsoft.com/en-us/python/api/msal/msal.application.confidentialclientapplication
+- ID-token verification: https://learn.microsoft.com/en-us/entra/identity-platform/id-tokens and https://pyjwt.readthedocs.io/en/stable/usage.html
+- Entra logout: https://learn.microsoft.com/en-us/entra/identity-platform/v2-protocols-oidc
+- Fargate and task roles: https://docs.aws.amazon.com/AmazonECS/latest/developerguide/AWS_Fargate.html and https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task-iam-roles.html
+- CDK bootstrap: https://docs.aws.amazon.com/cdk/v2/guide/bootstrapping-env.html
+- GitHub OIDC trust: https://docs.github.com/en/actions/how-tos/secure-your-work/security-harden-deployments/oidc-in-aws
+- DynamoDB transactions: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/transaction-apis.html
+- DynamoDB TTL and PITR: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/TTL.html and https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/PointInTimeRecovery_Howitworks.html
+- S3 conditional writes: https://docs.aws.amazon.com/AmazonS3/latest/userguide/conditional-writes.html
+- Private API Gateway REST API: https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-private-apis.html
+- RDS PostgreSQL: https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/CHAP_PostgreSQL.html
+- SQS duplicate delivery: https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/standard-queues-at-least-once-delivery.html
+- SES regional production access and event publishing: https://docs.aws.amazon.com/ses/latest/dg/request-production-access.html and https://docs.aws.amazon.com/ses/latest/dg/monitor-using-event-publishing.html
+- ALB forwarded claims and Entra UserInfo limitations: https://docs.aws.amazon.com/elasticloadbalancing/latest/application/listener-authenticate-users.html and https://learn.microsoft.com/en-us/entra/identity-platform/userinfo
+- Entra contact/identity claim caveats: https://learn.microsoft.com/en-us/entra/identity-platform/id-token-claims-reference
+

@@ -61,6 +61,8 @@ Contract and verification readiness exists, but the V2 runtime path does not. Ex
 
 The proposed [Azure Alert Execution Plan](../project/azure-alert-execution-plan.qmd) keeps this ownership model while coordinating shared infrastructure: format execution, subscription management, and future delivery remain separate deployables and managed identities rather than one combined runtime.
 
+The separate [AWS Alert Execution Plan](../project/aws-alert-execution-plan.qmd) is a review-only alternative; it does not change this proposed Azure topology.
+
 ## Proposed Azure Execution Topology
 
 The proposed migration has four gated stages: synthetic format proof of concept, non-sending multi-Country-Office shadow pilot, controlled live-send pilot, and SLO/residency-driven regional production cells.

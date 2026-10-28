@@ -8,7 +8,7 @@ aliases:
   - /snowflake-agnostic-report-publication.html
 ---
 
-This page presents the open sequence from the concise root `plan.md`; blocked decisions and milestone history remain in that source roadmap.
+This page presents the open sequence from the concise root `plan.md`; blocked decisions and milestone history remain in that source roadmap. The separate [AWS Alert Execution Plan](aws-alert-execution-plan.qmd) is a review-only alternative, not part of the current ordered Azure sequence.
 
 ## Open Sequence
 
