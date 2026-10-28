@@ -1,0 +1,97 @@
+---
+title: "Data API"
+page-type: reference
+audience: "API consumers and workspace maintainers"
+status: current
+---
+
+## Scope And Authority
+
+`Ahead-of-the-Storm-DataAPI/` owns a standalone, read-only REST service for querying existing forecast, hazard, exposure, and reference datasets by semantic parameters rather than Blob filenames. Azure Blob Storage is its data source; it does not query Snowflake, run the forecast/impact pipelines, classify alerts, or publish Snapshot Output Bundles.
+
+This reference describes the workspace pin `6d98ab666bf62f5147568f01f4752513062e82b9`. The [upstream repository](https://github.com/felixschwebel/Ahead-of-the-Storm-DataAPI) is private and requires separate GitHub access. The [architecture](../explanation/architecture.qmd#data-api-boundary) explains its relationship to the other components; the [repository map](../agents/repository-map.md#submodule-boundaries) routes implementation changes.
+
+## Service And Authentication
+
+The upstream walkthrough uses `https://ahead-of-the-storm-api.azurewebsites.net` as its base URL. Interactive [Swagger UI](https://ahead-of-the-storm-api.azurewebsites.net/docs), [ReDoc](https://ahead-of-the-storm-api.azurewebsites.net/redoc), and the [OpenAPI schema](https://ahead-of-the-storm-api.azurewebsites.net/openapi.json) describe the deployed service; deployment revisions may differ from the workspace pin.
+
+- `GET /` returns service information, version, documentation path, and `auth_required` without an API key. This is not a check of Blob data availability.
+- Documentation routes are also accessible without a key.
+- All catalog, hazard, exposure, and reference routes require the `X-API-Key` header. Missing or invalid keys return HTTP 401 with `error: authentication_failed`.
+- Obtain a key through the access instructions in the service documentation. Do not put API keys or Blob SAS tokens in URLs, committed files, logs, or screenshots.
+
+## Endpoint Families
+
+All data operations below use `GET` and return JSON unless marked as a file download. Actual forecast and country coverage comes from discovery, not a fixed inventory in this page.
+
+| Route | Functionality |
+|---|---|
+| `/catalog` | Dataset summary: storm/country counts and available hazard, facility, and administrative categories. |
+| `/catalog/availability` | Filters by date, forecast cycle, storm, country, hazard, and facility type; reports available thresholds, windows, return periods, and, when a single hazard is selected, member-data support for matching data. Filters combine with AND semantics. |
+| `/hazards` | Discovery of the five raw hazard families. |
+| `/hazards/tropical-cyclones/{storm}/tracks` | Ensemble track points by member and lead time, including position, intensity, and available wind-field geometries. |
+| `/hazards/tropical-cyclones/{storm}/envelopes` | Sustained-wind or gust polygons, individual by lead time or combined across lead times for each member. A combined envelope is a geometric union, not a probability surface. |
+| `/hazards/precipitation`, `/hazards/runoff` | ECMWF accumulated precipitation/runoff summaries, or grid cells within a requested bounding box. |
+| `/hazards/river/discharge` | Sparse GloFAS streamflow forecasts in m³/s; discharge is not inundation extent or flood depth. |
+| `/hazards/river/flood-extent` | GloFAS/JRC-derived flooded pixels for a selected member, or grouped flooded-pixel counts by lead time and member when no member is selected. |
+| `/exposure/tiles` | Tile-level probability/impact, single-member coverage, or complete per-tile member membership. |
+| `/exposure/admin` | Admin1-level probabilistic exposure and impact. Other administrative levels and member-specific access are unsupported. |
+| `/exposure/facilities` | Facility probability and attributes for `school`, `health_center`, `shelter`, or `wash`; member coverage is derived from the containing tile, not native facility-level member data. |
+| `/exposure/member-impacts` | Historical country-wide wind/gust impact scalars per ensemble member. This separate resource is not tile or facility coverage. |
+| `/reference/countries` | Countries with data, including whether vulnerability data exists for each country. |
+| `/reference/vulnerability` | Static per-tile moderate/severe poverty-rate estimates for a country, not a forecast or hazard probability. |
+| `/reference/river/return-levels` | Static GloFAS discharge threshold at the nearest grid cell for a latitude, longitude, and return-period tier. |
+
+Whole-source downloads append `/download` to `/hazards/precipitation`, `/hazards/runoff`, `/hazards/river/discharge`, or `/hazards/river/flood-extent`. The first three stream ZIP archives; flood extent streams Parquet as `application/octet-stream`. Downloads are complete source files, not the filtered JSON subset, and require the same API key. Download links point back to the API rather than handing out signed Blob URLs.
+
+## Query Semantics
+
+`date` is the ISO forecast initialization date. ECMWF `run` is one of `00`, `06`, `12`, or `18`; it is required for tropical-cyclone and precipitation/runoff queries. GloFAS river products have no run-hour dimension: omit `run`, including for `river_flood` exposure. Country parameters use ISO alpha-3 codes, normalized to uppercase; storm names are also normalized to uppercase.
+
+Raw hazard families and processed exposure hazards are different enums. Exposure supports `wind`, `wind_gust`, `precipitation`, `precipitation_ratio`, and `river_flood`. In particular, `precipitation_ratio` represents threshold exceedance of the member's runoff/rainfall ratio, not rainfall depth or raw runoff.
+
+### Exposure Parameters
+
+Every exposure request selects a country, hazard, and date. Additional required parameters depend on the hazard; unrelated parameters are rejected rather than ignored.
+
+| Exposure hazard | Required additional parameters | Threshold units |
+|---|---|---|
+| `wind` | `run`, `storm`, `threshold` | Knots; fixed supported tiers. |
+| `wind_gust` | `run`, `storm`, `threshold` | m/s; not the same numeric tiers as sustained wind. |
+| `precipitation` | `run`, `threshold`, `window_h` | mm; supported thresholds depend on accumulation window. |
+| `precipitation_ratio` | `run`, `threshold`, `window_h` | Ratio `0.30` or `0.60`, not percentages `30` or `60`. |
+| `river_flood` | `return_period`, `step_h` | No numeric `threshold`, `storm`, `run`, or `window_h`. |
+
+`window_h` is an accumulation duration; `step_h` is a river forecast lead time. Return-period tiers are `rp2`, `rp5`, `rp10`, `rp20`, `rp50`, and `rp100`. Consult `/catalog/availability` and the endpoint schema for actual supported thresholds and times, rather than assuming every combination exists.
+
+### Ensemble And Spatial Representations
+
+- Members are numbered 1–51; `deterministic` aliases member 51. Do not use zero-based ECMWF member numbering or the alias `control`.
+- Omitting `member` has endpoint-specific meaning. Tracks/envelopes and river discharge can include all members; processed exposure returns the probabilistic representation; river flood extent returns grouped counts rather than every pixel.
+- Raw precipitation/runoff require exactly one of `member` or `aggregation=mean`. Omitting both does not select a mean automatically.
+- Tile and derived facility member coverage support wind, gust, precipitation, and river flood, subject to data availability. Neither supports `precipitation_ratio` member access. Admin exposure never supports member-specific queries.
+- `/exposure/tiles?membership=true` returns all covered members per tile in one request and is mutually exclusive with `member`.
+- Historical wind/gust tile coverage may be re-derived from raw envelope geometry; `ensemble.member_data_source` distinguishes `bitmask_derived` from pipeline-produced `bitmask`. Country-wide historical scalars are not silently substituted for missing tile coverage.
+- Raw precipitation/runoff without `bbox` return a summary, not the full grid. A bounding box uses `min_lon,min_lat,max_lon,max_lat`. Oversized dense-grid requests are rejected; sparse river responses can be capped and report `truncated`. A truncated response is not a complete or representative sample.
+
+## Limits And Error Contract
+
+The standard domain/request error envelope has `error`, `message`, and optional `details`. Consumers should branch on stable error codes, not message wording. Relevant failures include HTTP 400 for conflicting parameters, HTTP 404 for unavailable forecasts/member data, and HTTP 422 for invalid input or categorically unsupported member access. A well-shaped unknown country filter in `/catalog/availability` returns empty discovery results instead of asserting that the country is supported elsewhere.
+
+Limited-tier keys have a rolling request limit on whole-file downloads. Byte quotas also cover backend reads for JSON queries; unlimited-tier keys have a separate safety cap. Active download concurrency is bounded. These protections are process-local, not a shared cross-worker quota; HTTP 429 and applicable `Retry-After` headers must be respected.
+
+A small JSON response is not evidence of a cheap backend read. Raw-hazard parsing reads whole source objects on cache misses even when `member` or `bbox` narrows the response. Source files can be large; consult response `data_access` metadata and avoid unnecessary repeated downloads. The cached catalog can lag newly written data by its configured index TTL.
+
+## Runtime And Ownership
+
+The service entry point is `app.main:app`; its own `requirements.txt` and `Dockerfile` define the standalone environment. The container defaults to port 8000. Adding this submodule does not add its dependencies to the root `uv.lock` or make the API a dependency of the Portable Report Flow.
+
+Required server environment variables are `ACCOUNT_URL`, `SAS_TOKEN`, `CONTAINER_NAME`, and `API_KEYS`. The key registry uses comma-separated `key:limited` or `key:unlimited` entries; missing or malformed required configuration fails startup. Secrets belong in the runtime environment, and Blob credentials should grant only the listing/read permissions the service needs. The upstream walkthrough reads its client key from `AOTS_DATA_API_KEY`; that is distinct from the server's key registry.
+
+Implementation authority at the pinned revision:
+
+- [Application and documentation routes](https://github.com/felixschwebel/Ahead-of-the-Storm-DataAPI/blob/6d98ab666bf62f5147568f01f4752513062e82b9/app/main.py), [data routers](https://github.com/felixschwebel/Ahead-of-the-Storm-DataAPI/tree/6d98ab666bf62f5147568f01f4752513062e82b9/app/routers), and [response schemas](https://github.com/felixschwebel/Ahead-of-the-Storm-DataAPI/tree/6d98ab666bf62f5147568f01f4752513062e82b9/app/schemas).
+- [Configuration](https://github.com/felixschwebel/Ahead-of-the-Storm-DataAPI/blob/6d98ab666bf62f5147568f01f4752513062e82b9/app/config.py), [authentication](https://github.com/felixschwebel/Ahead-of-the-Storm-DataAPI/blob/6d98ab666bf62f5147568f01f4752513062e82b9/app/auth.py), and [read-only Blob client](https://github.com/felixschwebel/Ahead-of-the-Storm-DataAPI/blob/6d98ab666bf62f5147568f01f4752513062e82b9/app/blob_client.py).
+- [Consumer walkthrough](https://github.com/felixschwebel/Ahead-of-the-Storm-DataAPI/blob/6d98ab666bf62f5147568f01f4752513062e82b9/examples/api_walkthrough.ipynb). It demonstrates live-data use; it is not a credential-free regression suite. No upstream test suite or README is present at this pin.
+
+API data access does not establish a Certifying Comparison, publication approval, Alert Parity, or permission to send alerts. Facility, geospatial, vulnerability, and operational data still require the project's [Publication Gates](../project/publication-gates.qmd).

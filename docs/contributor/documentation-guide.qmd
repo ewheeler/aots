@@ -26,6 +26,7 @@ If a draft answers more than one branch, keep the dominant purpose and link to t
 | Domain terminology and evidence boundaries | `CONTEXT.md` |
 | Current architecture | `docs/explanation/architecture.qmd` |
 | Commands and options | `docs/reference/cli.qmd`, validated against CLI source/tests |
+| Data API endpoints, authentication, and query semantics | `docs/reference/data-api.qmd`, checked against the pinned Data API source and deployed OpenAPI docs. |
 | Snapshot bundle layout | `docs/reference/snapshot-output-bundle.qmd` |
 | Comparison and certification semantics | `docs/reference/comparison-and-certification.qmd` |
 | Exact V2 schemas, vectors, counts, and readiness | `docs/reference/alert-product-v2-readiness.qmd`, subordinate to the Orchestration manifest |

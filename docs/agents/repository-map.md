@@ -60,8 +60,19 @@ The root package owns cross-submodule integration. It should remain artifact-ori
 | `Ahead-of-the-Storm-DATAPIPELINE/` | Impact artifacts and existing report calculations. |
 | `Ahead-of-the-Storm/` | Dash and FastAPI presentation. |
 | `Ahead-of-the-Storm-ORCHESTRATION/` | Snowflake-native operational orchestration. |
+| `Ahead-of-the-Storm-DataAPI/` | Private, standalone FastAPI service for authenticated read-only semantic queries and source downloads from Azure Blob Storage; owns its service configuration and dependencies. |
 
-These directories are pinned gitlinks declared in `.gitmodules`. Changes inside them belong to their upstream repositories and require an intentional submodule revision update here. Do not assign the Portable Report Flow to any single submodule.
+These five directories are pinned gitlinks declared in `.gitmodules`. Changes inside them belong to their upstream repositories and require an intentional submodule revision update here. The private Data API repository also requires authorized GitHub access for local or CI checkout. Do not assign the Portable Report Flow to any single submodule.
+
+Data API implementation routes:
+
+| Path | Responsibility | Focused test |
+|---|---|---|
+| `Ahead-of-the-Storm-DataAPI/app/main.py` | FastAPI application, public service-info/docs routes, and registration of the catalog, hazard, exposure, and reference routers. | No upstream test suite at the pinned revision. |
+| `Ahead-of-the-Storm-DataAPI/app/routers/` | Semantic query and download contracts for catalog discovery, raw hazards, processed exposure, and static reference data. | No upstream test suite at the pinned revision; `examples/api_walkthrough.ipynb` demonstrates the consumer interface. |
+| `Ahead-of-the-Storm-DataAPI/app/config.py`, `app/auth.py`, `app/blob_client.py` | Required environment configuration, `X-API-Key` authentication, and read-only Azure Blob access. | No upstream test suite at the pinned revision. |
+
+The Data API is independent of the root package and the Portable Report Flow. Use [the API reference](../reference/data-api.qmd) for endpoint and query behavior. Do not treat a successful service-info response as evidence that authenticated data requests or every advertised dataset are available.
 
 Current Orchestration alert-policy routes:
 

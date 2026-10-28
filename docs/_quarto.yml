@@ -15,7 +15,7 @@ project:
 
 website:
   title: "Ahead of the Storm"
-  description: "Portable impact report and alert documentation."
+  description: "Portable impact report, alert, and Data API documentation."
   site-url: "https://ewheeler.github.io/aots/"
   search: false
   page-navigation: true
@@ -63,6 +63,7 @@ website:
         - reference/snapshot-output-bundle.qmd
         - reference/comparison-and-certification.qmd
         - reference/alert-email-design.qmd
+        - reference/data-api.qmd
         - reference/alert-product-v2-readiness.qmd
         - reference/glossary.qmd
     - title: Explanation

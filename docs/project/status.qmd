@@ -12,6 +12,7 @@ status: "Current as of 2026-08-25"
 - Portable alert rendering consumes a supplied Alert Decision, produces deterministic facts and visuals, and keeps expected HTML optional and outside generation.
 - The credential-free dry-run policy chain covers authoritative-feed parsing, identity reconciliation, Country Threat Assessment, Product Decision, lifecycle transitions, suppressed delivery attempts, and V1 Product Facts.
 - V2 contract, canonicalization, synthetic-vector, frozen-V1, identity-retention, and independent root-verification readiness is implemented. Exact evidence belongs to the [Alert Product V2 Readiness Reference](../reference/alert-product-v2-readiness.qmd).
+- Data API (added 2026-10-26): the separate pinned FastAPI service provides read-only catalog discovery, raw forecast hazards, processed exposure, reference datasets, and protected source-file downloads from Azure Blob Storage. Its routes and authentication boundary are in the [Data API reference](../reference/data-api.qmd); it is not part of the root Portable Report Flow.
 
 ## Runtime Absent
 

@@ -13,6 +13,7 @@ Ahead of the Storm produces portable, auditable tropical cyclone impact reports 
 - **First run:** complete the [credential-free portable snapshot tutorial](tutorials/first-portable-snapshot.qmd).
 - **Perform a task:** use the [development setup](how-to/set-up-development.qmd), [snapshot](how-to/run-a-snapshot.qmd), [Snowflake export](how-to/export-a-snowflake-baseline.qmd), [comparison review](how-to/review-comparison-results.qmd), or [publication](how-to/publish-snapshot-bundles.qmd) guides.
 - **Look up a contract:** start with the [CLI](reference/cli.qmd), [Snapshot Output Bundle](reference/snapshot-output-bundle.qmd), or [comparison and certification](reference/comparison-and-certification.qmd) reference.
+- **Look up API endpoints:** use the [Data API reference](reference/data-api.qmd) for route families, authentication, and query semantics.
 - **Understand the system:** read the [architecture](explanation/architecture.qmd), [trust model](explanation/portable-report-trust-model.qmd), and [semantic facts and presentation](explanation/semantic-facts-and-presentation.qmd).
 
 ## Start by Role

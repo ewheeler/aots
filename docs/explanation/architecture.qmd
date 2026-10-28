@@ -9,7 +9,7 @@ aliases:
 
 ## Architectural Intent
 
-Ahead of the Storm turns forecast evidence into impact artifacts and decision-support products while keeping operational policy, report calculations, presentation, and publication independently reviewable. The root Portable Report Package coordinates artifacts across four pinned upstream repositories; it does not absorb their forecast, impact, dashboard, or orchestration responsibilities.
+The workspace pins five upstream repositories: forecast, impact, dashboard, orchestration, and a separate Data API. The root Portable Report Package coordinates report artifacts across its producer and application submodules; it neither absorbs their responsibilities nor depends on the Data API runtime.
 
 The portability goal is narrow: report generation and publication can run from local or blob-backed artifacts without Snowflake credentials. During incremental migration, Azure uses read-only Snowflake source/comparison access while writing only Azure-side handoff artifacts; moving execution to Azure does not require moving all source data and calculations at once.
 
@@ -19,9 +19,14 @@ The portability goal is narrow: report generation and publication can run from l
 - The impact producer owns exposure, facility, vulnerability, and existing report calculations.
 - Orchestration owns authoritative-evidence normalization, Country Threat Assessment, Product Decision, lifecycle, semantic Product Facts, and future delivery plans.
 - The dashboard repository owns interactive Dash and FastAPI presentation.
+- The standalone Data API owns authenticated, read-only semantic queries and whole-file downloads for existing Azure Blob forecast, hazard, exposure, and reference data.
 - The root package owns cross-repository artifact validation, report adaptation, comparison, presentation profiles, composition, and publication.
 
 Repositories exchange versioned, checksummed artifacts. Root does not reclassify an operational decision, and Orchestration does not depend on root presentation internals. New report calculations remain with their upstream producer rather than entering the root adapter.
+
+## Data API Boundary {#data-api-boundary}
+
+The [Data API](../reference/data-api.qmd) is a separate FastAPI service over Azure Blob Storage. Its `/catalog`, `/hazards`, `/exposure`, and `/reference` routes expose discovery, raw forecast hazards, processed exposure, and static reference data. Data routes require `X-API-Key`; `/` and API documentation are public. The service does not query Snowflake, run forecast or impact calculations, classify alerts, or publish Snapshot Output Bundles. Its implementation and dependencies remain owned by the pinned upstream repository.
 
 ## Portable Report Flow
 

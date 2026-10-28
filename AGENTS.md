@@ -15,7 +15,7 @@ This integration workspace was bootstrapped with `repo-familiar`.
 - Read `docs/agents/repository-map.md` before broad code search or architectural work.
 - Use `CONTEXT.md` for terminology, `docs/adr/` for durable decisions, `docs/explanation/architecture.qmd` for current architecture, `docs/project/status.qmd` for current status, and `plan.md` for open work.
 - Route changes through the owning root-package module, adjacent contracts or configuration, and nearest focused tests before widening the search.
-- Treat the four submodule directories as pinned upstream repositories, not root-package implementation authority.
+- Treat the five submodule directories, including the private Data API, as pinned upstream repositories, not root-package implementation authority.
 - Treat Snapshot Output Bundles, rendered sites, generated images, real baselines, and caches according to the durable/generated boundaries in the repository map.
 - Update the repository map when ownership moves or a high-leverage seam is added.
 
