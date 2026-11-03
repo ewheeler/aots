@@ -41,7 +41,7 @@ Count registrations by interactive user-facing application and environment, not 
 |---|---|---|
 | Subscription registry | **Yes.** Single-tenant registration and enterprise application per environment. Review production/staging callback URIs; the [AWS alternative](aws-alert-execution-plan.qmd) keeps Entra SSO through application-owned OIDC rather than App Service Easy Auth. | Only currently specified browser SSO client. |
 | Dashboard | **Undecided.** If restricted data requires authenticated human access, use a separate registration per environment; do not reuse the registry client by default. | Current dashboard deployment options do not define an SSO boundary; resolve it before exposing the service. |
-| Data API | **No, as currently documented.** Data routes use `X-API-Key`; documentation routes are accessible without a key. | Adding Entra SSO would change the upstream API contract and needs an explicit owner decision. |
+| Data API | **Not currently.** Data routes use `X-API-Key`; documentation routes are accessible without a key. | If SSO is required, decide whether App Service Easy Auth can enforce Entra authentication at the hosting boundary without changing the upstream service, and how existing API-key clients will be preserved or migrated. |
 | Forecast, impact, report jobs, delivery and resolver workers | **No interactive SSO.** Use workload identities and service-to-service authorization. | These components do not sign human users into browser sessions. |
 | GitHub Actions / infrastructure deployment | **No user SSO.** Use GitHub OIDC federation to the Azure deployment identity or AWS deployment role. | Keep this non-interactive deployment identity separate from browser SSO clients. |
 
