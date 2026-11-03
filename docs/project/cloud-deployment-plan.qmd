@@ -33,6 +33,18 @@ The [repository map](../agents/repository-map.md#submodule-boundaries) owns sour
 | Shared infrastructure, release, telemetry and secrets | Container Registry, Blob state/artifacts, managed identities, Key Vault, Monitor, budgets and approved networking | ECR, S3 state/artifacts, IAM roles, Secrets Manager/KMS, CloudWatch and approved networking | X: separately price network, endpoints, registry, logs, state, backups, secrets, monitoring and security services; isolate environments and identities. |
 | Local developer deployment (optional) | Existing credential-free fixtures and pinned images; optional local Compose profile for services | Same local images and fixtures | No cloud charge assumed; local emulation does not demonstrate cloud IAM, real source access, durable delivery or production readiness. |
 
+### Entra SSO And Workload Identity
+
+Count registrations by interactive user-facing application and environment, not by container. A browser SSO app registration is distinct from non-interactive workload identity and deployment federation.
+
+| Component | Entra app registration for user SSO? | Boundary |
+|---|---|---|
+| Subscription registry | **Yes.** Single-tenant registration and enterprise application per environment. Review production/staging callback URIs; the [AWS alternative](aws-alert-execution-plan.qmd) keeps Entra SSO through application-owned OIDC rather than App Service Easy Auth. | Only currently specified browser SSO client. |
+| Dashboard | **Undecided.** If restricted data requires authenticated human access, use a separate registration per environment; do not reuse the registry client by default. | Current dashboard deployment options do not define an SSO boundary; resolve it before exposing the service. |
+| Data API | **No, as currently documented.** Data routes use `X-API-Key`; documentation routes are accessible without a key. | Adding Entra SSO would change the upstream API contract and needs an explicit owner decision. |
+| Forecast, impact, report jobs, delivery and resolver workers | **No interactive SSO.** Use workload identities and service-to-service authorization. | These components do not sign human users into browser sessions. |
+| GitHub Actions / infrastructure deployment | **No user SSO.** Use GitHub OIDC federation to the Azure deployment identity or AWS deployment role. | Keep this non-interactive deployment identity separate from browser SSO clients. |
+
 Container Apps supports finite [manual, scheduled, and event-driven jobs](https://learn.microsoft.com/en-us/azure/container-apps/jobs); [ECS Scheduler](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/scheduled_tasks.html) starts tasks separately from long-running services. Evaluate [App Service, Container Instances and AKS](https://learn.microsoft.com/en-us/azure/container-apps/compare-options) or AWS App Runner, Batch and EKS only against actual networking, CPU/memory, job-duration and operating requirements. Do not adopt Kubernetes solely for portability: it adds cluster and data-service operations without removing provider-specific state and identity.
 
 ### Choosing The Azure Web-Service Host
