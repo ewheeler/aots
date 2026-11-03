@@ -93,6 +93,7 @@ website:
       contents:
         - project/status.qmd
         - project/roadmap.qmd
+        - project/alert-packaging-consultation.qmd
         - project/cloud-deployment-plan.qmd
         - project/azure-alert-execution-plan.qmd
         - project/aws-alert-execution-plan.qmd
