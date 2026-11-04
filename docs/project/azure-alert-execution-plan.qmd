@@ -173,6 +173,8 @@ Use ordinary non-HNS GPv2 Blob by default. Enable ADLS Gen2 hierarchical namespa
 
 Exercise finalized source handoff, V2 policy, composition, replay, registration, and comparison over real or historical evidence without provider calls.
 
+The shadow cohort is bounded by approved sources, products, and hazard semantics. Exclude unsupported or unapproved hazard expansions; their absence does not block a bounded shadow that does not use them. If a pilot includes a hazard, its source licensing, supported semantics, typed facts, and manual-review behavior must pass their gates first. Durable source checkpoints and SQL comparison/checkpoint state may support replay; neither is delivery lifecycle/outbox state. Optional Stage B work hints remain non-authoritative and are not Service Bus delivery transport.
+
 ```text
 Read-only Snowflake/source producer
   -> finalized source-ready manifest in private Blob
@@ -212,7 +214,9 @@ The manifest is authority; any event is only a hint. Every Job fetches the final
 
 ### Entry Condition
 
-Do not begin this stage until ProductFactSet/composition runtime, subscription controls, Delivery Authorization, persistence, provider review, privacy, Country Office approval, and accountable send approval pass. Internal organization-owned test mailboxes precede any consented external pilot recipient.
+After the Stage C delivery-design gate and separate environment/provisioning approvals, non-sending preparation may provision and test Azure SQL operational state and related components with synthetic/test records, dispatch disabled, and only fake or sandbox provider effects. This preparation does not begin live-send trials or authorize recipient resolution.
+
+Do not enable live dispatch or begin mailbox/cohort send trials until ProductFactSet/composition runtime, subscription controls, Delivery Authorization, persistence, provider review, privacy, Country Office approval, and accountable send approval pass. Internal organization-owned test mailboxes precede any consented external pilot recipient.
 
 ### Required Durable Control Path
 
