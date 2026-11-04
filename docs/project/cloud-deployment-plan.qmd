@@ -37,13 +37,20 @@ The [repository map](../agents/repository-map.md#submodule-boundaries) owns sour
 
 Count registrations by interactive user-facing application and environment, not by container. A browser SSO app registration is distinct from non-interactive workload identity and deployment federation.
 
-| Component | Entra app registration for user SSO? | Boundary |
-|---|---|---|
-| Subscription registry | **Yes.** Single-tenant registration and enterprise application per environment. Review production/staging callback URIs; the [AWS alternative](aws-alert-execution-plan.qmd) keeps Entra SSO through application-owned OIDC rather than App Service Easy Auth. | Only currently specified browser SSO client. |
-| Dashboard | **No.** Public and unauthenticated; no Entra SSO client. | Public access does not authorize all data: serve only allowlisted, publication-approved content; do not expose private baselines, stage data, recipient information, or operational state. |
-| Data API | **Not currently.** Data routes use `X-API-Key`; documentation routes are accessible without a key. | If SSO is required, decide whether App Service Easy Auth can enforce Entra authentication at the hosting boundary without changing the upstream service, and how existing API-key clients will be preserved or migrated. |
-| Forecast, impact, report jobs, delivery and resolver workers | **No interactive SSO.** Use workload identities and service-to-service authorization. | These components do not sign human users into browser sessions. |
-| GitHub Actions / infrastructure deployment | **No user SSO.** Use GitHub OIDC federation to the Azure deployment identity or AWS deployment role. | Keep this non-interactive deployment identity separate from browser SSO clients. |
+<div class="table-responsive" role="region" aria-label="Entra SSO and workload identity" tabindex="0">
+<table class="table" style="min-width: 48rem;">
+<thead>
+<tr><th scope="col">Component</th><th scope="col">Entra app registration for user SSO?</th><th scope="col">Boundary</th></tr>
+</thead>
+<tbody>
+<tr><th scope="row">Subscription registry</th><td><strong>Yes.</strong> Single-tenant registration and enterprise application per environment. Review production/staging callback URIs; the <a href="aws-alert-execution-plan.html">AWS alternative</a> keeps Entra SSO through application-owned OIDC rather than App Service Easy Auth.</td><td>Only currently specified browser SSO client.</td></tr>
+<tr><th scope="row">Dashboard</th><td><strong>No.</strong> Public and unauthenticated; no Entra SSO client.</td><td>Public access does not authorize all data: serve only allowlisted, publication-approved content; do not expose private baselines, stage data, recipient information, or operational state.</td></tr>
+<tr><th scope="row">Data API</th><td><strong>Not currently.</strong> Data routes use <code>X-API-Key</code>; documentation routes are accessible without a key.</td><td>If SSO is required, decide whether App Service Easy Auth can enforce Entra authentication at the hosting boundary without changing the upstream service, and how existing API-key clients will be preserved or migrated.</td></tr>
+<tr><th scope="row">Forecast, impact, report jobs, delivery and resolver workers</th><td><strong>No interactive SSO.</strong> Use workload identities and service-to-service authorization.</td><td>These components do not sign human users into browser sessions.</td></tr>
+<tr><th scope="row">GitHub Actions / infrastructure deployment</th><td><strong>No user SSO.</strong> Use GitHub OIDC federation to the Azure deployment identity or AWS deployment role.</td><td>Keep this non-interactive deployment identity separate from browser SSO clients.</td></tr>
+</tbody>
+</table>
+</div>
 
 Container Apps supports finite [manual, scheduled, and event-driven jobs](https://learn.microsoft.com/en-us/azure/container-apps/jobs); [ECS Scheduler](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/scheduled_tasks.html) starts tasks separately from long-running services. Evaluate [App Service, Container Instances and AKS](https://learn.microsoft.com/en-us/azure/container-apps/compare-options) or AWS App Runner, Batch and EKS only against actual networking, CPU/memory, job-duration and operating requirements. Do not adopt Kubernetes solely for portability: it adds cluster and data-service operations without removing provider-specific state and identity.
 
