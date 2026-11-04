@@ -97,6 +97,7 @@ website:
         - project/cloud-deployment-plan.qmd
         - project/azure-alert-execution-plan.qmd
         - project/aws-alert-execution-plan.qmd
+        - project/observability-assessment.qmd
         - project/alert-subscription-service-plan.qmd
         - project/publication-gates.qmd
     - title: Contributor

@@ -1,0 +1,188 @@
+---
+title: "Observability Assessment"
+page-type: project
+audience: "Component owners, platform engineers, privacy reviewers, and deployment approvers"
+status: "Assessment of pinned source as of 2026-11-04; deployment proposals remain proposed"
+---
+
+## Purpose And Evidence Boundary
+
+This page records a source-based assessment of logging, monitoring, metrics, tracing, user-behavior analytics, and operational visibility across the Ahead of the Storm components. It distinguishes checked-in implementation from deployment proposals and from live infrastructure state. Findings were checked against the root package and all five initialized submodules at their workspace pins. No live Azure, AWS, Snowflake, or Matomo settings were inspected; the existence of a Matomo instance is project-owner information, not evidence that an application currently sends it data.
+
+The [Cloud-Portable Deployment Plan](cloud-deployment-plan.qmd) remains the proposed cross-cloud deployment authority. The [Azure Alert Execution Plan](azure-alert-execution-plan.qmd), [AWS Alert Execution Plan](aws-alert-execution-plan.qmd), and [Alert Subscription Service Plan](alert-subscription-service-plan.qmd) retain their more specific telemetry, privacy, and operational requirements. This page records findings and recommends follow-up; it does not provision infrastructure, authorize user tracking, or permit alert delivery.
+
+## Executive Assessment
+
+Current observability is **fragmented and incomplete**. There are useful component logs, Snowflake run records, platform task history, and durable report/comparison artifacts. They do not form a unified view of user behavior, application exceptions, request and job performance, data freshness, or cross-component outcomes. No cross-component trace/correlation contract or application metrics export was found in the inspected source. No dashboard browser analytics implementation was found. The adversarial review also found false-success gaps between pipeline, refresh, cache, and browser-visible outcomes, plus unverified public-serving, third-party browser, and runtime-release boundaries; see [Adversarial Review Findings](#adversarial-review-findings).
+
+The most consequential observed gaps are:
+
+1. A simulated forecast download failure with no files returned an empty error list; the isolated `main()` path exited with status `0`.
+2. A simulated impact-pipeline Snowflake connection failure was logged, then returned by the caller as `success=True, skipped=True`.
+3. The refresh procedure calls the legacy alert sender but does not read its returned result rows. A source-level simulation of an alert error result showed the caller recorded no error.
+4. Data API `/` returned `200` during a simulated Blob outage while authenticated `/catalog` returned `500`.
+5. A loopback request to the Data API with a synthetic query parameter appeared in Uvicorn's access log with its full request target. That behavior conflicts with query-string exclusions already specified in the alert and subscription plans.
+6. A synthetic malformed Data API API-key entry was confirmed to appear in startup stderr and the raised exception.
+7. A materialized refresh can consume completion and stage streams, return `PARTIAL` for table failures, and still be absent from task-state monitoring.
+8. GloFAS Snowflake staging/metadata and Data API Azure Blob discovery are distinct checked-in paths; the producer-to-API handoff is unverified in this workspace.
+9. Dashboard caches, stale-serving behavior, browser errors represented as empty data, and asynchronous public preloads can hide what users actually receive or whether work completed.
+
+These are source-level, synthetic, or repository-evidence findings, not observations of live production behavior. The possibility of an external GloFAS publisher and whether public data is approved require owner evidence; neither is inferred absent or unsafe. See [Verification](#verification) for boundaries.
+
+## Existing Signals By Component
+
+| Component | Implemented signals and records | Main gaps |
+|---|---|---|
+| Forecast ingestion and GloFAS (`TC-ECMWF-Forecast-Pipeline`) | Python logs to stdout and local files; GitHub Actions retains forecast logs; summaries include file/row counts and elapsed time. SPCS code records phase timing. Snowflake task history is available through manual queries. | No common app metrics/traces. Forecast failure paths can report success; GloFAS submission, actual source date, raw discharge, best-effort extent tiers, Snowflake staging/metadata, and Data API discoverability are distinct outcomes. The producer-to-Blob/API handoff is unverified. |
+| Impact processing (`Ahead-of-the-Storm-DATAPIPELINE`) | stdout and local `main_pipeline.log`; Snowflake per-storm `IN_PROGRESS`/terminal records and successful batch-completion signal include status, counts and runtime. | Partial-country failure can coexist with overall success. Query errors can look like no-data skips. The materialized refresh consumes streams before table refresh; per-table errors return `PARTIAL` normally, while the consumption log and task-history summary do not record the refreshed-table outcome. |
+| Dashboard and tile API (`Ahead-of-the-Storm`) | Gunicorn access/error output; Uvicorn logs; nginx SPCS access/error files; tile cache response header; static tile `/health`; some application exception logs and debug timing. | No browser behavior analytics or app metrics/traces found. Source caches and nginx stale serving can obscure served-data age; a failed facility fetch can look empty; public preload returns before work completes. Route-level data approval, third-party browser requests, and deployed log export remain unverified. |
+| Data API (`Ahead-of-the-Storm-DataAPI`) | Uvicorn default request logs; standard domain and validation error responses; in-memory request/byte/concurrency limits. | No app-owned structured request/auth telemetry, metrics, traces, or analytics found. Quotas are per-process controls. A raw-hazard cache hit can return data without checking current Blob availability; `/` does not check Blob readiness, raw request targets are logged, and the producer-to-API data handoff is unverified. |
+| Orchestration and legacy alert SQL | Snowflake run, completion, and refresh-consumption table definitions; manual task-history, cost, Cortex-use, and delivery queries. Legacy alert table stores subject/body and aggregate recipient count. | Manual queries are not automated alerting. Consumed completion signals do not prove materialized tables refreshed; the task summary does not inspect procedure `PARTIAL` results. The legacy sender result is ignored. The checked-in impact task uses a mutable `:latest` image tag, so the source pin alone does not identify the executed image. |
+| Root Portable Report Flow | CLI stdout/stderr and exit status; Snapshot Output Bundles preserve comparison and alert audit evidence, manifests, and checksums. | Artifacts are reproducibility/audit evidence, not a runtime monitoring service. No centralized job lifecycle, metrics, traces, or failure notifications are implemented in the root package. Invalid publication candidates can be skipped without a scan report. |
+| Subscription and future delivery | Plans specify proposed telemetry, audit and alert requirements. | The registry and delivery system are not implemented or deployed; planned requirements are not live signals. |
+
+The [repository map](../agents/repository-map.md#submodule-boundaries) owns component paths and implementation boundaries. The [Data API reference](../reference/data-api.qmd) owns its endpoint and quota semantics.
+
+## Verified Failure And Readiness Behavior
+
+### Forecast and impact jobs
+
+The forecast downloader returns both `downloaded` and `failed` counts, but `step1_download` copies only the downloaded count and file list into `PipelineStats`. The workflow logs and returns success on the no-BUFR path. In an isolated invocation of those source function bodies, one simulated failed download produced `files=[]`, no recorded errors, and `main()` exited `0`. This is a confirmed false-success path at the checked-in source pin; it was not an upstream ingestion run.
+
+For impact processing, `_execute_query` logs a Snowflake exception and returns an empty DataFrame. Empty envelope results are classified as “no envelope” and returned as a successful skip. A local synthetic connection failure exercised this path and yielded `{'success': True, 'skipped': True, ...}`. Mixed country success/error is also represented as top-level success when at least one country succeeds, though country errors remain in the result. Job monitoring should preserve and alert on partial status rather than flattening it to success.
+
+Snowflake `TC_PIPELINE_RUN_LOG`, `TC_PIPELINE_COMPLETE_LOG`, and `TC_REFRESH_TRIGGERED_LOG` are useful durable operational state, but table declarations and source code do not prove they are deployed or populated in a live account. Some failures to write those records are warnings, which can make operational state incomplete even when processing continued.
+
+### Alert execution
+
+The newer Orchestration policy engine explicitly rejects operational mode and creates dry-run/suppressed attempts. Its schema declarations are not proof of persistence. Legacy `SEND_NEW_STORM_ALERT()` and watch procedures are separate send-capable SQL. The legacy sender returns an error summary string; the refresh procedure's `run()` executes the call but does not read its result set. An isolated source-block exercise confirmed that a simulated returned error was neither read nor appended to refresh errors. The legacy `ALERT_SENT_LOG` is written before sends and records an aggregate recipient count; it is not per-recipient delivery confirmation.
+
+Preserve the staged monitoring, reconciliation, no-send controls, and quantitative gates in the [Azure plan](azure-alert-execution-plan.qmd#observability-and-operations). Do not activate or test real sends as an observability exercise.
+
+### API readiness and access logs
+
+The Data API's Docker health check requests `/`, which returns static service information without probing Blob. A local synthetic request confirmed `/` returned `200` during simulated Blob failure while `/catalog` returned `500`. Treat root status as liveness only; dependency readiness and an authenticated synthetic data-path check are separate signals.
+
+The Docker command starts Uvicorn without a repository-owned access-log format or redaction configuration. In a loopback-only smoke run, Uvicorn's emitted request line included a synthetic query string. The app's API-key configuration also prints malformed and duplicate entries; a local synthetic-key check confirmed disclosure in stderr and the exception. Correct these risks before sending those logs to a shared workspace. Raw hazard errors can also include internal Blob paths in response details, so response privacy and log privacy both need review.
+
+The dashboard's SPCS nginx config enables `access_log ... combined` to a file; app startup enables Gunicorn access logs to stdout. No application-defined redaction format is shown. The nginx binary was not available for a runtime test, so whether the deployed collector exports these files and the exact emitted fields remain unverified. Do not assume hosting-provider defaults are redacted or retained safely.
+
+## User-Behavior Analytics: Matomo
+
+Use the existing Matomo instance as the proposed analytics destination for **approved aggregate visit and interaction events**, not as the application exception, trace, or service-metrics backend. No Matomo client/integration was found in the inspected dashboard, Data API, or root package source. The existing instance's configuration, legal basis, consent behavior, access controls, retention, hosting region, and current data flows must be confirmed by its owner before adding any tracker.
+
+### Proposed event scope
+
+Start with the public dashboard and its public documentation/report pages, after privacy and product-owner approval:
+
+- Page visits and coarse navigation between public sections.
+- Dashboard interaction categories such as changing a filter, opening a layer, or requesting a chart, recorded as bounded action names and success/failure—not the selected value.
+- Coarse download categories and completion/failure outcome, not full download URL or object identity.
+- Aggregate funnel/completion events only where they answer a stated product question.
+
+Do **not** capture raw URLs with query strings, search/filter values, country/storm/date selections, bounding boxes or coordinates, facility-level identifiers, page contents, form values, user IDs, API keys, authentication/session data, IP addresses unless separately approved, or alert recipient/preference information. Avoid session replay and free-form custom dimensions. Never put recipient or operational data into public analytics. Subscription-service analytics should remain off by default and be separately reviewed; its plan excludes identifiers, claims, form values, consent and query strings from telemetry.
+
+Use a small event taxonomy with fixed category/action labels, documented purpose, owner, and retention. Do not encode selected filter values in event names, page titles, custom dimensions, or URL fragments. Set page URLs/titles to safe canonical paths before collection. Verify tracker configuration does not collect full query strings or referrers that reintroduce sensitive parameters. Obtain applicable consent/legal review; do not infer that Matomo's product or deployment model by itself establishes an exemption.
+
+### Matomo rollout checks
+
+Before deployment, Matomo/platform owners should verify: instance ownership and region; access roles and audit; retention/deletion and backup policy; consent/opt-out behavior appropriate to users and jurisdictions; IP anonymization or exclusion policy; query-string and referrer handling; allowed domains; tracker transport security; and whether ad-blocking or browser restrictions affect completeness. Test with synthetic canary values in URL parameters and event payloads and inspect both the Matomo UI and underlying analytics/export logs for absence. Document the approved event list, purpose, consent basis, retention, and disable/rollback switch. Keep analytics optional and fail-open for the public interface: tracker unavailability must not break dashboard or report functionality.
+
+Matomo answers **what approved user interactions occur in the browser**. It does not establish unique authenticated API callers, backend success, durable report publication, or end-to-end completion. Correlate only through non-identifying aggregate time windows or separately approved opaque IDs; do not join browser events to recipient identities.
+
+## Adversarial Review Findings
+
+A read-only reviewer challenged this assessment against the pinned component source and current project plans. I rechecked the cited source paths. These are source-level behavior and evidence gaps, not proof of a live outage, unapproved disclosure, or current cloud configuration.
+
+### Pipeline completion is not data availability
+
+`REFRESH_MATERIALIZED_VIEWS()` consumes completion and stage-file streams before refreshing tables (`Ahead-of-the-Storm-ORCHESTRATION/09_orchestration/03_procedures.sql`). Per-table failures are rolled back and returned as a normal `PARTIAL: ...` result; `TC_REFRESH_TRIGGERED_LOG` records consumed source facts, not table refresh outcomes, and `monitoring.sql` summarizes task state without interpreting that result. A green task or consumed signal therefore does not prove that users can query refreshed tables. Before relying on this job, capture per-table outcomes, alert on partial refresh, reconcile consumed files to materialized tables, and prove recovery after stream advancement.
+
+GloFAS has separate submit and process schedules. A submit can exit successfully without downloading data; processing can use an earlier forecast date, and extent generation is explicitly best-effort. A stage-only cache hit can also skip extent generation. Record requested and actual forecast dates, submission, download, staging, Snowflake metadata, and each expected extent tier separately. Component owners must define which missing tiers are degradation; do not turn best-effort outputs into blanket job failure.
+
+The pinned GloFAS producer writes to a Snowflake stage and registers `RIVER_FORECASTS` metadata, while the Data API discovers GloFAS objects by listing Azure Blob. The inspected workspace does not establish the publisher or other handoff between these stores; an external publisher may exist. Before claiming end-to-end GloFAS availability, identify its owner and produce evidence from an expected run through the corresponding Blob object to an authenticated API catalog/download result. The cloud plan already treats Snowflake and Blob as distinct dependencies.
+
+### Measure freshness and browser-visible outcomes
+
+Source freshness is not the same as the data a user receives. Dashboard metadata/impact caches use 15-minute TTLs, base-layer caches 60 minutes, the tile server cache 15 minutes, and nginx may serve stale tiles on upstream error, timeout, or update. The Data API raw-hazard cache has a 600-second TTL and checks the cache before Blob. The dashboard “Last Updated” label is the maximum forecast issue time across `TC_TRACKS`, not the update time of the selected impact layer. Define and test a freshness bound for selected/served data; distinguish source issue, ingest, publication, and served-object timestamps, and expose stale state rather than implying one global timestamp covers all products.
+
+The dashboard facility-layer browser fetch converts non-2xx responses and network failures into an empty FeatureCollection, while availability is reported as true. Its `fetch()` has no timeout. A user can therefore see missing data without a clear distinction between a valid empty result, failed request, and stalled response. Record bounded client-side outcome/duration/size categories without raw selections or payloads, and exercise synthetic browser journeys that prove these states are distinguishable. Matomo is not a substitute for exception telemetry or these checks.
+
+The public `/preload/` route starts a daemon thread for each request and immediately returns `loading`; a load lock serializes cache work but does not bound incoming threads. The dashboard also requests preload work after selection changes. Before public deployment, assess request admission/coalescing and bounded concurrency, and measure accepted, queued, completed, failed, and timed-out loads. An HTTP success response is not preload completion.
+
+### Verify public data and browser data flows
+
+The dashboard is intentionally public, but its tile service exposes facility coordinates and row properties through GeoJSON and returns tile properties for hover requests; nginx proxies these routes. Hiding a layer in the UI is not a publication control. The cloud plan and [publication gates](publication-gates.qmd) already require allowlisted, approved content. Before public ingress, review actual route responses and configured datasets/fields against classification, source licensing, and approved precision. This assessment did not establish that current live data is unapproved.
+
+The browser also loads MapLibre assets from unpkg and map tiles from CARTO, Mapbox, or Esri, depending on configuration and selection. These requests disclose the browser network address and tile coordinates to those providers independently of Matomo. Inventory the actual providers, transmitted data, licensing, retention/residency and applicable approval; test privacy and map behavior when external resources are blocked or unavailable. Matomo opt-out does not disable these separate data flows.
+
+### Attribute runtime behavior to an immutable release
+
+The shared telemetry contract already calls for an image digest, and the cloud plan already proposes immutable digests, SBOMs, scans, and protected promotion. However, the checked-in impact trigger references `impact-analysis-pipeline:latest` in `09_orchestration/03_procedures.sql`. A workspace source pin is not evidence of which bytes a live task ran. Before operational attribution, record the resolved deployed digest, source commit/build provenance, configuration version, and execution ID together; reconcile current release paths with the proposed deployment controls.
+
+## Recommended Portable Observability Baseline
+
+### Shared instrumentation and correlation
+
+Define a versioned, cloud-neutral telemetry contract for every service and job: timestamp, environment, component, region, source commit/build provenance, resolved immutable image digest, configuration version, severity, event name, outcome (`success`, `partial`, `failed`, `skipped`, `unknown`), duration, and bounded reason code. Add opaque request/job IDs and propagate causation/correlation IDs over HTTP and asynchronous handoffs. Never use email, Entra IDs, API keys, raw URL/query strings, full payloads, facility identifiers, or other personal/sensitive values as metric labels or trace attributes.
+
+Adopt an OpenTelemetry-compatible instrumentation/export convention as a proposal, then test provider adapters for Azure Monitor/Application Insights and AWS CloudWatch/X-Ray or the selected backends. Keep provider-specific dashboards and alerts, but preserve the same event and metric meaning across cloud migrations. Include Snowflake task/procedure history, GitHub Actions workflows, Matomo, and static hosting in the coverage inventory; container instrumentation alone cannot observe those systems. Separate sampled diagnostic traces from durable audit and reconciliation records.
+
+### Service, job, and data signals
+
+| Area | Minimum signals |
+|---|---|
+| Web/API service | Request count, latency distributions, 4xx/5xx, controlled error classes, restarts, CPU/memory, saturation, readiness/liveness, dependency failures, and deployment smoke result. Use route templates, not raw paths with parameters. Add safe browser-visible failure/completion and bounded async-work outcomes where the user journey crosses a browser or preload route. |
+| API usage and cost | Aggregate route-family counts, response and delivered bytes, cache hit/miss, Blob bytes read, quota/concurrency denials, source request failures, and egress/cost. Distinguish bytes admitted by a quota check from bytes actually delivered. Do not count shared API keys as people. |
+| Forecast, GloFAS, impact | Expected/source runs discovered, accepted/rejected/late/duplicate, requested and actual source dates, per-stage outcomes/durations (submit, download, stage, metadata, extent tier, refresh), source and served-data freshness, partial-country/table counts, files/rows, retries, and last successful user-available output. Distinguish legitimate no-data from dependency/query failure; reconcile producer outputs to the serving catalog. |
+| Snapshot and publication | Run lifecycle, validation failure class, comparison/certification disposition, artifact counts/checksums, Quarto render outcome/duration, skipped invalid candidates, and publication manifest outcome. Do not transmit report payloads or baseline content to telemetry. |
+| Alert shadow and future delivery | Retain the Azure plan's source-to-decision accounting, policy/composition latency and drift, queue age/DLQ, intent/attempt/provider-event reconciliation, suppression, ambiguity, provider feedback, and SLO burn. No real-send capability is implied by adding telemetry. |
+| Monitoring pipeline | Collector/export errors, dropped events, ingestion lag, telemetry retention, missing expected heartbeat, alert evaluation/notification failures, and monitoring spend. Alert on loss of observability, not just application failure. |
+
+### Health, outcome, and alert ownership
+
+Distinguish liveness (process responds), readiness (can serve its required dependencies), and synthetic user journeys (approved end-to-end action works). Make readiness checks bounded and non-mutating; do not require expensive full data scans on every probe. For APIs, exercise an authenticated low-cost synthetic path separately from the public service-info route. For dashboards, test nginx, Dash, tile service, a representative approved data dependency, selected-data freshness, browser-visible empty/error states, external-resource failure, and actual preload completion. For jobs, alert on stale/missing expected completion and partial table refresh—not only non-zero process exits.
+
+Assign an owner, support/escalation path, runbook, dashboard, SLO/threshold, and notification destination for each component and data handoff. Alert on sustained user-visible error/latency, stale source data, missing or partial jobs, unconsumed completion signals, repeated dependency failures, and failed telemetry export. Start with measured baselines and approved SLOs; do not promote illustrative cost assumptions to capacity or alert thresholds. Preserve cloud-plan health and dependency checks at deployment gates and verify rollback/recovery.
+
+### Privacy, access, and retention
+
+Apply the stricter existing rules across all components: no recipient email, Entra object/tenant IDs, claims, tokens, API keys, request bodies, provider payloads, consent text, raw reports, raw source data, or unrestricted query strings. Minimize IP collection, restrict log/trace access, separate regions and trust domains, use bounded retention and documented deletion, and test logs/metrics/traces with synthetic PII canaries. Review access-log formats and managed platform diagnostics as well as application telemetry. Keep private operational audit tables distinct from aggregate analytics and sampled diagnostics.
+
+## Adjacent Deployment-Readiness Assessment
+
+The observability review is not a substitute for the canonical deployment, privacy, security, publication, or accessibility plans. The table records where those areas already have requirements and what evidence remains specific to this workspace. “Proposed” and “required” do not mean tested or deployed.
+
+| Area | Existing authority and status | Evidence still needed before the applicable deployment gate |
+|---|---|---|
+| Security, identity, and network | The [cloud plan](cloud-deployment-plan.qmd) and [subscription plan](alert-subscription-service-plan.qmd) specify workload identity, CI federation, network, and auth boundaries; live cloud controls were not inspected here. | Verify deployed allow/deny behavior, public route exposure, API-key issuance/rotation and process-local quota limits, least-privilege workload/deployment roles, secret rotation, and approved egress. Keep source inspection distinct from deployed denial evidence. |
+| Data governance and publication | [Publication gates](publication-gates.qmd) and [ADR 0013](../adr/0013-keep-alert-publication-data-minimal.md) set classification, allowlist, licensing, approval, and content-inspection rules. The [repository map](../agents/repository-map.md#implemented-versus-proposed) says runtime HTML/PNG privacy enforcement and publication enforcement remain unimplemented. | Review exact public route responses and selected datasets/fields; inspect exact HTML/PNG artifacts, metadata, geospatial precision, and sources; record accountable approval before public exposure. Keep report outputs private until those gates pass. |
+| Recovery and continuity | The cloud plan requires backup/restore and rollback tests; registry and alert plans add store-specific recovery and regional controls. These are proposals, not proof of current backups. | Inventory authoritative Snowflake run/stream/refresh state, stages, Blob objects, independent expected evidence, publication artifacts, configuration, and logs. Separate rebuildable caches from durable authority; rehearse partial-refresh repair, restore, replay, and deletion behavior with approved RPO/RTO. |
+| Capacity and cost | The cloud plan has illustrative prices and requires measured host, traffic, and workload gates. Estimates are not capacity evidence. | Measure dashboard full-country payloads, cold-cache Snowflake loads, preload concurrency, forecast geospatial scratch/memory/duration, raw-hazard reads, cross-cloud egress, quotas, and telemetry ingestion against approved peaks, quotas, and budget. |
+| Release and software supply chain | Cloud/Azure plans propose immutable image digests, SBOM/provenance, scans, and protected promotion. The checked-in impact SQL still names a mutable image tag. | Verify actual CI/deployment paths produce and promote an immutable digest tied to source, build evidence, configuration, and rollback target; do not infer provenance from submodule pins. |
+| Accessibility and low-bandwidth behavior | [Publication gates](publication-gates.qmd#accessibility) and the subscription plan require browser/accessibility review. The prior 390px check covered this documentation page only, not the dashboard. | Review dashboard map/layer controls, keyboard and non-visual feedback for failed/empty data, zoom/reflow, low-bandwidth and blocked-provider behavior in a real browser. |
+| Operations and authoritative inputs | The [Azure operational plan](azure-alert-execution-plan.qmd#global-operational-requirements) specifies runbooks and measured regional SLOs. The repository map records scheduled/monitored authoritative advisory retrieval as incomplete. | Identify actual operators, schedules, freshness deadlines, escalation and backfill owners; verify alerts and runbooks against current trigger behavior and authoritative-source retrieval. A local parser or planned runbook is not an operated service. |
+
+Keep detailed acceptance criteria in their canonical plans; this register identifies unverified deployment evidence, not new authorization or a duplicate specification.
+
+## Prioritized Follow-Up
+
+1. **Before centralized telemetry ingestion:** remove API-key values from Data API configuration errors; omit query strings from request logs; assess and restrict existing log access/retention. Check nginx, Gunicorn, provider diagnostics, and platform-generated access logs.
+2. **Before relying on job or data readiness:** correct forecast failure accounting; define GloFAS requested/actual-date and per-stage outcomes; distinguish legitimate no-data from dependency errors; persist and alert on partial materialized refresh; reconcile consumed streams/files to refreshed tables; establish owner-evidenced producer-to-Blob/API handoff and served-data freshness.
+3. **Before public dashboard deployment:** approve route-level dataset/field allowlists and source licensing; verify actual public responses; set freshness/stale behavior; distinguish browser fetch failure from empty data; test bounded preload admission/completion, payload and cold-cache capacity; review third-party map/resource data flows and dashboard accessibility.
+4. **Before the first Azure nonproduction release:** follow the cloud plan's inventory and synthetic-only gates; verify identity/network boundaries, protected CI federation, immutable image provenance, SBOM/security evidence, no-send permissions, and failure/rollback checks. Do not infer cloud controls from proposals.
+5. **Before Azure production:** implement and rehearse the shared telemetry contract, exporters, service/data dashboards, alert routes, synthetic journeys, named operators/runbooks, measured SLOs and capacity, and recovery evidence. Reprice the tested host and workload; illustrative costs are not thresholds.
+6. **Before user analytics rollout:** approve Matomo event taxonomy, consent/legal basis, access, retention, IP/referrer/query handling, and owner/disable procedure; send only allowlisted aggregate browser events and validate synthetic canaries.
+7. **Before alert shadow gates:** consume and parse alert sender return status, but keep policy-writer and delivery-authority boundaries unchanged. Reconcile every outcome; do not treat a cached alert row as proof of delivery.
+8. **Before any AWS rehearsal:** require the cloud/AWS plan's account, region, identity, data, privacy, and cost approvals, then repeat the approved synthetic checks with the same tested immutable digest and separate state. AWS rehearsal is a later approved gate, not a prerequisite for Azure production.
+
+These follow-ups do not authorize infrastructure provisioning, collection of recipient data, publication, or sending alerts. Keep the planned delivery stages and approvals in the linked canonical plans.
+
+
+## Verification
+
+The assessment includes source inspection, read-only searches, a local API smoke request, isolated synthetic failure-path checks, and a read-only adversarial review reconciled against cited pinned source and canonical plans. The Data API returned `200` for `/` while an injected Blob listing failure made authenticated `/catalog` return `500`. A synthetic query string appeared in Uvicorn's access log. A synthetic malformed API key was present in startup stderr/exception text. Isolated forecast source bodies with one simulated failed download returned no files, recorded no error, and led `main()` to exit `0`. An isolated impact connection failure became a successful skipped result. An isolated refresh caller block ignored a simulated sender error result.
+
+The additional refresh, GloFAS, cache, browser, public-route, third-party-provider, and image-tag findings are source inspections at the workspace pins; they are not live cloud or production observations. They do not establish an unapproved live data exposure or the absence of an external publisher. No live cloud, Snowflake, Matomo, public serving, or send-path test was performed. Local forecast execution itself was blocked by unavailable native ecCodes and `zarr` dependencies, so the forecast result above is limited to isolated source execution. The nginx binary was unavailable; dashboard access-log behavior is source-inspected, not runtime-verified. No implementation source or tests were changed.
+
+`quarto render docs` rendered the 48-page site; `uv run --frozen pre-commit run --all-files` passed Ruff and mypy. Browser review at 1365×900 and 390×844 confirmed the page title and headings with no horizontal overflow; the first keyboard Tab reached the site-name link. A browser check found no failed targets among 19 internal links. Pa11y/Axe exited `2` on two serious `aria-hidden-focus` findings for `data-tabster-dummy` sentinel nodes (`body > i:nth-child(1)` and `(10)`). Those nodes are absent from the generated page source; their origin is unverified, and this scan reported no page-authored violation. A prior browser scan also flagged a non-uniquely named site `.navbar` landmark, not repeated in this Pa11y output. Treat these as site/browser baseline follow-ups; no shared template fix was made.
