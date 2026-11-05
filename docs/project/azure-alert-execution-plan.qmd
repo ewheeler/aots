@@ -171,7 +171,7 @@ Use ordinary non-HNS GPv2 Blob by default. Enable ADLS Gen2 hierarchical namespa
 
 ### Purpose
 
-Exercise finalized source handoff, V2 policy, composition, replay, registration, and comparison over real or historical evidence without provider calls.
+Exercise finalized source handoff, V2 policy, composition, replay, and comparison over real or historical evidence without provider calls. The initial shadow excludes production registration and real preference collection; a separately approved synthetic/nonproduction registry exercise may run independently but is not a shadow prerequisite. Production registration follows shadow and its own service gate.
 
 The shadow cohort is bounded by approved sources, products, and hazard semantics. Exclude unsupported or unapproved hazard expansions; their absence does not block a bounded shadow that does not use them. If a pilot includes a hazard, its source licensing, supported semantics, typed facts, and manual-review behavior must pass their gates first. Durable source checkpoints and SQL comparison/checkpoint state may support replay; neither is delivery lifecycle/outbox state. Optional Stage B work hints remain non-authoritative and are not Service Bus delivery transport.
 
@@ -193,7 +193,7 @@ The manifest is authority; any event is only a hint. Every Job fetches the final
 - Source-ready manifest contract, content-addressed/version-bound Blob references, and durable checkpoint.
 - Policy, composition, replay, and reconciliation Container Apps Jobs.
 - Azure SQL comparison/checkpoint state when the pilot exercises lifecycle/replay across runs.
-- Registration-only App Service, Entra objects, Cosmos registry, and privacy controls if recipient self-service is in pilot scope.
+- Separately approved synthetic/nonproduction registration-only App Service, Entra objects, Cosmos registry, and privacy controls only if that exercise is in scope; production registry remains a post-shadow service gate.
 - Private backend access once real PII is stored.
 - Workload-specific telemetry, SLO dashboard, incident/runbook owner, budget, and capacity baseline.
 
